@@ -8,6 +8,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      BRIDGE_KEYSTORE_PATH: ${{ runner.temp }}/segeran-jiwa-qris-bridge.jks
+      BRIDGE_KEYSTORE_PASSWORD: ${{ secrets.BRIDGE_KEYSTORE_PASSWORD }}
+      BRIDGE_KEY_ALIAS: ${{ secrets.BRIDGE_KEY_ALIAS }}
+      BRIDGE_KEY_PASSWORD: ${{ secrets.BRIDGE_KEY_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
@@ -21,13 +26,49 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
+      - name: Validate signing secrets and restore keystore
+        env:
+          BRIDGE_KEYSTORE_B64: ${{ secrets.BRIDGE_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "$BRIDGE_KEYSTORE_B64"
+          test -n "$BRIDGE_KEYSTORE_PASSWORD"
+          test -n "$BRIDGE_KEY_ALIAS"
+          test -n "$BRIDGE_KEY_PASSWORD"
+          printf '%s' "$BRIDGE_KEYSTORE_B64" | base64 --decode > "$BRIDGE_KEYSTORE_PATH"
+          chmod 600 "$BRIDGE_KEYSTORE_PATH"
+          keytool -list \
+            -keystore "$BRIDGE_KEYSTORE_PATH" \
+            -storepass "$BRIDGE_KEYSTORE_PASSWORD" \
+            -alias "$BRIDGE_KEY_ALIAS" >/dev/null
+
       - name: Unit tests
         run: gradle :app:testDebugUnitTest --stacktrace
 
-      - name: Build debug APK
-        run: gradle :app:assembleDebug --stacktrace
+      - name: Build signed release APK
+        run: gradle :app:assembleRelease --stacktrace
+
+      - name: Verify release APK signature
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+
+      - name: Prepare release artifact
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp app/build/outputs/apk/release/app-release.apk \
+            release/Segeran-Jiwa-QRIS-Bridge-v0.1.1-beta.apk
+          sha256sum release/Segeran-Jiwa-QRIS-Bridge-v0.1.1-beta.apk \
+            > release/Segeran-Jiwa-QRIS-Bridge-v0.1.1-beta.apk.sha256
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Segeran-Jiwa-QRIS-Bridge-Beta-v0.1.1-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: Segeran-Jiwa-QRIS-Bridge-v0.1.1-beta-signed
+          path: |
+            release/Segeran-Jiwa-QRIS-Bridge-v0.1.1-beta.apk
+            release/Segeran-Jiwa-QRIS-Bridge-v0.1.1-beta.apk.sha256
