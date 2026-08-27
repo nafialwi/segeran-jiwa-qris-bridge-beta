@@ -1,0 +1,33 @@
+name: Build Segeran Jiwa QRIS Bridge Beta v0.1.1
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, feature/qris-signal-beta ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Unit tests
+        run: gradle :app:testDebugUnitTest --stacktrace
+
+      - name: Build debug APK
+        run: gradle :app:assembleDebug --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Segeran-Jiwa-QRIS-Bridge-Beta-v0.1.1-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
