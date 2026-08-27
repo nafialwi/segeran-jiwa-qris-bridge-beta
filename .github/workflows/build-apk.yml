@@ -9,7 +9,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      BRIDGE_KEYSTORE_PATH: ${{ runner.temp }}/segeran-jiwa-qris-bridge.jks
       BRIDGE_KEYSTORE_PASSWORD: ${{ secrets.BRIDGE_KEYSTORE_PASSWORD }}
       BRIDGE_KEY_ALIAS: ${{ secrets.BRIDGE_KEY_ALIAS }}
       BRIDGE_KEY_PASSWORD: ${{ secrets.BRIDGE_KEY_PASSWORD }}
@@ -35,6 +34,10 @@ jobs:
           test -n "$BRIDGE_KEYSTORE_PASSWORD"
           test -n "$BRIDGE_KEY_ALIAS"
           test -n "$BRIDGE_KEY_PASSWORD"
+
+          export BRIDGE_KEYSTORE_PATH="$RUNNER_TEMP/segeran-jiwa-qris-bridge.jks"
+          printf 'BRIDGE_KEYSTORE_PATH=%s\n' "$BRIDGE_KEYSTORE_PATH" >> "$GITHUB_ENV"
+
           printf '%s' "$BRIDGE_KEYSTORE_B64" | base64 --decode > "$BRIDGE_KEYSTORE_PATH"
           chmod 600 "$BRIDGE_KEYSTORE_PATH"
           keytool -list \
