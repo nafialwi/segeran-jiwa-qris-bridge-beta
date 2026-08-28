@@ -1,4 +1,4 @@
-# Segeran Jiwa QRIS Bridge Beta v0.1.1
+# Segeran Jiwa QRIS Bridge Beta v0.3.0
 
 Aplikasi Android companion khusus **HP Owner Segeran Jiwa**. Bridge membaca notifikasi pembayaran QRIS dari **GoFood Merchant** (`com.gojek.resto`) melalui Android Notification Access, mengekstrak nominal + provider transaction ID, melakukan deduplikasi berdasarkan provider ID, lalu mengirim signal terstruktur ke Firebase.
 
@@ -29,13 +29,13 @@ Aplikasi Android companion khusus **HP Owner Segeran Jiwa**. Bridge membaca noti
 
 Upload **isi folder ini sebagai root repository**, kemudian buka:
 
-`Actions` → `Build Segeran Jiwa QRIS Bridge Beta v0.1.1` → `Run workflow`
+`Actions` → `Build Segeran Jiwa QRIS Bridge Beta v0.3.0` → `Run workflow`
 
-Workflow wajib menjalankan unit tests sebelum `assembleDebug`. Artifact:
+Sebelum menjalankan workflow, konfigurasi empat GitHub Actions repository secrets sesuai `SIGNING_SETUP.md`. Workflow wajib menjalankan unit tests, mengompilasi `app-release-unsigned.apk`, lalu melakukan `zipalign` + `apksigner sign` secara eksplisit dan memverifikasi fingerprint certificate APK. Artifact:
 
-`Segeran-Jiwa-QRIS-Bridge-Beta-v0.1.1-APK`
+`Segeran-Jiwa-QRIS-Bridge-v0.3.0-beta-signed`
 
-Debug APK hanya untuk Beta internal dan dipasang di HP Owner.
+Artifact berisi `Segeran-Jiwa-QRIS-Bridge-v0.3.0-beta.apk` dan file SHA-256. APK release Beta ini dipasang hanya di HP Owner.
 
 ## Setelah APK terpasang
 
@@ -47,3 +47,13 @@ Debug APK hanya untuk Beta internal dan dipasang di HP Owner.
 6. Jika Firebase rules QRIS belum dipublish, jangan mulai acceptance pembayaran; signal dapat gagal terkirim/antre tergantung kondisi koneksi.
 
 Jangan membagikan PIN, refresh token, atau file signing pribadi.
+
+
+## WP9 Background / Real-time hardening
+
+- NotificationListener meminta rebind ketika sistem memutus listener.
+- Queue gagal dikirim dicoba ulang cepat (2 detik, lalu 5 detik).
+- Active notification recovery hanya menerima notifikasi recent (<=60 detik); histori lama dijadikan baseline dan tidak dikirim sebagai pembayaran baru.
+- Grouped snapshot pertama dengan banyak provider ID tidak dibackfill sebagai transaksi baru. Update berikutnya hanya mengirim provider ID yang belum pernah diamati.
+- Target pipeline internal adalah <=5 detik dari callback notifikasi Android sampai write Firebase pada internet normal. Waktu GoFood/Android sebelum callback berada di luar kontrol Bridge.
+- Pada HP Owner set baterai Bridge ke Tanpa pembatasan / No restrictions dan aktifkan Autostart bila tersedia.
