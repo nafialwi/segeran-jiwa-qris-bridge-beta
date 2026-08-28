@@ -3,6 +3,8 @@ package com.segeranjiwa.qrisbridge
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
+import android.service.notification.NotificationListenerService
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -23,6 +25,7 @@ class MainActivity : Activity() {
     private lateinit var txtAuth: TextView
     private lateinit var txtAccess: TextView
     private lateinit var txtLast: TextView
+    private lateinit var txtRealtime: TextView
     private lateinit var inUsername: EditText
     private lateinit var inPin: EditText
     private lateinit var btnLogin: Button
@@ -41,12 +44,17 @@ class MainActivity : Activity() {
         txtAuth = findViewById(R.id.txtAuth)
         txtAccess = findViewById(R.id.txtAccess)
         txtLast = findViewById(R.id.txtLast)
+        txtRealtime = findViewById(R.id.txtRealtime)
         inUsername = findViewById(R.id.inUsername)
         inPin = findViewById(R.id.inPin)
         btnLogin = findViewById(R.id.btnLogin)
 
         findViewById<Button>(R.id.btnAccess).setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
+        findViewById<Button>(R.id.btnBackground).setOnClickListener {
+            try { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+            catch (_: Exception) { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }
         }
         btnLogin.setOnClickListener { loginOwner() }
         findViewById<Button>(R.id.btnRetry).setOnClickListener { retryQueue() }
@@ -60,6 +68,8 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        try { NotificationListenerService.requestRebind(ComponentName(this, GoFoodNotificationListener::class.java)) } catch (_: Exception) {}
+        executor.execute { try { QrisSignalRepository(applicationContext).drain() } catch (_: Exception) {} }
         handler.post(refresh)
     }
 
@@ -121,6 +131,13 @@ class MainActivity : Activity() {
         txtAuth.text = if (session == null) "Firebase Owner: BELUM LOGIN" else "Firebase Owner: TERHUBUNG • ${session.username}"
         txtAccess.text = if (hasNotificationAccess()) "Notification Access: ON" else "Notification Access: OFF"
         txtLast.text = "Signal terakhir: ${formatLast(prefs.lastSignalLabel())}\nQueue tertunda: ${prefs.queue().size}"
+        val ms = prefs.lastPipelineMs()
+        val listener = if (prefs.listenerConnected()) "TERHUBUNG" else "MENUNGGU SISTEM"
+        txtRealtime.text = when {
+            ms < 0 -> "Listener background: $listener\nLatensi pipeline: belum terukur • target ≤5 detik"
+            ms <= BridgeRealtimePolicy.TARGET_PIPELINE_MS -> "Listener background: $listener\nLatensi pipeline terakhir: ${ms} ms • target ≤5 detik ✓"
+            else -> "Listener background: $listener\nLatensi pipeline terakhir: ${ms} ms • di atas target 5 detik"
+        }
     }
 
     private fun hasNotificationAccess(): Boolean {

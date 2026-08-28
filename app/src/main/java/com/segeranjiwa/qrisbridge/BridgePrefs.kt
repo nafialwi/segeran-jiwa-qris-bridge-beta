@@ -76,4 +76,39 @@ class BridgePrefs(context: Context) {
         val state = prefs.getString("lastState", "-")
         return "Rp${amount} • $id • $state"
     }
+    fun observedProviderIds(): Set<String> {
+        val raw = prefs.getString("observedProviderIds", "[]") ?: "[]"
+        return try {
+            val a = JSONArray(raw)
+            buildSet { for (i in 0 until a.length()) { val id = a.optString(i); if (FirebasePaths.safeProviderId(id)) add(id) } }
+        } catch (_: Exception) { emptySet() }
+    }
+
+    fun rememberObservedProviderIds(ids: Set<String>) {
+        val existing = observedProviderIds().toMutableList()
+        ids.forEach { if (it !in existing) existing += it }
+        val keep = existing.takeLast(500)
+        val a = JSONArray(); keep.forEach(a::put)
+        prefs.edit().putString("observedProviderIds", a.toString()).apply()
+    }
+
+    fun setListenerState(connected: Boolean, at: Long = System.currentTimeMillis()) {
+        prefs.edit().putBoolean("listenerConnected", connected).putLong(if (connected) "listenerConnectedAt" else "listenerDisconnectedAt", at).apply()
+    }
+
+    fun listenerConnected(): Boolean = prefs.getBoolean("listenerConnected", false)
+    fun listenerConnectedAt(): Long = prefs.getLong("listenerConnectedAt", 0L)
+
+    fun noteNotificationCallback(at: Long = System.currentTimeMillis()) {
+        prefs.edit().putLong("lastNotificationCallbackAt", at).apply()
+    }
+
+    fun lastNotificationCallbackAt(): Long = prefs.getLong("lastNotificationCallbackAt", 0L)
+
+    fun setLastPipelineMs(ms: Long) {
+        prefs.edit().putLong("lastPipelineMs", ms.coerceAtLeast(0L)).putLong("lastPipelineAt", System.currentTimeMillis()).apply()
+    }
+
+    fun lastPipelineMs(): Long = prefs.getLong("lastPipelineMs", -1L)
+
 }
