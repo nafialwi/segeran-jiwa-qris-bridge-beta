@@ -58,5 +58,13 @@ fun main(){
     val timed = QrisSignal("TIME1", 2000, detectedAt = 123456789L)
     assertEq(123456789L, timed.detectedAt, "notification detection time retained")
 
+    val firstSingle = NotificationSnapshotPolicy.decide(emptySet(), listOf(QrisSignal("LIVE1",1000)), true)
+    assertEq(listOf("LIVE1"), firstSingle.emit.map { it.providerTransactionId }, "single live notification emits immediately")
+    val firstGroup = NotificationSnapshotPolicy.decide(emptySet(), listOf(QrisSignal("OLD1",1000),QrisSignal("OLD2",2000)), true)
+    assertTrue(firstGroup.emit.isEmpty(), "first aggregate is baseline, not historical backfill")
+    val update = NotificationSnapshotPolicy.decide(setOf("OLD1","OLD2"), listOf(QrisSignal("NEW3",3000),QrisSignal("OLD1",1000),QrisSignal("OLD2",2000)), false)
+    assertEq(listOf("NEW3"), update.emit.map { it.providerTransactionId }, "grouped update emits only new provider id")
+    assertEq(5000L, BridgeRealtimePolicy.TARGET_PIPELINE_MS, "realtime target")
+
     println("CORE_CONTRACT_PASS")
 }
