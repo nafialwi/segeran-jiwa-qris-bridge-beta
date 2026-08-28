@@ -45,6 +45,13 @@ jobs:
             -storepass "$BRIDGE_KEYSTORE_PASSWORD" \
             -alias "$BRIDGE_KEY_ALIAS" >/dev/null
 
+      - name: Repository contract tests
+        run: |
+          python3 tests/test_release_identity.py
+          python3 tests/workflow_release_contract.py
+          python3 tests/wp9_background_contract.py
+          python3 tests/wp10_event_contract.py
+
       - name: Unit tests
         run: gradle :app:testDebugUnitTest --stacktrace
 
