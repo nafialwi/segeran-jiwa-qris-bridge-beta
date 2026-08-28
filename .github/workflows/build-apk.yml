@@ -1,4 +1,4 @@
-name: Build Segeran Jiwa QRIS Bridge Beta v0.1.1
+name: Build Segeran Jiwa QRIS Bridge Beta v0.3.0
 
 on:
   workflow_dispatch:
@@ -58,8 +58,8 @@ jobs:
           set -euo pipefail
 
           UNSIGNED_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
-          FINAL_APK="release/Segeran-Jiwa-QRIS-Bridge-v0.1.1-beta.apk"
-          ALIGNED_APK="$RUNNER_TEMP/Segeran-Jiwa-QRIS-Bridge-v0.1.1-beta-aligned.apk"
+          FINAL_APK="release/Segeran-Jiwa-QRIS-Bridge-v0.3.0-beta.apk"
+          ALIGNED_APK="$RUNNER_TEMP/Segeran-Jiwa-QRIS-Bridge-v0.3.0-beta-aligned.apk"
 
           if [ ! -f "$UNSIGNED_APK" ]; then
             echo "::error::Unsigned release APK not found at $UNSIGNED_APK"
@@ -121,7 +121,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Segeran-Jiwa-QRIS-Bridge-v0.1.1-beta-signed
+          name: Segeran-Jiwa-QRIS-Bridge-v0.3.0-beta-signed
           path: |
-            release/Segeran-Jiwa-QRIS-Bridge-v0.1.1-beta.apk
-            release/Segeran-Jiwa-QRIS-Bridge-v0.1.1-beta.apk.sha256
+            release/Segeran-Jiwa-QRIS-Bridge-v0.3.0-beta.apk
+            release/Segeran-Jiwa-QRIS-Bridge-v0.3.0-beta.apk.sha256
