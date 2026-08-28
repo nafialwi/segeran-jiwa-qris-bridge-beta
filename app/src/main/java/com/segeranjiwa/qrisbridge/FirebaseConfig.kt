@@ -16,6 +16,12 @@ object FirebasePaths {
         require(safeProviderId(id)) { "Provider transaction ID tidak aman" }
         return "${FirebaseConfig.QRIS_ROOT}/signals/$id"
     }
+    fun event(id: String, suffix: String): String {
+        require(safeProviderId(id)) { "Provider transaction ID tidak aman" }
+        val s = suffix.removePrefix("QRIS_").uppercase()
+        require(s in setOf("RECEIVED","UNMATCHED","AMBIGUOUS","MATCHED","CONFIRMED","DISMISSED")) { "Tipe event QRIS tidak aman" }
+        return "${FirebaseConfig.QRIS_ROOT}/events/${id}__${s}"
+    }
     fun authUser(uid: String): String {
         require(simpleKey.matches(uid)) { "UID tidak aman" }
         return "${FirebaseConfig.POS_ROOT}/global/authUsers/$uid"

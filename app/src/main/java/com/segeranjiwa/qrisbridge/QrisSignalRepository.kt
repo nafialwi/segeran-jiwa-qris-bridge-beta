@@ -7,10 +7,14 @@ class QrisSignalRepository(context: Context) {
     private val prefs = BridgePrefs(context)
     private val firebase = FirebaseRestClient(context)
 
-    fun enqueueAndDrain(signal: QrisSignal): WriteResult? {
-        val detectedAt = signal.detectedAt.takeIf { it > 0L } ?: System.currentTimeMillis()
-        prefs.enqueue(signal, detectedAt)
-        return drain().lastOrNull()?.second
+    fun enqueueAndDrain(signal: QrisSignal): WriteResult? =
+        enqueueAndDrain(listOf(signal), signal.detectedAt.takeIf { it > 0L } ?: System.currentTimeMillis()).lastOrNull()?.second
+
+    fun enqueueAndDrain(signals: List<QrisSignal>, detectedAt: Long = System.currentTimeMillis()): List<Pair<String, WriteResult>> {
+        signals.distinctBy { it.providerTransactionId }.forEach { signal ->
+            prefs.enqueue(signal, signal.detectedAt.takeIf { it > 0L } ?: detectedAt)
+        }
+        return drain()
     }
 
     fun drain(): List<Pair<String, WriteResult>> {
@@ -19,11 +23,32 @@ class QrisSignalRepository(context: Context) {
         for (row in prefs.queue()) {
             val signal = QrisSignal(row.id, row.amount)
             val result = upsert(signal, row.detectedAt, prefs.deviceId, session.idToken)
+            if (result == WriteResult.CREATED) ensureReceivedEvent(signal, row.detectedAt, session.uid, session.username, session.idToken)
             prefs.removeQueued(row.id)
             prefs.setLastSignal(row.id, row.amount, result.name)
             done += row.id to result
         }
         return done
+    }
+
+    private fun ensureReceivedEvent(signal: QrisSignal, detectedAt: Long, actorUid: String, actorName: String, token: String) {
+        val eventId = "${signal.providerTransactionId}__RECEIVED"
+        val body = JSONObject()
+            .put("eventId", eventId)
+            .put("providerTransactionId", signal.providerTransactionId)
+            .put("type", "QRIS_RECEIVED")
+            .put("amount", signal.amount)
+            .put("ts", detectedAt)
+            .put("signalStatus", "DETECTED")
+            .put("pendingId", JSONObject.NULL)
+            .put("transactionId", JSONObject.NULL)
+            .put("cashierId", JSONObject.NULL)
+            .put("cashierName", JSONObject.NULL)
+            .put("actorUid", actorUid)
+            .put("actorName", actorName)
+            .put("reason", JSONObject.NULL)
+        val r = firebase.putIfAbsent(FirebasePaths.event(signal.providerTransactionId, "RECEIVED"), token, body)
+        if (r.code !in 200..299 && r.code != 412) error("Gagal menulis event QRIS (${r.code})")
     }
 
     private fun upsert(signal: QrisSignal, detectedAt: Long, sourceDeviceId: String, token: String): WriteResult {

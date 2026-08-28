@@ -80,6 +80,14 @@ class FirebaseRestClient(context: Context) {
     fun putIfMatch(path: String, token: String, etag: String, body: JSONObject): HttpResult =
         request("PUT", dbUrl(path, token), body.toString(), "application/json", mapOf("if-match" to etag))
 
+    fun putIfAbsent(path: String, token: String, body: JSONObject): HttpResult {
+        val current = getWithEtag(path, token)
+        if (current.code !in 200..299) return current
+        if (current.body.trim() != "null") return HttpResult(200, current.body, current.etag)
+        val etag = current.etag ?: return HttpResult(409, "missing-etag")
+        return putIfMatch(path, token, etag, body)
+    }
+
     fun patch(path: String, token: String, body: JSONObject): HttpResult =
         request("PATCH", dbUrl(path, token), body.toString(), "application/json")
 
