@@ -1,0 +1,24 @@
+{
+  "name": "segeran-jiwa-pos-clean-baseline",
+  "version": "0.4.0-sc04",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "audit": "node scripts/audit-monolith.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "verify": "npm run audit && npm run build && node scripts/verify-inline-scripts.mjs && npm run contracts && npm test",
+    "dev": "node scripts/dev-server.mjs",
+    "contracts": "node scripts/verify-contracts.mjs",
+    "verify:sc02": "npm run audit && npm run build && node scripts/verify-inline-scripts.mjs && npm run contracts && node scripts/verify-sc02.mjs && npm test",
+    "build:sc03": "node scripts/build-sc03.mjs",
+    "dev:sc03": "node scripts/dev-server.mjs dist-sc03",
+    "verify:sc03": "npm run audit && npm run build && npm run build:sc03 && node scripts/verify-inline-scripts.mjs && npm run contracts && node scripts/verify-sc02.mjs && node scripts/verify-sc03.mjs && npm test",
+    "build:sc04": "node scripts/build-sc04.mjs",
+    "dev:sc04": "node scripts/dev-server.mjs dist-sc04",
+    "verify:sc04": "npm run audit && npm run build && npm run build:sc03 && npm run build:sc04 && node scripts/verify-inline-scripts.mjs && npm run contracts && node scripts/verify-sc02.mjs && node scripts/verify-sc03.mjs && node scripts/verify-sc04.mjs && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
