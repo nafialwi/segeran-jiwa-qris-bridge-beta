@@ -1,0 +1,31 @@
+{
+  "project": "Segeran Jiwa POS",
+  "blueprint_version": "1.0",
+  "date": "2026-08-30",
+  "strategy": "Structural Consolidation; Modular Web Core; AppMint temporary packaging",
+  "legacy_migration_authority": "SEGERAN_JIWA_POS_v1_0_40_VC02A_OPERATIONAL_STOCK_RESTOCK_v1_0_0.html",
+  "fixed_contracts": {
+    "pos_root": "toko_segeranjiwa_v58",
+    "qris_root": "segeranjiwa_qris_beta_v1",
+    "package_id": "id.segeranjiwa.pos",
+    "zero_cost_first": true,
+    "rewrite_native_now": false,
+    "persistent_session_required": true,
+    "store_plaintext_pin": false,
+    "rules_schema_change_without_checkpoint": false
+  },
+  "pass_gates": [
+    "F-PASS",
+    "A-PASS",
+    "V-PASS",
+    "R-PASS",
+    "W-PASS"
+  ],
+  "roadmap": {
+    "target_prompts": 8,
+    "min_prompts": 6,
+    "max_prompts": 10
+  },
+  "visual_authority": "9 refinement references re-confirmed 2026-08-30",
+  "qris_logic_authority": "existing SJQrisSignalBeta contract; adapter only during consolidation"
+}
