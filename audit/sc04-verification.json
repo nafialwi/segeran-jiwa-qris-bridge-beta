@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-08-30T14:58:14.770Z",
+  "phase": "SC-04",
+  "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
+  "compatibilityDistSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
+  "candidateSha256": "47fb219a7d87ee29aecab1d26161ddb45ce461e890c3816b7f35d6fd1f3f9f43",
+  "expectedBaselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
+  "posRoot": "toko_segeranjiwa_v58",
+  "qrisRoot": "segeranjiwa_qris_beta_v1",
+  "entryCount": 1,
+  "session": {
+    "singleStorageBoundary": true,
+    "storageFiles": [
+      "src/data/local-store.js"
+    ],
+    "firebaseLocalPersistence": true,
+    "noStoredCredentials": true,
+    "noShiftCreation": true,
+    "liveRevocationGuard": true,
+    "offlineFailClosed": true
+  },
+  "authWrapperOwnership": {
+    "login": 1,
+    "completeLogin": 1,
+    "logout": 1
+  },
+  "directMutationFiles": [],
+  "violations": []
+}

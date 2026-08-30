@@ -1,0 +1,83 @@
+{
+  "verifiedAt": "2026-08-30T14:58:15.233Z",
+  "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
+  "distSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
+  "requiredTokens": [
+    {
+      "name": "pos root",
+      "token": "const DB_PATH=\"toko_segeranjiwa_v58\"",
+      "present": true
+    },
+    {
+      "name": "qris root",
+      "token": "segeranjiwa_qris_beta_v1",
+      "present": true
+    },
+    {
+      "name": "qris engine",
+      "token": "window.SJQrisSignalBeta",
+      "present": true
+    },
+    {
+      "name": "qris pending gate",
+      "token": "ensureWaitingPending",
+      "present": true
+    },
+    {
+      "name": "qris cancel",
+      "token": "cancelWaiting",
+      "present": true
+    },
+    {
+      "name": "qris ambiguity",
+      "token": "resolveAmbiguous",
+      "present": true
+    },
+    {
+      "name": "transaction engine",
+      "token": "async function processTransaction",
+      "present": true
+    },
+    {
+      "name": "shift authority",
+      "token": "window.SJShift=SJShift",
+      "present": true
+    },
+    {
+      "name": "report authority",
+      "token": "window.SJReportFoundationV010",
+      "present": true
+    },
+    {
+      "name": "inventory authority",
+      "token": "window.SJInventoryV2",
+      "present": true
+    },
+    {
+      "name": "navigation Beranda",
+      "token": "Beranda",
+      "present": true
+    },
+    {
+      "name": "navigation Jual",
+      "token": "Jual",
+      "present": true
+    },
+    {
+      "name": "navigation Operasional",
+      "token": "Operasional",
+      "present": true
+    },
+    {
+      "name": "navigation Laporan",
+      "token": "Laporan",
+      "present": true
+    },
+    {
+      "name": "navigation Pengaturan",
+      "token": "Pengaturan",
+      "present": true
+    }
+  ],
+  "violations": []
+}

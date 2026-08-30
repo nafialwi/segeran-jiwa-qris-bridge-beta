@@ -1,0 +1,53 @@
+{
+  "generatedAt": "2026-08-30T14:58:13.683Z",
+  "phase": "SC-02",
+  "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
+  "distSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
+  "expectedBaselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
+  "posRoot": "toko_segeranjiwa_v58",
+  "qrisRoot": "segeranjiwa_qris_beta_v1",
+  "scannedFiles": [
+    "src/data/firebase-auth-session.js",
+    "src/data/firebase-client.js",
+    "src/data/index.js",
+    "src/data/local-store.js",
+    "src/data/qris-adapter.js",
+    "src/data/repositories/_read.js",
+    "src/data/repositories/debt-repository.js",
+    "src/data/repositories/inventory-repository.js",
+    "src/data/repositories/purchase-repository.js",
+    "src/data/repositories/report-repository.js",
+    "src/data/repositories/settings-repository.js",
+    "src/data/repositories/shift-repository.js",
+    "src/data/repositories/transaction-repository.js",
+    "src/data/repositories/user-repository.js",
+    "src/domain/costing-service.js",
+    "src/domain/debt-service.js",
+    "src/domain/index.js",
+    "src/domain/inventory-service.js",
+    "src/domain/pricing-service.js",
+    "src/domain/purchase-wac-service.js",
+    "src/domain/refund-void-service.js",
+    "src/domain/report-service.js",
+    "src/domain/shift-service.js",
+    "src/domain/transaction-service.js"
+  ],
+  "directMutationFiles": [],
+  "legacyTokenPresence": {
+    "processTransaction": true,
+    "SJQrisSignalBeta": true,
+    "SJInventoryV2": true,
+    "SJCostingV1": true,
+    "SJShift": true,
+    "SJOperationalHardening": true,
+    "SJReportFoundationV010": true
+  },
+  "qrisDelegationChecks": {
+    "referencesEnsureWaitingPending": true,
+    "referencesCancelWaiting": true,
+    "referencesResolveAmbiguous": true,
+    "noDatabaseRef": true,
+    "noMutationCall": true
+  },
+  "violations": []
+}
