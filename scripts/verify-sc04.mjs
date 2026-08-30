@@ -59,9 +59,11 @@ if(!liveRevocationGuard) add(violations,'LIVE_REVOCATION_GUARD_MISSING','src/cor
 const offlineFailClosed=/OFFLINE_REVALIDATION_REQUIRED/.test(sessionText);
 if(!offlineFailClosed) add(violations,'OFFLINE_RESTORE_POLICY_MISSING','src/core/session-manager.js');
 
+const authOwnerSelector=/SJProductionArchitectureP3/.test(bootstrapText)&&/const authOwner=/.test(bootstrapText);
+if(!authOwnerSelector) add(violations,'AUTH_OWNER_SELECTOR_MISSING','SJProductionArchitectureP3');
 const authWrapperOwnership={};
 for(const method of ['login','completeLogin','logout']){
-  const count=(bootstrapText.match(new RegExp(`installMethod\\('SJSecureRulesCompat','${method}'`,'g'))||[]).length;
+  const count=bootstrapText.split(`installMethod(authOwner,'${method}'`).length-1;
   authWrapperOwnership[method]=count;
   if(count!==1) add(violations,'AUTH_WRAPPER_OWNERSHIP_COUNT',`${method}:${count}`);
 }

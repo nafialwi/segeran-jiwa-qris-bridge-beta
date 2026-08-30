@@ -65,31 +65,34 @@ export function installSc04Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_R
   const commands=sc03?.commands;
   if(!commands) throw new Error('SC04_SC03_COMMAND_REGISTRY_REQUIRED');
 
-  commands.captureMethod('SJSecureRulesCompat','login','sc04.legacy.login');
-  commands.captureMethod('SJSecureRulesCompat','completeLogin','sc04.legacy.completeLogin');
-  commands.captureMethod('SJSecureRulesCompat','logout','sc04.legacy.logout');
+  const authOwner=typeof runtime?.SJProductionArchitectureP3?.login==='function'
+    ?'SJProductionArchitectureP3'
+    :'SJSecureRulesCompat';
+  commands.captureMethod(authOwner,'login','sc04.legacy.login');
+  commands.captureMethod(authOwner,'completeLogin','sc04.legacy.completeLogin');
+  commands.captureMethod(authOwner,'logout','sc04.legacy.logout');
 
   const session=manager??createDefaultManager(runtime,commands);
   let ready=Promise.resolve({restored:false,reason:'NOT_STARTED'});
 
-  commands.installMethod('SJSecureRulesCompat','login',async(...args)=>{
+  commands.installMethod(authOwner,'login',async(...args)=>{
     try{await ready}catch(_){}
     await session.prepareAuth();
     return commands.invoke('sc04.legacy.login',...args);
   },OWNER);
 
-  commands.installMethod('SJSecureRulesCompat','completeLogin',async(...args)=>{
+  commands.installMethod(authOwner,'completeLogin',async(...args)=>{
     const result=await commands.invoke('sc04.legacy.completeLogin',...args);
     const username=String(args[0]??'').trim().toLowerCase();
     const user=args[2]&&typeof args[2]==='object'?args[2]:{};
     let authMode='';
-    try{authMode=String(runtime?.SJSecureRulesCompat?.authMode?.()||'')}catch(_){}
+    try{authMode=String(runtime?.[authOwner]?.authMode?.()||'')}catch(_){}
     try{await session.saveAfterLogin({username,authMode,role:String(user.role||'')})}
     catch(error){try{runtime?.console?.warn?.('[SC04] session envelope save skipped',error)}catch(_){}}
     return result;
   },OWNER);
 
-  commands.installMethod('SJSecureRulesCompat','logout',async(...args)=>{
+  commands.installMethod(authOwner,'logout',async(...args)=>{
     try{await session.invalidate('MANUAL_LOGOUT',{signOut:false})}catch(_){}
     return commands.invoke('sc04.legacy.logout',...args);
   },OWNER);
