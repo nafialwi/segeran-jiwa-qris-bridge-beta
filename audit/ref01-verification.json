@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-31T06:15:27.074Z",
+  "generatedAt": "2026-08-31T08:46:52.117Z",
   "phase": "REF-01",
   "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
   "compatibilitySha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
@@ -8,6 +8,62 @@
   "qrisRoot": "segeranjiwa_qris_beta_v1",
   "entries": 1,
   "refinementReferences": 9,
+  "referenceImplementation": {
+    "REF_01": {
+      "files": 3,
+      "anchors": 3,
+      "missingFiles": [],
+      "missingAnchors": []
+    },
+    "REF_02_BOTTOM_NAV_MOTION": {
+      "files": 3,
+      "anchors": 3,
+      "missingFiles": [],
+      "missingAnchors": []
+    },
+    "REF_03": {
+      "files": 3,
+      "anchors": 3,
+      "missingFiles": [],
+      "missingAnchors": []
+    },
+    "REF_04": {
+      "files": 3,
+      "anchors": 3,
+      "missingFiles": [],
+      "missingAnchors": []
+    },
+    "REF_05": {
+      "files": 3,
+      "anchors": 3,
+      "missingFiles": [],
+      "missingAnchors": []
+    },
+    "REF_06": {
+      "files": 3,
+      "anchors": 3,
+      "missingFiles": [],
+      "missingAnchors": []
+    },
+    "REF_07": {
+      "files": 3,
+      "anchors": 3,
+      "missingFiles": [],
+      "missingAnchors": []
+    },
+    "REF_08": {
+      "files": 2,
+      "anchors": 3,
+      "missingFiles": [],
+      "missingAnchors": []
+    },
+    "REF_09": {
+      "files": 3,
+      "anchors": 3,
+      "missingFiles": [],
+      "missingAnchors": []
+    }
+  },
   "screenFamilies": [
     "dashboard",
     "sales",

@@ -1,93 +1,211 @@
-# REF-01 Implementation Report
+# Laporan Implementasi PROMPT 5 — REF-01 Corrective Final Refinement Convergence
 
-## Executive status
-REF-01 Full Final Refinement Convergence is implemented as one coordinated candidate on top of the frozen SC-04 checkpoint. Automated functional/regression and architecture/IA gates are green. REF-01 remains a **V-PASS candidate** until QA-01 real-device screenshot review; no UI FREEZE is declared in REF-01.
+## 1. Status eksekutif
 
-Fresh pre-release verification: **109/109 tests PASS, 0 FAIL**.
+PROMPT 5 dikerjakan ulang sebagai **corrective convergence** setelah kandidat REF-01 pertama terbukti belum cukup dekat dengan sembilan gambar refinement pada real-device review. Kandidat pertama tidak dijadikan visual-final authority.
 
-## Authority and safety
-- Visual/IA authority: all nine frozen refinement references (`REF_01` .. `REF_09`).
-- Business/write authority: existing v1.0.40 + SC-01..SC-04 services/writers.
-- Frozen compatibility SHA256: `877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f`.
-- REF-01 candidate HTML SHA256: `e417c5ed2713f696e5e3e07194e65d3d0cd133df383783ca2c669c69fcab4970`.
-- Firebase roots remain `toko_segeranjiwa_v58` and `segeranjiwa_qris_beta_v1`.
-- New REF-01 direct RTDB mutation files: **0**.
-- REF-01 module entries in candidate: **1**.
-- MutationObserver visual-correction stacking is **off by default**; REF-01 uses a single convergence lifecycle/registry.
+Kandidat corrective ini mempertahankan SC-01 sampai SC-04 dan mengubah strategi: renderer legacy/final-refinement yang memang sudah dekat dengan gambar dipertahankan sebagai business/presentation authority, sedangkan REF-01 hanya mengharmonisasikan design tokens, icon authority, grouped Settings, Reports, Notifications, media lifecycle, role-safe navigation, stale Shift, critical operational surfaces, receipt/transaction presentation, dan system-state contracts.
 
-## Main screen-family convergence
-Static/architecture coverage resolves all **11/11** main families to real renderer surfaces with no unresolved selector:
-1. Dashboard — existing role-aware dashboard renderer, current operational condition/actions.
-2. Jual — existing sales renderer plus semantic navigation/icon/scanner refinement.
-3. Cart — existing cart authority retained.
-4. Checkout — existing checkout authority retained.
-5. Payments — existing Tunai/QRIS/Transfer/Kasbon and QRIS critical-state authority retained.
-6. Operasional — existing operational renderer for Stok/Restock/Pengeluaran/Shift/Notes/Refund/Kasbon.
-7. Shift/Closing — existing `SJShift` authority retained and extended only with stale-shift navigation/presentation.
-8. Refund/VOID — existing evidence/permission/write authority retained.
-9. Reports — historical/trend/evidence semantics, not current-dashboard semantics.
-10. Settings — REF-01 grouped IA delegating to existing feature writers.
-11. System states — one loading/empty/error/success/offline/permission/retry family.
+Fresh pre-release full verification sebelum dokumentasi final: **130/130 PASS, 0 FAIL**. Sembilan reference sekarang tidak hanya dihitung sebagai file PNG: masing-masing mempunyai implementation files dan concrete source anchors yang diverifikasi otomatis.
 
-## Implicit logic extracted from the refinement visuals
-REF-01 treats visible controls as behavior, not decoration.
+REF-01 corrective ini adalah **V-PASS candidate**, bukan UI FREEZE. Visual final tetap membutuhkan satu consolidated QA batch pada deployment nyata; namun kandidat tidak lagi diserahkan untuk QA tombol-per-tombol selama implementasi.
 
-### Photos and media
-- Product photo: add/preview/replace/remove through the existing product/image writer.
-- Store logo/QRIS image: add/preview/replace/remove through existing store-settings writer.
-- Account/profile photo: add/preview/replace/remove is functional. Image storage delegates to the existing image compression/Firebase Storage authority, then persists the URL through Firebase Auth `updateProfile`; no new RTDB profile schema is introduced.
-- Missing photo has an explicit fallback state rather than a broken image.
+## 2. Authority dan constraint yang dipertahankan
 
-### Barcode / scanner
-The camera affordance means a real scanner entry. REF-01 delegates to the existing scanner authority and keeps sales search/SKU entry as the manual fallback. Scanner failure therefore does not block sales search.
+- Visual/IA authority: `REF_01` sampai `REF_09`.
+- Frozen baseline: `baseline/legacy-v1.0.40.html`.
+- Frozen baseline/compatibility SHA256: `877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f`.
+- Candidate HTML SHA256: `e417c5ed2713f696e5e3e07194e65d3d0cd133df383783ca2c669c69fcab4970`.
+- Candidate source/build fingerprint: `5dd42afbc457e08ec7dd80e2dabd97a6735d605dd57bd4d4a110948495ab1c4d` sebelum dokumentasi-only changes.
+- POS root tetap `toko_segeranjiwa_v58`.
+- QRIS root tetap `segeranjiwa_qris_beta_v1`.
+- REF-01 direct RTDB mutation files: **0**.
+- REF-01 runtime entry: **1**.
+- MutationObserver correction stacking: **OFF by default**.
+- Tidak dibuat second transaction/QRIS/inventory/debt/shift/refund writer.
 
-### Payment evidence
-The Transfer reference visually implies proof-image selection. REF-01 provides choose/preview/replace/remove **as a local draft only**. It is explicitly labelled not persisted because the frozen transaction writer has no approved evidence field. REF-01 does not silently invent a transaction schema or a second writer.
+## 3. Mapping sembilan gambar refinement
 
-### Badges, counters and KPI semantics
-- Badges/counters must derive from real runtime state, never demo values.
-- Missing/unknown HPP or gross-profit data renders **Belum tersedia**, never synthetic `Rp0`.
-- Dashboard is current operational condition/action; Reports is historical period/trend/evidence.
+### REF_01 — Pengaturan
 
-### Settings behavior
-Grouped IA is active:
+**Authority visual:** grouped Settings, profile card, Toko, Akses, Tampilan & Perangkat, Sistem, Data, Zona Sensitif, Logout.
+
+**Implementasi:**
+- `src/ui/settings-refinement.js`
+- `src/ui/media-lifecycle.js`
+- `src/app/ref01-bootstrap.js`
+
+**Perubahan utama:**
+- Menghapus konsep grid Settings datar sebagai final presentation.
 - Toko: Produk, Kategori, Bahan & Gudang, Pelanggan, Karyawan.
 - Akses: Akun Saya, Pengguna, Perangkat Aktif.
 - Tampilan & Perangkat: Tampilan Aplikasi, Identitas Toko, Printer.
 - Sistem: Notifikasi, Keamanan & Sinkronisasi, Aktivitas, Diagnostik.
 - Data: Backup & Restore.
-- Zona Sensitif: destructive/data-sensitive actions separated deliberately.
+- Zona Sensitif dipisah secara deliberate.
+- Logout menjadi action terpisah.
+- Profile media bukan dummy: pilih/ganti/hapus foto dan fallback initials.
 
-`Tampilan Aplikasi` delegates to the existing `SJMobileUX.openSettings()` authority, so role layout/grid/compact settings remain writer-backed and persistent. `Backup & Restore` exposes actual existing backup and restore actions; it is not an information-only card.
+**Authority bisnis:** feature registry SC-03, `SJAccountV5964`, SC-04 logout/session.
 
-### Stale/open shift
-A shift key such as `YYYY-MM-DD-Sn` is interpreted in operational timezone `Asia/Jakarta`. An old still-open shift shows date/duration/overdue semantics and gives Owner a route into the existing `SJShift` closing/reconciliation flow. REF-01 never auto-closes, starts a second shift, or directly edits Firebase to clear stale state.
+### REF_02 — Bottom Navigation & Motion
 
-### Connectivity/system states
-Loading, empty, error, success, offline, permission and retry use one semantic state family. Transient Firebase connectivity is presented as reconnecting and never receives authority to mutate session/business state.
+**Implementasi:**
+- `src/ui/bottom-nav.js`
+- `src/ui/role-nav-refinement.js`
+- `src/ui/ref01.css`
 
-## Navigation, icons and responsive contract
-- Primary navigation is exactly: **Beranda / Jual / Operasional / Laporan / Pengaturan**.
-- Transaction children remain under Jual; operational children remain under Operasional.
-- One semantic SVG icon registry is the REF-01 authority for new/normalized icons; emoji is not used by REF-01 icon output.
-- Active bottom-navigation motion token is 200 ms and reduced-motion safe.
-- Mobile targets: 320 / 390 / 430 px.
-- Tablet: >=768 px; desktop: >=1200 px.
-- Primary touch target contract: >=44 px.
+**Kontrak final:**
+- Lima semantic destinations: Beranda, Jual, Operasional, Laporan, Pengaturan.
+- Satu visible label authority; bug label ganda ditutup secara struktural.
+- Active capsule mint.
+- Pressed feedback dan 200 ms motion, reduced-motion safe.
+- Kasir tetap melihat lima-tab geometry sesuai reference, tetapi Pengaturan Kasir tidak membuka Owner Settings; diarahkan ke secure Account surface existing.
 
-## What REF-01 intentionally did not invent
-- No QRIS matching/recovery/pending/ambiguity rewrite.
-- No second transaction/inventory/debt/shift/refund/report writer.
-- No new Firebase RTDB root/schema/rules.
-- No fake persistent Transfer evidence field.
-- No auto-close of stale shifts.
-- No UI FREEZE or visual-PASS claim before representative real-device screenshots.
+### REF_03 — Stok, Hutang, Operasional, Edit Produk
 
-## Gate status
-- **F-PASS (automated/regression): PASS** — 109/109 full tests green, all prior SC-01..SC-04 gates retained.
-- **A-PASS (automated/static): PASS** — 11/11 screen families resolved, 9/9 visual references present, grouped IA/nav/icon/state contracts verified, 0 REF-01 direct RTDB mutations.
-- **R-PASS: PASS** — frozen v1.0.40 compatibility hash and SC-03/SC-04 candidate gates retained.
-- **V-PASS: CANDIDATE** — requires QA-01 representative real-device screenshot comparison and consolidated correction batch.
+**Strategi:** mempertahankan renderer existing yang sudah lebih dekat ke reference (`SJFinalRefinementVC02A` dan writer existing), lalu menyatukan icons/tokens/media behavior.
 
-## Next authority
-QA-01 receives this candidate. QA-01 should collect one representative screenshot/UAT batch, classify Functional / Architecture-IA / Visual / Regression findings, correct them as one batch, and only then decide UI FREEZE.
+**Logika:**
+- Stok warning berasal dari state nyata.
+- Debt drill-down tidak dibuat dummy.
+- Product edit tetap memakai writer existing.
+- Foto/barcode adalah input nyata dan memiliki fallback.
+
+### REF_04 — Owner Dashboard, Kasir Dashboard, Penjualan, Checkout
+
+**Strategi:** renderer `SJFinalRefinementVC01A/VC01A2` dipertahankan karena struktur visualnya sudah dekat dengan reference dan sudah terhubung ke business state.
+
+**Corrective convergence:**
+- Satu icon authority menggantikan icon drift antar renderer.
+- Profile/account click authority dipertahankan untuk Owner/Kasir.
+- Foto profil custom ditanam ke avatar final renderer tanpa hardcode.
+- Sales product photo/fallback tetap dinamis.
+- Cart/checkout tidak diganti writer atau state engine.
+
+### REF_05 — Shift, Closing, Refund/VOID, Transaction Detail & Receipt
+
+**Implementasi:**
+- `src/ui/shift-refinement.js`
+- `src/ui/critical-operational-refinement.js`
+- `src/ui/transaction-detail-refinement.js`
+
+**Corrective behavior:**
+- Shift lama/open menampilkan date/duration/overdue semantics dalam timezone `Asia/Jakarta`.
+- Owner diarahkan ke `SJShift.openCloseModal()` existing; tidak ada auto-close.
+- Closing dan Handover hanya mendapat deliberate sheet presentation; cash denomination/reconciliation writer existing tetap authority.
+- Refund/VOID hanya mendapat evidence/presentation tags; owner/PIN/permission/write logic tidak diubah.
+- Fullscreen receipt sekarang menjadi focused surface: bottom nav tidak menumpuk/menimpa struk.
+- Setelah receipt ditutup, navigation state dikembalikan; tidak ada stale focused state.
+- Transaction detail mendapat consistent mobile sheet/presentation tanpa mengganti report/receipt authority.
+
+### REF_06 — Reports, Notifications, Product Media, Advanced Settings
+
+**Reports:**
+- `src/ui/report-refinement.js` hanya mengganti presentation summary Core, tidak report data/navigation authority.
+- Headline KPI: Total Penjualan, Transaksi, Laba Kotor.
+- Unknown HPP/Laba Kotor tampil **Belum tersedia**, bukan `Rp0` palsu.
+- Period/trend/category semantics dipertahankan.
+
+**Notifications:**
+- `src/ui/notification-refinement.js` membungkus renderer existing.
+- Filter: Semua, Perlu Tindakan, QRIS, Riwayat.
+- Read/unread dan deep-link tetap authority existing.
+
+**Product media:**
+- add / preview / replace / remove melalui image/product authority existing.
+
+### REF_07 — Cart, Barcode, Restock, Pengeluaran
+
+- Cart writer/state tidak diganti.
+- Scanner button membuka barcode feature existing.
+- Manual search/SKU tetap fallback jika kamera gagal/tidak tersedia.
+- Restock tetap request -> Owner approval -> stock realization; tidak menghidupkan bug lama request langsung menambah stok.
+- Expense tetap existing writer dan cash guard authority.
+
+### REF_08 — Checkout, Tunai, QRIS Waiting/Success/Ambiguous
+
+- `processTransaction()` tetap transaction authority.
+- `SJQrisSignalBeta` tetap QRIS pending/matching/resolution authority.
+- Tunai memakai existing denomination/input/change flow.
+- QRIS waiting/status/ambiguous tidak direka ulang oleh REF-01.
+- Tidak ada dummy success state yang menyelesaikan transaksi tanpa writer.
+
+### REF_09 — Transfer/Kasbon, Edit Produk, Stock Adjustment, System States
+
+- Transfer/Kasbon tetap existing payment writer.
+- Product save tetap existing product writer.
+- Stock adjustment tetap existing inventory writer + reason/audit flow.
+- Transfer proof mempunyai choose/preview/replace/remove sebagai **local draft** karena frozen transaction writer belum mempunyai approved evidence field.
+- System-state family menyediakan loading, empty, error, success, offline, permission, retry dengan `data-ref01-system-state` selector nyata.
+- Permission state tidak menawarkan retry yang menyesatkan; recoverable states dapat menawarkan Coba Lagi.
+
+## 4. Icon convergence
+
+`src/ui/icons.js` menjadi semantic SVG vocabulary dan `src/ui/icon-authority.js` menormalisasi `SJPro.icon()` sehingga VC01/VC02 tidak lagi bebas menggunakan icon treatment berbeda.
+
+REF-01 tidak mengeluarkan emoji sebagai icon authority baru. Icon dipetakan berdasarkan tanggung jawab: produk, kategori, gudang, customers, employees, devices, store, printer, security, diagnostics, backup, refund, shift, payment dan navigasi.
+
+## 5. Dynamic vs static
+
+Hal yang terlihat pada screenshot reference diperlakukan sebagai intent, bukan hardcoded data:
+- nama/role/avatar -> active user state;
+- foto profile -> Firebase Auth profile + existing storage authority;
+- product image -> existing product/image writer;
+- badges/KPI -> runtime state;
+- shift date/status -> real shift data;
+- notifications -> real event list;
+- report -> period/model data;
+- QRIS status -> `SJQrisSignalBeta`;
+- stock/debt/restock -> existing data authorities.
+
+## 6. Known deliberate limitation
+
+### Transfer proof
+Reference mengisyaratkan bukti transfer. UI draft sudah memiliki lifecycle gambar, tetapi **belum persisted ke transaction record** karena writer existing tidak menyediakan approved evidence field. Menambah field/schema/writer baru pada Prompt 5 akan melanggar frozen business-writer constraint.
+
+Ini adalah known limitation yang jujur, bukan dead control: preview dapat dipakai operator pada current surface, tetapi persistence baru boleh dibuka pada phase yang secara eksplisit mengubah transaction evidence schema.
+
+## 7. Bug class yang ditutup pada corrective convergence
+
+- duplicate bottom-navigation labels;
+- icon drift antar renderer;
+- cashier profile/account dead target;
+- Settings generic flat-grid mismatch;
+- profile photo tanpa explicit remove lifecycle;
+- cashier five-tab reference vs Owner-only Settings conflict;
+- fullscreen receipt vs bottom-nav overlap;
+- stale shift old-date route ke closing;
+- Refund/VOID visual surface tanpa mengubah permission authority;
+- system-state contract tanpa selector runtime nyata;
+- verifier yang hanya menghitung sembilan PNG tanpa implementation evidence.
+
+## 8. Verification status sebelum freeze package
+
+- Full tests: **130/130 PASS, 0 FAIL**.
+- Prompt 5 focused suite: **44/44 PASS** pada run terpisah sebelum full gate.
+- SC-01 audit/build/contracts: PASS.
+- SC-02 verifier: PASS.
+- SC-03 verifier: PASS.
+- SC-04 verifier: PASS.
+- REF-01 verifier: PASS.
+- Refinement references: **9/9**.
+- Implementation evidence: **9/9; 0 missing files; 0 missing source anchors**.
+- Main screen families: **11/11**.
+- Unresolved main screen selectors: **0**.
+- Settings groups: **6/6**.
+- New direct RTDB mutation files: **0**.
+
+Final package verification is regenerated after this documentation update.
+
+## 9. Gate classification
+
+- **F-PASS:** PASS automated/regression.
+- **A-PASS:** PASS automated/static authority, including 9/9 source-evidence gate.
+- **R-PASS:** PASS; baseline/roots/prior gates retained.
+- **V-PASS:** CANDIDATE; requires consolidated real-device comparison after deployment.
+- **UI FREEZE:** NOT YET.
+
+## 10. Next phase
+
+Deploy only the corrective candidate, then perform one consolidated QA-01 batch against the nine reference authorities. Findings must be grouped Functional / Architecture-IA / Visual / Regression and corrected as a batch. Do not return to one-button-one-patch QA unless a critical blocker prevents continuing the batch.

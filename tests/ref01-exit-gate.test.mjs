@@ -9,6 +9,8 @@ test('REF-01 verifier reports zero violations and covers implicit-logic converge
   const report=JSON.parse(readFileSync('audit/ref01-verification.json','utf8'));
   assert.deepEqual(report.violations,[]);
   assert.equal(report.refinementReferences,9);
+  assert.deepEqual(Object.keys(report.referenceImplementation),['REF_01','REF_02_BOTTOM_NAV_MOTION','REF_03','REF_04','REF_05','REF_06','REF_07','REF_08','REF_09']);
+  for(const evidence of Object.values(report.referenceImplementation)){assert.deepEqual(evidence.missingFiles,[]);assert.deepEqual(evidence.missingAnchors,[])}
   assert.equal(report.directMutationFiles.length,0);
   assert.equal(report.implicitLogic.photoLifecycle,true);
   assert.equal(report.implicitLogic.staleShiftRecovery,true);

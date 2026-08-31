@@ -7,6 +7,7 @@ import { SETTINGS_GROUPS, IMPLICIT_CAPABILITIES, SCREEN_FAMILIES, RESPONSIVE_TAR
 import { PRIMARY_NAV } from '../src/ui/bottom-nav.js';
 import { ICONS } from '../src/ui/icons.js';
 import { SCREEN_CONTRACTS } from '../src/ui/screen-contracts.js';
+import { REQUIRED_REFERENCE_IDS, REFERENCE_MATRIX, REFERENCE_IMPLEMENTATION_EVIDENCE } from '../src/ui/refinement-visual-contract.js';
 const ROOT=dirname(dirname(fileURLToPath(import.meta.url))),EXPECTED='877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f';
 const sha=file=>createHash('sha256').update(readFileSync(file)).digest('hex');
 const add=(a,code,detail)=>a.push({code,detail});
@@ -17,6 +18,20 @@ if(baselineSha256!==EXPECTED)add(violations,'BASELINE_HASH_DRIFT',String(baselin
 if(POS_ROOT!=='toko_segeranjiwa_v58')add(violations,'POS_ROOT_DRIFT',POS_ROOT);if(QRIS_ROOT!=='segeranjiwa_qris_beta_v1')add(violations,'QRIS_ROOT_DRIFT',QRIS_ROOT);
 const entries=(candidateText.match(/data-sj-ref01-entry="true"/g)||[]).length;if(entries!==1)add(violations,'REF01_ENTRY_COUNT',String(entries));if(!candidateText.includes('src/ref01-entry.js'))add(violations,'REF01_ENTRY_MISSING','src/ref01-entry.js');
 const refDir=join(ROOT,'blueprint_authority','references','refinement'),refinementReferences=existsSync(refDir)?readdirSync(refDir).filter(x=>/^REF_.*\.png$/i.test(x)).length:0;if(refinementReferences!==9)add(violations,'REFINEMENT_REFERENCE_COUNT',String(refinementReferences));
+
+const referenceImplementation={};
+if(Object.keys(REFERENCE_MATRIX).join('|')!==REQUIRED_REFERENCE_IDS.join('|')) add(violations,'REFINEMENT_MATRIX_DRIFT',Object.keys(REFERENCE_MATRIX).join(','));
+if(Object.keys(REFERENCE_IMPLEMENTATION_EVIDENCE).join('|')!==REQUIRED_REFERENCE_IDS.join('|')) add(violations,'REFINEMENT_EVIDENCE_DRIFT',Object.keys(REFERENCE_IMPLEMENTATION_EVIDENCE).join(','));
+for(const id of REQUIRED_REFERENCE_IDS){
+  const matrix=REFERENCE_MATRIX[id],evidence=REFERENCE_IMPLEMENTATION_EVIDENCE[id],missingFiles=[],missingAnchors=[];
+  if(!matrix||matrix.status!=='implemented') add(violations,'REFINEMENT_REFERENCE_NOT_IMPLEMENTED',id);
+  if(!evidence){add(violations,'REFINEMENT_EVIDENCE_MISSING',id);continue}
+  for(const rel of evidence.files){if(!existsSync(join(ROOT,rel)))missingFiles.push(rel)}
+  for(const item of evidence.anchors){const file=join(ROOT,item.file);if(!existsSync(file)||!readFileSync(file,'utf8').includes(item.token))missingAnchors.push(`${item.file}:${item.token}`)}
+  referenceImplementation[id]={files:evidence.files.length,anchors:evidence.anchors.length,missingFiles,missingAnchors};
+  if(missingFiles.length)add(violations,'REFINEMENT_IMPLEMENTATION_FILE_MISSING',`${id}:${missingFiles.join(',')}`);
+  if(missingAnchors.length)add(violations,'REFINEMENT_IMPLEMENTATION_ANCHOR_MISSING',`${id}:${missingAnchors.join(',')}`);
+}
 const mutation=/\.(?:set|update|transaction|remove)\s*\(/,directMutationFiles=[],scanFiles=[...walk(join(ROOT,'src','ui')).filter(x=>x.endsWith('.js')),join(ROOT,'src','app','ref01-bootstrap.js'),join(ROOT,'src','ref01-entry.js')];
 for(const file of scanFiles){if(!existsSync(file))continue;const text=readFileSync(file,'utf8');if(mutation.test(text))directMutationFiles.push(relative(ROOT,file));if(/firebase\.initializeApp\s*\(/.test(text))add(violations,'SECOND_FIREBASE_INIT',relative(ROOT,file))}
 if(directMutationFiles.length)add(violations,'REF01_DIRECT_RTDB_MUTATION',directMutationFiles.join(', '));
@@ -48,5 +63,5 @@ for(const [k,v] of Object.entries(implicitLogic))if(!v)add(violations,'IMPLICIT_
 if(REPORT_HEADLINES.join('|')!=='Total Penjualan|Transaksi|Laba Kotor')add(violations,'REPORT_HEADLINE_DRIFT',REPORT_HEADLINES.join(','));
 if(RESPONSIVE_TARGETS.mobile.join(',')!=='320,390,430')add(violations,'MOBILE_TARGET_DRIFT',RESPONSIVE_TARGETS.mobile.join(','));if(SCREEN_FAMILIES.length<10)add(violations,'SCREEN_FAMILY_COVERAGE',String(SCREEN_FAMILIES.length));
 const docs=['docs/REF01_IMPLEMENTATION_REPORT.md','docs/REF01_RELEASE_MANIFEST.md','docs/REF01_HANDOFF_TO_QA01.md'];for(const rel of docs)if(!existsSync(join(ROOT,rel)))add(violations,'REF01_DOC_MISSING',rel);
-const result={generatedAt:new Date().toISOString(),phase:'REF-01',baselineSha256,compatibilitySha256,candidateSha256:existsSync(CAND)?sha(CAND):null,posRoot:POS_ROOT,qrisRoot:QRIS_ROOT,entries,refinementReferences,screenFamilies:SCREEN_FAMILIES,screenCoverage,correctionObserverDefault,settingsGroups:groups,nav:PRIMARY_NAV.map(x=>x.label),directMutationFiles,implicitLogic,violations};
+const result={generatedAt:new Date().toISOString(),phase:'REF-01',baselineSha256,compatibilitySha256,candidateSha256:existsSync(CAND)?sha(CAND):null,posRoot:POS_ROOT,qrisRoot:QRIS_ROOT,entries,refinementReferences,referenceImplementation,screenFamilies:SCREEN_FAMILIES,screenCoverage,correctionObserverDefault,settingsGroups:groups,nav:PRIMARY_NAV.map(x=>x.label),directMutationFiles,implicitLogic,violations};
 writeFileSync(join(ROOT,'audit','ref01-verification.json'),JSON.stringify(result,null,2)+'\n');if(violations.length){console.error(`REF-01 verification FAILED: ${violations.length} violation(s)`);for(const v of violations)console.error(`- ${v.code}: ${v.detail}`);process.exit(1)}console.log(`REF-01 verification PASS: ${refinementReferences} references; ${SCREEN_FAMILIES.length} screen families; ${groups.length} Settings groups; 0 REF-01 RTDB mutations; 1 entry; fixed roots/hash retained.`);

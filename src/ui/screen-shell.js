@@ -15,5 +15,5 @@ export function stateModel(kind='empty',overrides={}){
 }
 export function renderState(kind,overrides={}){
   const m=stateModel(kind,overrides);
-  return `<section class="sj-ref-state sj-ref-state-${m.kind}" role="status">${renderIcon(m.icon,{size:28})}<h3>${m.title}</h3><p>${m.message}</p>${m.recoverable&&m.kind!=='success'?'<button type="button" data-ref01-retry="true">Coba Lagi</button>':''}</section>`;
+  return `<section class="sj-ref-state sj-ref-state-${m.kind}" data-ref01-system-state="${m.kind}" role="status">${renderIcon(m.icon,{size:28})}<h3>${m.title}</h3><p>${m.message}</p>${m.recoverable&&m.kind!=='success'?'<button type="button" data-ref01-retry="true">Coba Lagi</button>':''}</section>`;
 }

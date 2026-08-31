@@ -1,34 +1,53 @@
-# REF-01 Handoff to QA-01
+# PROMPT 5 Corrective REF-01 Handoff to QA-01
 
-REF-01 is an automated F/A/R-PASS candidate and a V-PASS candidate. QA-01 is a consolidated real-device correction pass, not a return to one-prompt-one-polish iteration.
+## Why this handoff is different
 
-## Representative screenshots/UAT
-Capture one coherent batch covering:
-1. Owner Dashboard.
-2. Kasir Dashboard.
-3. Jual with search + scanner affordance + product photo/fallback.
-4. Cart.
-5. Checkout and payment-method chooser.
-6. Tunai plus QRIS waiting/critical state; Transfer/Kasbon representative state.
-7. Operasional home.
-8. Stok / Stock Detail / Edit Produk including add/replace/remove photo.
-9. Restock and Pengeluaran.
-10. Shift/Closing/Handover; include stale/open-shift presentation if safely available.
-11. Refund/VOID.
-12. Reports home plus one evidence-detail report.
-13. Grouped Settings including profile-photo and Tampilan Aplikasi.
-14. One offline/reconnecting/error/permission state when safely reproducible.
+An earlier REF-01 deployment was technically green but visually diverged from the nine refinement authorities and exposed real-device defects. It is not the final visual authority. This corrective candidate must be reviewed as one consolidated nine-reference batch, not through serial one-button testing.
 
-Use mobile 390/430 as the primary evidence set; add 320 for narrow-layout defect detection and tablet/desktop only for responsive anomalies.
+## Primary comparison authority
+
+1. REF_01 — grouped Settings/profile/data-sensitive hierarchy.
+2. REF_02 — bottom navigation icon/label/active/motion behavior.
+3. REF_03 — Stok/Hutang/Operasional/Edit Produk.
+4. REF_04 — Owner/Kasir Dashboard, Penjualan, Checkout.
+5. REF_05 — Shift/Handover, Closing, Refund/VOID, Transaction Detail/Receipt.
+6. REF_06 — Reports, Notifications, Product media, advanced Settings responsibilities.
+7. REF_07 — Cart, Barcode, Restock, Expense.
+8. REF_08 — Checkout, Tunai, QRIS waiting/success/ambiguity.
+9. REF_09 — Transfer/Kasbon, Edit Product, Stock Adjustment, system states.
+
+## Consolidated real-device evidence batch
+
+Capture representative screenshots/UAT in one batch:
+- Owner Dashboard + owner profile.
+- Kasir Dashboard + cashier profile/account route.
+- Jual with photo product + no-photo fallback + search/scanner affordance.
+- Cart + Checkout.
+- Tunai; QRIS waiting and one safe status state; Transfer/Kasbon representative screen.
+- Operasional home + Stok + Restock + Pengeluaran.
+- Shift active/detail + Closing/Handover if safe; include stale/open shift if available without altering real business data.
+- Refund/VOID search/evidence without executing destructive action unless specifically intended.
+- Transaction detail and fullscreen receipt; confirm bottom nav does not overlap focused receipt.
+- Reports home + one detail/evidence flow.
+- Notifications list/filter/deep-link representative state.
+- Grouped Settings + photo choose/remove affordance; do not perform sensitive deletion.
+- One safe system state: offline/reconnecting or empty/error state.
+
+Primary mobile evidence widths: 390/430. Use 320 only to catch narrow-layout defects. Tablet/desktop only when a responsive anomaly is observed.
 
 ## Acceptance classification
-Every finding must be classified separately:
+
+Each finding must be classified:
 - Functional
 - Architecture / IA
 - Visual
 - Regression
 
-Correct related findings in one batch. Do not introduce new design concepts outside the nine refinement references. UI FREEZE is allowed only when there is no major Visual/IA finding and F/A/V/R status is explicit.
+Related findings are corrected in one batch. UI FREEZE requires no major Visual/IA mismatch against the nine references and explicit F/A/V/R status.
 
-## Known deliberate limitation to verify, not silently expand
-Transfer proof image is previewable local draft only until an approved existing transaction evidence writer exists. QA must not treat the absence of invented persistence as permission to add a new transaction schema during UI correction.
+## Safety rules during QA
+- Do not invent new QRIS/payment/transaction/inventory/debt/refund writers.
+- Do not direct-edit Firebase to clear stale shift.
+- Do not weaken Owner/Kasir role guards for visual matching.
+- Do not treat current Transfer-proof draft as permission to add an unapproved transaction evidence field.
+- Do not execute destructive Settings/Refund/VOID solely to obtain a screenshot.
