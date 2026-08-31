@@ -58,6 +58,44 @@ function enhanceTransferDraft(document){
   const modal=document?.querySelector?.('#modal-bayar .modal');if(!modal||document.getElementById?.('sj-ref-transfer-draft'))return false;const box=document.createElement('div');box.id='sj-ref-transfer-draft';box.className='sj-ref-transfer-draft';box.style.display='none';box.innerHTML=`<strong>Lampiran bukti transfer</strong><span>Opsional untuk pengecekan operator. REF-01 belum menyimpan lampiran ke transaksi sampai writer evidence existing tersedia.</span><div class="sj-ref-media-actions"><button type="button" data-ref01-transfer="choose">Pilih foto</button><button type="button" data-ref01-transfer="remove">Hapus</button></div><input id="sj-ref-transfer-file" type="file" accept="image/*" hidden><img id="sj-ref-transfer-preview" class="sj-ref-photo-draft-preview" alt="Preview bukti transfer">`;const payButton=modal.querySelector?.('.btn-pay[onclick="processTransaction()"]');modal.insertBefore?.(box,payButton||null);const input=box.querySelector?.('#sj-ref-transfer-file'),preview=box.querySelector?.('#sj-ref-transfer-preview');box.addEventListener?.('click',event=>{const action=event.target?.dataset?.ref01Transfer;if(action==='choose')input?.click?.();if(action==='remove'){if(input)input.value='';if(preview){preview.src='';preview.style.display='none'}}});input?.addEventListener?.('change',event=>{const file=event.target.files?.[0];if(!file||!String(file.type||'').startsWith('image/'))return;const reader=new FileReader();reader.onload=e=>{preview.src=String(e.target?.result||'');preview.style.display='block'};reader.readAsDataURL(file)});return true;
 }
 function syncTransferDraft(document){const box=document?.getElementById?.('sj-ref-transfer-draft'),tf=document?.getElementById?.('btn-tf');if(box)box.style.display=tf?.classList?.contains?.('active')?'block':'none'}
+export function ensureCashierAccountAccess(document,runtime){
+  const account=runtime?.SJAccountV5964;
+  if(!document?.querySelector||typeof account?.open!=='function') return false;
+  let changed=false;
+
+  const button=document.querySelector('button[aria-label="Akun"]');
+  if(button){
+    button.innerHTML=renderIcon('user',{size:20,label:'Akun Saya'});
+    button.setAttribute?.('title','Akun Saya');
+    changed=true;
+  }
+
+  const profile=document.querySelector('.sjui02-cashier .sjui02-profile');
+  if(profile&&profile.dataset?.ref01Account!=='true'){
+    profile.dataset.ref01Account='true';
+    profile.setAttribute?.('role','button');
+    profile.setAttribute?.('tabindex','0');
+    profile.setAttribute?.('aria-label','Akun Saya');
+
+    const open=event=>{
+      event?.preventDefault?.();
+      account.open();
+    };
+
+    profile.addEventListener?.('click',open);
+    profile.addEventListener?.('keydown',event=>{
+      if(event?.key==='Enter'||event?.key===' '){
+        event.preventDefault?.();
+        account.open();
+      }
+    });
+
+    changed=true;
+  }
+
+  return changed;
+}
+
 function tagSemanticScreens(document){
   tagScreenContracts(document);
   const report=document?.getElementById?.('view3');if(report){report.classList?.add?.('sj-ref-report-semantic');report.dataset.ref01Report='true'}
@@ -84,7 +122,7 @@ export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_
     const feature=sc03?.features?.get?.(key);if(feature?.open)return feature.open();return notify(runtime,'Fitur belum tersedia pada runtime ini.','warning');
   }
   function enhance(){
-    if(!document)return false;const route=currentRoute(sc03);enhanceBottomNav(document,route);tagSemanticScreens(document);installConnectivityBanner(document,runtime);renderSettingsLanding(document,runtime,sc03,media,openFeature);enhanceImageRemove(document);enhanceScanner(document,sc03);enhanceTransferDraft(document);syncTransferDraft(document);addStaleShiftAction(document,shift);document.documentElement&&(document.documentElement.dataset.sjRef01='true');return true;
+    if(!document)return false;const route=currentRoute(sc03);enhanceBottomNav(document,route);tagSemanticScreens(document);ensureCashierAccountAccess(document,runtime);installConnectivityBanner(document,runtime);renderSettingsLanding(document,runtime,sc03,media,openFeature);enhanceImageRemove(document);enhanceScanner(document,sc03);enhanceTransferDraft(document);syncTransferDraft(document);addStaleShiftAction(document,shift);document.documentElement&&(document.documentElement.dataset.sjRef01='true');return true;
   }
   let observer=null;if(observe&&document&&typeof runtime?.MutationObserver==='function'){observer=new runtime.MutationObserver(()=>{try{enhance()}catch(_){}});observer.observe(document.documentElement||document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']})}
   runtime?.addEventListener?.('online',enhance);runtime?.addEventListener?.('offline',enhance);document?.addEventListener?.('click',()=>setTimeout(()=>{try{enhance()}catch(_){}},0));

@@ -61,3 +61,58 @@ test('REF-01 Settings backup surface exposes existing backup and restore authori
   actions.backup();actions.restore();
   assert.deepEqual(calls,['backup','restore']);
 });
+
+
+test('REF-01 cashier profile and account control both open the existing secure account surface',async()=>{
+  const listeners={};
+  const accountButton={
+    dataset:{},
+    innerHTML:'?',
+    setAttribute(k,v){this[k]=v}
+  };
+  const profile={
+    dataset:{},
+    setAttribute(k,v){this[k]=v},
+    addEventListener(type,fn){listeners[type]=fn}
+  };
+
+  const document=fakeDocument();
+  document.querySelector=sel=>{
+    if(sel==='link[data-sj-ref01-style="true"]')
+      return document.nodes.get('style:true')||null;
+    if(sel==='button[aria-label="Akun"]')
+      return accountButton;
+    if(sel==='.sjui02-cashier .sjui02-profile')
+      return profile;
+    return null;
+  };
+
+  let opened=0;
+  const runtime={
+    document,
+    navigator:{onLine:true},
+    SJAccountV5964:{open(){opened++}}
+  };
+
+  const sc03={
+    features:{get:()=>null},
+    state:{snapshot:()=>({primary:'home'})},
+    guard:{currentRole:()=> 'cashier'}
+  };
+
+  const api=installRef01Runtime(runtime,{
+    sc03,
+    sc04:{session:{snapshot:()=>({})}},
+    observe:false
+  });
+
+  api.enhance();
+
+  assert.match(accountButton.innerHTML,/^<svg/);
+  assert.equal(profile.role,'button');
+  assert.equal(profile.tabindex,'0');
+  assert.equal(profile['aria-label'],'Akun Saya');
+
+  listeners.click({preventDefault(){}});
+  assert.equal(opened,1);
+});
