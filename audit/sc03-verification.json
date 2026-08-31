@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-30T18:35:50.000Z",
+  "generatedAt": "2026-08-31T05:16:16.671Z",
   "phase": "SC-03",
   "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
   "compatibilityDistSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
@@ -14,6 +14,7 @@
     "src/app/app-state.js",
     "src/app/bootstrap.js",
     "src/app/index.js",
+    "src/app/ref01-bootstrap.js",
     "src/app/route-contract.js",
     "src/app/router.js",
     "src/app/sc04-bootstrap.js",

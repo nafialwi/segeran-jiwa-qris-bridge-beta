@@ -1,6 +1,6 @@
 {
   "name": "segeran-jiwa-pos-clean-baseline",
-  "version": "0.4.0-sc04",
+  "version": "0.5.0-ref01",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,7 +16,10 @@
     "verify:sc03": "npm run audit && npm run build && npm run build:sc03 && node scripts/verify-inline-scripts.mjs && npm run contracts && node scripts/verify-sc02.mjs && node scripts/verify-sc03.mjs && npm test",
     "build:sc04": "node scripts/build-sc04.mjs",
     "dev:sc04": "node scripts/dev-server.mjs dist-sc04",
-    "verify:sc04": "npm run audit && npm run build && npm run build:sc03 && npm run build:sc04 && node scripts/verify-inline-scripts.mjs && npm run contracts && node scripts/verify-sc02.mjs && node scripts/verify-sc03.mjs && node scripts/verify-sc04.mjs && npm test"
+    "verify:sc04": "npm run audit && npm run build && npm run build:sc03 && npm run build:sc04 && node scripts/verify-inline-scripts.mjs && npm run contracts && node scripts/verify-sc02.mjs && node scripts/verify-sc03.mjs && node scripts/verify-sc04.mjs && npm test",
+    "build:ref01": "node scripts/build-ref01.mjs",
+    "dev:ref01": "node scripts/dev-server.mjs dist-ref01",
+    "verify:ref01": "npm run verify:sc04 && npm run build:ref01 && node scripts/verify-ref01.mjs && npm test"
   },
   "engines": {
     "node": ">=20"

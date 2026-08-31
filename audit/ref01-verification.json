@@ -1,0 +1,53 @@
+{
+  "generatedAt": "2026-08-31T05:16:11.178Z",
+  "phase": "REF-01",
+  "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
+  "compatibilitySha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
+  "candidateSha256": "e417c5ed2713f696e5e3e07194e65d3d0cd133df383783ca2c669c69fcab4970",
+  "posRoot": "toko_segeranjiwa_v58",
+  "qrisRoot": "segeranjiwa_qris_beta_v1",
+  "entries": 1,
+  "refinementReferences": 9,
+  "screenFamilies": [
+    "dashboard",
+    "sales",
+    "cart",
+    "checkout",
+    "payments",
+    "operational",
+    "shift-closing",
+    "refund-void",
+    "reports",
+    "settings",
+    "system-states"
+  ],
+  "screenCoverage": {
+    "coveredFamilies": 11,
+    "unresolvedSelectors": []
+  },
+  "correctionObserverDefault": true,
+  "settingsGroups": [
+    "Toko",
+    "Akses",
+    "Tampilan & Perangkat",
+    "Sistem",
+    "Data",
+    "Zona Sensitif"
+  ],
+  "nav": [
+    "Beranda",
+    "Jual",
+    "Operasional",
+    "Laporan",
+    "Pengaturan"
+  ],
+  "directMutationFiles": [],
+  "implicitLogic": {
+    "photoLifecycle": true,
+    "barcodeFallback": true,
+    "staleShiftRecovery": true,
+    "unknownHppSafe": true,
+    "transferProofNoInventedWriter": true
+  },
+  "violations": []
+}
