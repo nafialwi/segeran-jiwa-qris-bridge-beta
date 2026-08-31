@@ -133,7 +133,7 @@ export function createFeatureRuntime({router,guard,services={}}={}){
     2:registry['settings.categories'],
     4:registry['settings.store-identity'],
     5:registry['settings.users'],
-    6:registry['settings.devices'],
+    6:registry['settings.printer'],
     7:registry['settings.diagnostics'],
     8:registry['settings.activity'],
     9:registry['settings.customers'],

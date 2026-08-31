@@ -6,7 +6,7 @@ PROMPT 5 dikerjakan ulang sebagai **corrective convergence** setelah kandidat RE
 
 Kandidat corrective ini mempertahankan SC-01 sampai SC-04 dan mengubah strategi: renderer legacy/final-refinement yang memang sudah dekat dengan gambar dipertahankan sebagai business/presentation authority, sedangkan REF-01 hanya mengharmonisasikan design tokens, icon authority, grouped Settings, Reports, Notifications, media lifecycle, role-safe navigation, stale Shift, critical operational surfaces, receipt/transaction presentation, dan system-state contracts.
 
-Fresh pre-release full verification sebelum dokumentasi final: **130/130 PASS, 0 FAIL**. Sembilan reference sekarang tidak hanya dihitung sebagai file PNG: masing-masing mempunyai implementation files dan concrete source anchors yang diverifikasi otomatis.
+Fresh pre-release full verification sebelum QA Batch 1: **130/130 PASS, 0 FAIL**. Setelah corrective QA Batch 1, full verification terbaru meningkat menjadi **135/135 PASS, 0 FAIL** karena penambahan regression tests khusus routing Settings dan motion Bottom Navigation. Sembilan reference sekarang tidak hanya dihitung sebagai file PNG: masing-masing mempunyai implementation files dan concrete source anchors yang diverifikasi otomatis.
 
 REF-01 corrective ini adalah **V-PASS candidate**, bukan UI FREEZE. Visual final tetap membutuhkan satu consolidated QA batch pada deployment nyata; namun kandidat tidak lagi diserahkan untuk QA tombol-per-tombol selama implementasi.
 
@@ -182,7 +182,7 @@ Ini adalah known limitation yang jujur, bukan dead control: preview dapat dipaka
 
 ## 8. Verification status sebelum freeze package
 
-- Full tests: **130/130 PASS, 0 FAIL**.
+- Full tests setelah QA Batch 1 corrective: **135/135 PASS, 0 FAIL**.
 - Prompt 5 focused suite: **44/44 PASS** pada run terpisah sebelum full gate.
 - SC-01 audit/build/contracts: PASS.
 - SC-02 verifier: PASS.
@@ -197,6 +197,41 @@ Ini adalah known limitation yang jujur, bukan dead control: preview dapat dipaka
 - New direct RTDB mutation files: **0**.
 
 Final package verification is regenerated after this documentation update.
+
+
+## 8A. Corrective QA Batch 1 — REF_01 sampai REF_03
+
+Real-device QA pada deployment corrective v2 menemukan dua defect nyata dan satu salah-instruksi QA yang perlu dibedakan secara eksplisit.
+
+### DEFECT QA1-01 — Perangkat Aktif membuka Printer
+
+**Root cause:** `settings.devices` dan `settings.printer` masih mendelegasikan ke legacy settings surface yang sama (`openMst(6)`). Baseline sebenarnya sudah mempunyai authority khusus **Perangkat & Session** pada `openMst(13)`.
+
+**Corrective implementation:**
+- `src/app/router.js` menambah `openSettingsSurface(id,key)` sebagai compatibility router Owner-only;
+- `src/modules/settings/devices.js` diarahkan ke legacy surface `13`;
+- Printer tetap pada surface `6`;
+- frozen `SETTINGS_CHILDREN` SC-03 **tidak diperluas**, sehingga menu contract lama tetap identik.
+
+### DEFECT QA1-02 — Bottom Navigation tidak memiliki moving capsule
+
+**Root cause:** v2 hanya menata `.active` pada tiap tombol. Tidak ada single indicator yang berpindah posisi, dan legacy `.tab-btn.active` masih membawa margin/height/background sehingga tab aktif tampak turun.
+
+**Corrective implementation:**
+- `src/ui/bottom-nav.js` membuat tepat satu `.sjr02-nav-capsule`;
+- capsule berpindah menggunakan posisi/width tombol aktif;
+- motion 200 ms mengikuti REF_02;
+- active icon menggunakan geometry semantic icon yang sama dengan state lebih kuat, bukan icon family kedua;
+- `src/ui/ref01.css` menetralkan margin/height/background/box-shadow/transform active legacy;
+- pressed feedback tetap scale `0.95`, reduced-motion tetap dihormati.
+
+### QA1-03 — Stok tidak tampil sebagai card di Operasional
+
+**Klasifikasi:** bukan defect REF_03. Authority REF_03 sendiri menampilkan enam kartu Operasional Owner: Restock, Pengeluaran, Shift, Catatan Shift, Refund, Kasbon. Screen **Stok** adalah surface terpisah. Existing route Stok dari Owner Dashboard dan shortcut Kasir dipertahankan. Menambah kartu Stok ketujuh ke Operasional justru akan menyimpang dari visual authority.
+
+**Regression evidence baru:**
+- `tests/ref01-qa-batch1-routing.test.mjs`;
+- `tests/ref01-qa-batch1-bottom-nav-motion.test.mjs`.
 
 ## 9. Gate classification
 

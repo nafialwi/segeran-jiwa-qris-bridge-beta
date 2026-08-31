@@ -4,9 +4,9 @@ export function createFeature({router}){
   return createRouterFeature(router,{
     id:'devices',
     family:'settings',
-    method:'openSettings',
-    args:[6],
-    authority:'openMst(6)',
+    method:'openSettingsSurface',
+    args:[13,'devices'],
+    authority:'openMst(13)',
     note:null
   });
 }

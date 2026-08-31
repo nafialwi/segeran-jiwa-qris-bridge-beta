@@ -17,7 +17,7 @@ The HTML SHA is stable because `dist-ref01/index.html` is the frozen v1.0.40 HTM
 - Prior candidate directories retained: `dist-sc03/`, `dist-sc04/`
 
 ## Automated gates before final packaging
-- Full regression: `130/130 PASS, 0 FAIL`
+- Full regression after QA Batch 1 corrective: `135/135 PASS, 0 FAIL`
 - Refinement authorities: `9/9`
 - Implementation evidence: `9/9`, missing files `0`, missing anchors `0`
 - Screen-family architecture coverage: `11/11`, unresolved selectors `0`
@@ -38,6 +38,14 @@ The HTML SHA is stable because `dist-ref01/index.html` is the frozen v1.0.40 HTM
 - focused receipt/transaction surfaces to prevent bottom-nav overlap;
 - concrete REF_09 system-state selector;
 - 9/9 implementation-evidence verifier.
+
+
+## QA Batch 1 corrective delta
+- `settings.devices` now resolves to existing Owner **Perangkat & Session** surface (`openMst(13)`) through an owner-guarded compatibility router; printer remains `openMst(6)`.
+- Frozen SC-03 Settings child IDs are unchanged; no route-contract expansion was accepted.
+- REF_02 now uses one moving navigation capsule with 200 ms transition and explicit neutralization of legacy active-position drift.
+- Stok remains a separate REF_03 surface reachable from existing Dashboard shortcuts; no non-authority seventh card was added to Owner Operasional.
+- Added 5 regression tests across `ref01-qa-batch1-routing` and `ref01-qa-batch1-bottom-nav-motion`.
 
 ## Classification
 - F-PASS: PASS automated/regression

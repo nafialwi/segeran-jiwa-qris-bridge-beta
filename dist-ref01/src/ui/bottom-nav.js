@@ -12,17 +12,46 @@ export function navState(activeRoute='home'){
   return PRIMARY_NAV.map(item=>Object.freeze({...item,active:item.route===activeRoute}));
 }
 
+function activeIcon(name,label){
+  const base=renderIcon(name,{size:21,label,className:'sj-ref-icon sjr02-nav-icon-active'});
+  // REF_02 explicitly requires outline -> stronger/filled active state. Keep the
+  // same icon geometry authority and strengthen it without introducing a second
+  // icon family.
+  return base.replace('fill="none"','fill="currentColor"');
+}
+
+function ensureCapsule(document,nav){
+  let capsule=nav?.querySelector?.('.sjr02-nav-capsule')??null;
+  if(capsule||!document?.createElement||!nav?.insertBefore) return capsule;
+  capsule=document.createElement('span');
+  capsule.className='sjr02-nav-capsule';
+  capsule.dataset.ref01NavCapsule='true';
+  capsule.setAttribute?.('aria-hidden','true');
+  nav.insertBefore(capsule,nav.firstChild??null);
+  return capsule;
+}
+
+function positionCapsule(capsule,button){
+  if(!capsule||!button) return false;
+  const left=Number(button.offsetLeft),width=Number(button.offsetWidth);
+  if(!Number.isFinite(left)||!Number.isFinite(width)||width<=0) return false;
+  capsule.style.width=`${width}px`;
+  capsule.style.transform=`translateX(${left}px)`;
+  return true;
+}
+
 export function enhanceBottomNav(document,activeRoute){
   if(!document?.getElementById) return false;
-  let touched=false;
+  let touched=false,activeButton=null;
   for(const item of navState(activeRoute)){
     const button=document.getElementById(item.legacyTab);
     if(!button) continue;
     button.dataset.ref01Route=item.route;
     button.dataset.ref01Nav='true';
     button.classList?.toggle?.('ref01-active',item.active);
+    if(item.active) activeButton=button;
     const icon=button.querySelector?.('.nav-icon');
-    if(icon) icon.innerHTML=renderIcon(item.icon,{size:21,label:item.label});
+    if(icon) icon.innerHTML=item.active?activeIcon(item.icon,item.label):renderIcon(item.icon,{size:21,label:item.label});
     const textNodes=Array.from(button.childNodes??[]).filter(node=>node.nodeType===3);
     for(const node of textNodes) node.remove?.();
     const semanticLabel=button.querySelector?.('.sjui01-nav-label');
@@ -31,6 +60,11 @@ export function enhanceBottomNav(document,activeRoute){
     touched=true;
   }
   const nav=document.getElementById('bottom-nav');
-  if(nav){nav.dataset.ref01='true';nav.setAttribute?.('aria-label','Navigasi utama')}
+  if(nav){
+    nav.dataset.ref01='true';
+    nav.dataset.ref01ActiveRoute=String(activeRoute||'home');
+    nav.setAttribute?.('aria-label','Navigasi utama');
+    positionCapsule(ensureCapsule(document,nav),activeButton);
+  }
   return touched;
 }

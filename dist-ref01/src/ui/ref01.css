@@ -19,14 +19,17 @@
 /* PROMPT 5 owns visual reconciliation only. Existing business renderers remain authorities. */
 .sj-ref-icon{display:inline-block;vertical-align:middle;flex:0 0 auto}
 
-/* REF_02 — one label authority, tactile 200ms capsule motion */
-#bottom-nav[data-ref01="true"]{isolation:isolate;gap:2px;padding:6px 7px calc(6px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:1px solid var(--sj-ref-line)}
-#bottom-nav [data-ref01-nav="true"]{min-height:58px!important;border-radius:16px!important;transition:background var(--sj-ref-motion) ease,color var(--sj-ref-motion) ease,transform var(--sj-ref-motion) ease!important;position:relative;color:#7d8782!important}
-#bottom-nav [data-ref01-nav="true"] .nav-icon{display:grid;place-items:center;color:inherit}
+/* REF_02 — one label authority + one physically moving capsule (180–220 ms). */
+#bottom-nav[data-ref01="true"]{isolation:isolate;position:relative!important;gap:2px;padding:6px 7px calc(6px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:1px solid var(--sj-ref-line);overflow:visible}
+#bottom-nav .sjr02-nav-capsule{position:absolute;left:0;top:6px;bottom:calc(6px + env(safe-area-inset-bottom));border-radius:16px;background:#eaf7f0;box-shadow:0 2px 8px rgba(21,92,57,.035);pointer-events:none;z-index:0;transition:transform var(--sj-ref-motion) cubic-bezier(.2,.75,.25,1),width var(--sj-ref-motion) cubic-bezier(.2,.75,.25,1)}
+#bottom-nav [data-ref01-nav="true"]{min-height:58px!important;border-radius:16px!important;transition:color var(--sj-ref-motion) ease,transform 120ms ease!important;position:relative;z-index:1;color:#7d8782!important;background:transparent!important;margin:0!important;height:auto!important;box-shadow:none!important}
+#bottom-nav [data-ref01-nav="true"].active{margin:0!important;height:auto!important;background:transparent!important;box-shadow:none!important;transform:none!important}
+#bottom-nav [data-ref01-nav="true"] .nav-icon{display:grid;place-items:center;color:inherit;transition:transform var(--sj-ref-motion) ease}
 #bottom-nav [data-ref01-nav="true"] .sjui01-nav-label{font-size:10px!important;line-height:1.15!important;font-weight:650!important;color:inherit!important}
-#bottom-nav [data-ref01-nav="true"].ref01-active{color:var(--sj-ref-green)!important;background:#eaf7f0!important}
+#bottom-nav [data-ref01-nav="true"].ref01-active{color:var(--sj-ref-green)!important;background:transparent!important}
 #bottom-nav [data-ref01-nav="true"].ref01-active .sjui01-nav-label{font-weight:800!important}
-#bottom-nav [data-ref01-nav="true"]:active{transform:scale(.95)}
+#bottom-nav [data-ref01-nav="true"].ref01-active .nav-icon{transform:scale(1.02)}
+#bottom-nav [data-ref01-nav="true"]:active{transform:scale(.95)!important;background:#f3faf6!important}
 
 /* REF_01 — exact grouped Settings IA */
 .sjr01-settings-page{max-width:760px;margin:0 auto;padding:8px 10px 104px;color:var(--sj-ref-ink);font-family:inherit}

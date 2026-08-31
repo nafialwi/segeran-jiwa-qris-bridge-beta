@@ -35,6 +35,17 @@ Capture representative screenshots/UAT in one batch:
 
 Primary mobile evidence widths: 390/430. Use 320 only to catch narrow-layout defects. Tablet/desktop only when a responsive anomaly is observed.
 
+
+## QA Batch 1 corrective note
+
+The first consolidated REF_01–REF_03 device pass found two real defects:
+1. **Perangkat Aktif** incorrectly opened Printer; corrected to the existing Perangkat & Session surface.
+2. Bottom navigation had color/position feedback but no true moving capsule; corrected to a single 200 ms moving indicator and legacy active-position drift neutralized.
+
+The report that Stok was missing inside Operasional was traced against REF_03 and is **not** a visual defect: Owner Operasional intentionally has six cards, while Stok is a separate screen reachable from Dashboard shortcuts. Do not add a seventh Stok card merely for QA discoverability.
+
+After deployment of this corrective patch, re-check these three items together before advancing to REF_04–REF_06.
+
 ## Acceptance classification
 
 Each finding must be classified:

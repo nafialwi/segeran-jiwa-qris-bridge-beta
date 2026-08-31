@@ -75,6 +75,14 @@ export function createAppRouter({commands,guard,state}){
     state.setChild('settings',meta.key,{id:n});
     return commands.invoke('openMst',n);
   }
+  function openSettingsSurface(id,key='legacy-settings-surface'){
+    const n=Number(id);
+    if(!guard.isOwner()) return guard.deny();
+    if(!Number.isFinite(n)) return guard.deny('Pengaturan tidak tersedia.');
+    if(!ensureParent('settings')) return false;
+    state.setChild('settings',String(key||'legacy-settings-surface'),{id:n,compatibilitySurface:true});
+    return commands.invoke('openMst',n);
+  }
   function closeSettings(){
     const out=commands.invoke('closeMst');
     if(snapshot().primary==='settings') state.clearChild();
@@ -105,7 +113,7 @@ export function createAppRouter({commands,guard,state}){
     openHome,openSales,openReports,openSettingsHome,
     openOperational,closeOperational,
     openReport,closeReport,
-    openSettings,closeSettings,
+    openSettings,openSettingsSurface,closeSettings,
     openCart,openCheckout,openPayment
   });
 }
