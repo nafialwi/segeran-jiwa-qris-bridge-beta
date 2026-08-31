@@ -116,3 +116,57 @@ test('REF-01 cashier profile and account control both open the existing secure a
   listeners.click({preventDefault(){}});
   assert.equal(opened,1);
 });
+
+
+test('REF-01 cashier account access binds the final VC01 dashboard profile actually rendered in production',()=>{
+  const listeners={};
+  const profile={
+    dataset:{},
+    setAttribute(k,v){this[k]=v},
+    addEventListener(type,fn){listeners[type]=fn}
+  };
+
+  const document=fakeDocument();
+
+  document.querySelector=sel=>{
+    if(sel==='link[data-sj-ref01-style="true"]')
+      return document.nodes.get('style:true')||null;
+
+    if(sel==='.sjvc01-cashier .sjvc01-profile')
+      return profile;
+
+    return null;
+  };
+
+  let opened=0;
+
+  const runtime={
+    document,
+    navigator:{onLine:true},
+    SJAccountV5964:{
+      open(){opened++}
+    }
+  };
+
+  const sc03={
+    features:{get:()=>null},
+    state:{snapshot:()=>({primary:'home'})},
+    guard:{currentRole:()=> 'cashier'}
+  };
+
+  const api=installRef01Runtime(runtime,{
+    sc03,
+    sc04:{session:{snapshot:()=>({})}},
+    observe:false
+  });
+
+  api.enhance();
+
+  assert.equal(profile.role,'button');
+  assert.equal(profile['aria-label'],'Akun Saya');
+  assert.equal(typeof listeners.click,'function');
+
+  listeners.click({preventDefault(){}});
+
+  assert.equal(opened,1);
+});

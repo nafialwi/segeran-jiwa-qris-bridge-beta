@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ICONS, renderIcon } from '../src/ui/icons.js';
-import { PRIMARY_NAV, navState } from '../src/ui/bottom-nav.js';
+import { PRIMARY_NAV, navState, enhanceBottomNav } from '../src/ui/bottom-nav.js';
 import { SETTINGS_GROUPS, PAYMENT_METHODS, REPORT_HEADLINES, IMPLICIT_CAPABILITIES, RESPONSIVE_TARGETS } from '../src/ui/refinement-contract.js';
 import { SYSTEM_STATES, stateModel } from '../src/ui/screen-shell.js';
 import { readFile } from 'node:fs/promises';
@@ -58,4 +58,79 @@ test('REF-01 responsive source encodes mobile/tablet/desktop and 44px touch targ
   assert.match(css,/min-height:\s*44px/);
   assert.match(css,/@media\s*\(min-width:\s*768px\)/);
   assert.match(css,/@media\s*\(min-width:\s*1200px\)/);
+});
+
+
+test('REF-01 bottom navigation reconciles the existing UI01 label span without adding a second visible label',()=>{
+  const icon={innerHTML:''};
+
+  const label={
+    nodeType:1,
+    className:'sjui01-nav-label',
+    textContent:'Beranda'
+  };
+
+  const button={
+    dataset:{},
+    childNodes:[],
+    classList:{toggle(){}},
+
+    querySelector(sel){
+      if(sel==='.nav-icon') return icon;
+      if(sel==='.sjui01-nav-label') return label;
+      return null;
+    },
+
+    insertAdjacentText(_where,text){
+      this.childNodes.push({
+        nodeType:3,
+        textContent:text
+      });
+    }
+  };
+
+  const legacyText={
+    nodeType:3,
+    textContent:'Dashboard',
+
+    remove(){
+      button.childNodes=
+        button.childNodes.filter(x=>x!==legacyText);
+    }
+  };
+
+  button.childNodes=[
+    {nodeType:1},
+    label,
+    legacyText
+  ];
+
+  const nav={
+    dataset:{},
+    setAttribute(){}
+  };
+
+  const document={
+    getElementById(id){
+      if(id==='tab5') return button;
+      if(id==='bottom-nav') return nav;
+      return null;
+    }
+  };
+
+  enhanceBottomNav(document,'home');
+
+  const directVisibleText=
+    button.childNodes.filter(
+      x=>x.nodeType===3 &&
+      String(x.textContent||'').trim()
+    );
+
+  assert.equal(label.textContent,'Beranda');
+
+  assert.equal(
+    directVisibleText.length,
+    0,
+    'existing semantic label span must be the sole label authority'
+  );
 });

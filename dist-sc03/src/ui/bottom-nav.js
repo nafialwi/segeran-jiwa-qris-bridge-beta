@@ -25,7 +25,9 @@ export function enhanceBottomNav(document,activeRoute){
     if(icon) icon.innerHTML=renderIcon(item.icon,{size:21,label:item.label});
     const textNodes=Array.from(button.childNodes??[]).filter(node=>node.nodeType===3);
     for(const node of textNodes) node.remove?.();
-    if(button.insertAdjacentText) button.insertAdjacentText('beforeend',item.label);
+    const semanticLabel=button.querySelector?.('.sjui01-nav-label');
+    if(semanticLabel) semanticLabel.textContent=item.label;
+    else if(button.insertAdjacentText) button.insertAdjacentText('beforeend',item.label);
     touched=true;
   }
   const nav=document.getElementById('bottom-nav');

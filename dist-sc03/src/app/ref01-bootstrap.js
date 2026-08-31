@@ -70,7 +70,7 @@ export function ensureCashierAccountAccess(document,runtime){
     changed=true;
   }
 
-  const profile=document.querySelector('.sjui02-cashier .sjui02-profile');
+  const profile=document.querySelector('.sjvc01-cashier .sjvc01-profile')||document.querySelector('.sjui02-cashier .sjui02-profile');
   if(profile&&profile.dataset?.ref01Account!=='true'){
     profile.dataset.ref01Account='true';
     profile.setAttribute?.('role','button');
