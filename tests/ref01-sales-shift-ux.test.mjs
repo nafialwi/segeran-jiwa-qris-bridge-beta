@@ -197,3 +197,19 @@ test('inline product quantity stepper uses one compact pill with balanced circul
   assert.doesNotMatch(css,/\.sj-ref-card-step:has\(\.item-minus-btn\.show\)::after/);
   assert.match(css,/\.sj-ref-card-step \.item-qty-badge\.show\{[^}]*font-variant-numeric:tabular-nums/s);
 });
+
+test('smart scanner prefers production normal-cart compatibility over a legacy recipe-intercepted quickAddCart',()=>{
+  const product={id:'tea',n:'ES TEH',barcode:'8993163502066'};
+  const calls=[];
+  const runtime={
+    SJBarcodeV1:{openCameraScanner(){return true}},
+    SJRefinementSalesV100:{activeProducts:()=>[product]},
+    SJRef01ProductionSalesCompat:{addNormalProduct:id=>calls.push(['normal',id])},
+    quickAddCart:id=>calls.push(['legacy-recipe-intercept',id]),
+    showToast(){},sjAudit(){}
+  };
+  installSmartBarcodeResolver(runtime);
+  const result=runtime.SJBarcodeV1.resolveAndAdd('8993163502066','camera');
+  assert.equal(result.status,'match');
+  assert.deepEqual(calls,[['normal','tea']]);
+});

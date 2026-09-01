@@ -58,3 +58,7 @@ See `PROMPT5_QA_BATCH1_V22_IMPLEMENTATION_REPORT.md` for the post-v2.1 real-devi
 
 ## Prompt 5 corrective v2.5
 Adds Owner-safe recovery closing for legacy ACTIVE shifts whose session record is missing, and polishes the inline product quantity stepper. Existing shift/cart/transaction writers remain authoritative.
+
+## Prompt 5 — Production Sales Stability Corrective v2.7
+
+v2.7 menutup gap produksi pada display order Penjualan, manual Refresh Owner/Kasir, recipe legacy yang mengintersep cart normal, quantity card sync, dan lifecycle Riwayat Penjualan. Icon Family tetap dipisahkan sebagai asset batch berikutnya. Lihat `PROMPT5_PRODUCTION_SALES_STABILITY_V27_IMPLEMENTATION_REPORT.md` dan `PROMPT5_PRODUCTION_SALES_STABILITY_V27_HANDOFF.md`.

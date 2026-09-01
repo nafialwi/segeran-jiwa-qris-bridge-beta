@@ -44,6 +44,7 @@ export function decorateSalesProductCard(card,runtime=globalThis){
 }
 
 export function enhanceSalesProductQuantityControls(runtime=globalThis){
+  if(runtime?.SJRef01ProductionSalesCompat)return 0;
   const cards=Array.from(runtime?.document?.querySelectorAll?.('.sjui03a-product,.sjvc01-product')||[]);let changed=0;
   for(const card of cards)if(decorateSalesProductCard(card,runtime))changed++;
   try{runtime?.updateMenuBadges?.()}catch(_){}
@@ -76,7 +77,7 @@ export function installSmartBarcodeResolver(runtime=globalThis){
   if(barcode.__sjSmartResolverPatched)return Object.freeze({installed:true,alreadyInstalled:true});
   const originalOpen=typeof barcode.openCameraScanner==='function'?barcode.openCameraScanner.bind(barcode):null;
   const getProducts=()=>activeProducts(runtime);
-  const addProduct=id=>{if(typeof runtime?.quickAddCart!=='function')throw new Error('QUICK_ADD_AUTHORITY_UNAVAILABLE');return runtime.quickAddCart(id)};
+  const addProduct=id=>{const normal=runtime?.SJRef01ProductionSalesCompat?.addNormalProduct;if(typeof normal==='function')return normal.call(runtime.SJRef01ProductionSalesCompat,id);if(typeof runtime?.quickAddCart!=='function')throw new Error('QUICK_ADD_AUTHORITY_UNAVAILABLE');return runtime.quickAddCart(id)};
   const safe=createSafeResolveAndAdd({getProducts,addProduct,notify:(m,k)=>notify(runtime,m,k),audit:(t,d)=>audit(runtime,t,d)});
   barcode.resolveAndAdd=safe;
   let stream=null,frame=0,busy=false;

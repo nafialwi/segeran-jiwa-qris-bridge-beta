@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-09-01T04:45:55.363Z",
+  "generatedAt": "2026-09-01T06:36:51.058Z",
   "phase": "REF-01",
   "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
   "compatibilitySha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
-  "candidateSha256": "e417c5ed2713f696e5e3e07194e65d3d0cd133df383783ca2c669c69fcab4970",
+  "candidateSha256": "ae0db0fd429bbc7527cb34de4b452313c7f5ab2fe81bfe66afa5fb3f39da6fc4",
   "posRoot": "toko_segeranjiwa_v58",
   "qrisRoot": "segeranjiwa_qris_beta_v1",
   "entries": 1,
