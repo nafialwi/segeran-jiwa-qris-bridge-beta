@@ -141,3 +141,59 @@ test('date shift rows only expose real records for the requested calendar date',
   assert.deepEqual(rows.map(x=>x.key),['2026-08-25-S2','2026-08-25-S1']);
   assert.equal(rows.some(x=>x.key==='2026-08-25-S3'),false);
 });
+
+import {
+  recoverLegacyActiveSessionForClose,
+  installLegacyShiftCloseRecovery
+} from '../src/ui/legacy-shift-close-recovery.js';
+
+test('legacy active shift missing sessions entry is recoverable in memory for Owner close without creating a new session id',()=>{
+  const d={
+    kasAwal:0,
+    shiftStatus:'ACTIVE',
+    currentSessionId:'SES-20260829S1-MTDRWTVG',
+    currentCashierId:'owner-1',
+    currentCashierName:'OWNER UTAMA',
+    sessionControl:{status:'ACTIVE',currentSessionId:'SES-20260829S1-MTDRWTVG',currentCashierId:'owner-1',currentCashierName:'OWNER UTAMA'}
+  };
+  const shift={
+    currentData:()=>d,
+    state:()=> 'ACTIVE',
+    isOwner:()=>true,
+    currentSessionId:()=>d.currentSessionId,
+    currentCashierId:()=>d.currentCashierId,
+    currentCashierName:()=>d.currentCashierName,
+    snapshot:()=>({omset:0,tunai:0,qris:0,tf:0,kasbon:0,debtPay:0,debtPayCash:0,advancePay:0,advancePayCash:0,advanceNew:0,advanceNewCash:0,setoran:0,expense:0,expenseCash:0,cashMove:0,cashMoveIn:0,cashMoveOut:0,qty:0,txCount:0})
+  };
+  const runtime={SJShift:shift,document:{getElementById:id=>id==='date-sel'?{value:'2026-08-29'}:id==='shift-sel'?{value:'-S1'}:null}};
+  const r=recoverLegacyActiveSessionForClose(runtime);
+  assert.equal(r.status,'recovered');
+  assert.equal(r.sessionId,'SES-20260829S1-MTDRWTVG');
+  assert.equal(d.sessions[r.sessionId].recoveredLegacy,true);
+  assert.equal(d.sessions[r.sessionId].openingCash,0);
+});
+
+test('legacy shift recovery augments the existing CLOSE write with recovery metadata while delegating the same writer',async()=>{
+  const d={shiftStatus:'ACTIVE',currentSessionId:'legacy-sid',currentCashierId:'owner',currentCashierName:'OWNER',sessionControl:{status:'ACTIVE',currentSessionId:'legacy-sid',currentCashierId:'owner',currentCashierName:'OWNER'}};
+  const calls=[];
+  const shift={currentData:()=>d,state:()=> 'ACTIVE',isOwner:()=>true,currentSessionId:()=> 'legacy-sid',currentCashierId:()=> 'owner',currentCashierName:()=> 'OWNER',snapshot:()=>({})};
+  const hardening={async verifiedShiftWrite(...args){calls.push(args);return true}};
+  const runtime={SJShift:shift,SJOperationalHardening:hardening,document:{getElementById:id=>id==='date-sel'?{value:'2026-08-29'}:id==='shift-sel'?{value:'-S1'}:null}};
+  shift.openCloseModal=()=>true;shift.submitClose=async()=>true;
+  const api=installLegacyShiftCloseRecovery(runtime);
+  assert.equal(api.installed,true);
+  shift.openCloseModal();
+  const updates={};
+  await hardening.verifiedShiftWrite('CLOSE','2026-08-29-S1','legacy-sid',updates);
+  assert.equal(updates['2026-08-29-S1/sessions/legacy-sid/id'],'legacy-sid');
+  assert.equal(updates['2026-08-29-S1/sessions/legacy-sid/recoveredLegacy'],true);
+  assert.equal(calls.length,1);
+});
+
+test('inline product quantity stepper uses equal touch targets, separators, and centered quantity for precise mobile control',()=>{
+  const css=fs.readFileSync(new URL('../src/ui/ref01.css',import.meta.url),'utf8');
+  assert.match(css,/\.sj-ref-card-step:has\(\.item-minus-btn\.show\)\{[^}]*grid-template-columns:38px 32px 38px/s);
+  assert.match(css,/\.sj-ref-card-step:has\(\.item-minus-btn\.show\)::before/);
+  assert.match(css,/\.sj-ref-card-step:has\(\.item-minus-btn\.show\)::after/);
+  assert.match(css,/\.sj-ref-card-step \.item-qty-badge\.show\{[^}]*font-variant-numeric:tabular-nums/s);
+});

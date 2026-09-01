@@ -55,3 +55,6 @@ The local SC-04 source checkpoint is prepared for GitHub. An actual repository U
 
 ## QA Batch 1 corrective v2.2
 See `PROMPT5_QA_BATCH1_V22_IMPLEMENTATION_REPORT.md` for the post-v2.1 real-device visual corrective work.
+
+## Prompt 5 corrective v2.5
+Adds Owner-safe recovery closing for legacy ACTIVE shifts whose session record is missing, and polishes the inline product quantity stepper. Existing shift/cart/transaction writers remain authoritative.
