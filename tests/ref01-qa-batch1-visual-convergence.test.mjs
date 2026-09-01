@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { renderFilledIcon } from '../src/ui/icons.js';
 import { renderSettingsMarkup } from '../src/ui/settings-refinement.js';
 import { enhanceBottomNav } from '../src/ui/bottom-nav.js';
+import { resolveLockedIcon } from '../src/ui/locked-icon-registry.js';
 
 function classList(){const s=new Set();return{toggle(n,on){on?s.add(n):s.delete(n)},contains:n=>s.has(n)}}
 function makeButton(left){const label={nodeType:1,textContent:''};const icon={innerHTML:''};return{dataset:{},childNodes:[label],classList:classList(),offsetLeft:left,offsetWidth:64,querySelector(sel){if(sel==='.nav-icon')return icon;if(sel==='.sjui01-nav-label')return label;return null},insertAdjacentText(){},icon,label}}
@@ -17,14 +18,17 @@ test('REF_02 active nav icons use dedicated solid geometry rather than blindly f
   assert.match(gear,/fill="white"/,'filled gear keeps a visible center hole');
 });
 
-test('REF_02 bottom navigation uses the dedicated solid icon for the active tab and outline geometry for inactive tabs',()=>{
+test('REF_02 bottom navigation uses dedicated locked active SVG and locked outline SVG for inactive tabs',()=>{
   const buttons={tab5:makeButton(7),tab1:makeButton(73),tab2:makeButton(139),tab3:makeButton(205),tab4:makeButton(271)};
   let capsule=null;
   const nav={dataset:{},setAttribute(){},querySelector(sel){return sel==='.sjr02-nav-capsule'?capsule:null},insertBefore(node){capsule=node}};
   const document={createElement(){return{className:'',dataset:{},style:{},setAttribute(){}}},getElementById(id){return id==='bottom-nav'?nav:buttons[id]??null}};
   enhanceBottomNav(document,'settings');
-  assert.match(buttons.tab4.icon.innerHTML,/data-sj-icon-variant="solid"/);
-  assert.doesNotMatch(buttons.tab2.icon.innerHTML,/data-sj-icon-variant="solid"/);
+  assert.equal(resolveLockedIcon('settings',{active:true}).key,'active/navigation/settings');
+  assert.equal(resolveLockedIcon('operations',{active:false}).key,'outline/navigation/operations');
+  assert.match(buttons.tab4.icon.innerHTML,/data-sj-icon-authority="B01-B05"/);
+  assert.match(buttons.tab2.icon.innerHTML,/data-sj-icon-authority="B01-B05"/);
+  assert.doesNotMatch(buttons.tab4.icon.innerHTML,/data-sj-icon-variant="solid"/,'active state must not synthetically fill an outline');
 });
 
 test('REF_01 settings responsibility icons use the stronger filled authority shown by the reference pack',()=>{

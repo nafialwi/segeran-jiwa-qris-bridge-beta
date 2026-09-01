@@ -1,53 +1,71 @@
 import { renderIcon } from './icons.js';
+import { salesAnalytics, chartBuckets } from '../domain/report-v28-analytics.js';
 
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
 const rupiah=v=>`Rp ${Math.round(num(v)).toLocaleString('id-ID')}`;
 const count=v=>Math.max(0,Math.round(num(v))).toLocaleString('id-ID');
+const uiState={metric:'revenue',topSort:'qty'};
 
-function trendMeta(model){
-  const trend=model?.comparison?.netSales;
-  if(!trend||!trend.direction)return {tone:'flat',label:'Belum ada pembanding',previous:null,current:num(model?.netSales)};
-  const pct=Number(trend.percent);
-  const current=num(model?.netSales);
-  const previous=Number.isFinite(pct)&&pct!==-100?current/(1+pct/100):null;
-  const sign=trend.direction==='up'?'▲':trend.direction==='down'?'▼':'•';
-  return {tone:trend.direction,label:`${sign} ${Number.isFinite(pct)?Math.abs(pct).toLocaleString('id-ID',{maximumFractionDigits:1})+'%':'Perbandingan'} ${esc(model?.comparison?.label||'vs periode sebelumnya')}`,previous,current};
+function paymentMixHTML(rows=[]){
+  const total=Math.max(1,rows.reduce((s,x)=>s+x.amount,0));
+  if(!rows.length)return '<div class="sjv28-empty">Belum ada pembayaran pada periode ini.</div>';
+  return `<div class="sjv28-paymix">${rows.map(row=>`<div><span><b>${esc(row.method)}</b><small>${count(row.count)} transaksi</small></span><span class="sjv28-paybar"><i style="width:${Math.max(3,Math.round(row.amount/total*100))}%"></i></span><strong>${rupiah(row.amount)}</strong></div>`).join('')}</div>`;
 }
-function trendSvg(meta){
-  const a=meta.previous,b=meta.current;
-  if(a==null||!Number.isFinite(a)||!Number.isFinite(b))return `<div class="sjr06-trend-empty">Tren tersedia setelah ada periode pembanding.</div>`;
-  const max=Math.max(1,a,b),min=Math.min(a,b),span=Math.max(1,max-min),y=x=>46-((x-min)/span)*30;
-  return `<svg viewBox="0 0 300 58" role="img" aria-label="Perbandingan penjualan periode sebelumnya dan saat ini"><path d="M18 46H282" class="sjr06-axis"/><polyline points="54,${y(a).toFixed(1)} 246,${y(b).toFixed(1)}" class="sjr06-line"/><circle cx="54" cy="${y(a).toFixed(1)}" r="4"/><circle cx="246" cy="${y(b).toFixed(1)}" r="4"/><text x="28" y="56">Sebelumnya</text><text x="220" y="56">Saat ini</text></svg>`;
+function chartHTML(transactions=[]){
+  const buckets=chartBuckets(transactions),metric=uiState.metric;
+  const key=metric==='transactions'?'transactions':metric==='items'?'items':'revenue';
+  const max=Math.max(1,...buckets.map(x=>num(x[key])));
+  const label=metric==='transactions'?'Transaksi':metric==='items'?'Item':'Omzet';
+  return `<section class="sjv28-card sjv28-chart"><div class="sjv28-section-head"><div><h2>Grafik ${label}</h2><p>Data transaksi riil pada periode terpilih</p></div><div class="sjv28-toggle"><button data-v28-metric="revenue" class="${metric==='revenue'?'active':''}">Omzet</button><button data-v28-metric="transactions" class="${metric==='transactions'?'active':''}">Transaksi</button><button data-v28-metric="items" class="${metric==='items'?'active':''}">Item</button></div></div>${buckets.length?`<div class="sjv28-bars">${buckets.map(x=>`<div class="sjv28-bar-col" title="${esc(x.label)} · ${key==='revenue'?rupiah(x[key]):count(x[key])}"><div class="sjv28-bar-track"><i style="height:${Math.max(4,Math.round(num(x[key])/max*100))}%"></i></div><small>${esc(x.label)}</small></div>`).join('')}</div>`:'<div class="sjv28-empty">Belum ada data untuk grafik.</div>'}</section>`;
+}
+function topProductsHTML(analytics){
+  const sort=uiState.topSort,rows=(sort==='revenue'?analytics.topByRevenue:analytics.topByQty).slice(0,5);
+  return `<section class="sjv28-card"><div class="sjv28-section-head"><div><h2>Top Produk</h2><p>Produk terlaris berdasarkan jumlah atau omzet</p></div><div class="sjv28-toggle"><button data-v28-top-sort="qty" class="${sort==='qty'?'active':''}">Jumlah</button><button data-v28-top-sort="revenue" class="${sort==='revenue'?'active':''}">Omzet</button></div></div><div class="sjv28-top-products">${rows.length?rows.map((x,i)=>`<div><span class="rank">${i+1}</span><span><b>${esc(x.name)}</b><small>${count(x.qty)} item</small></span><strong>${sort==='revenue'?rupiah(x.revenue):count(x.qty)}</strong></div>`).join(''):'<div class="sjv28-empty">Belum ada produk terjual.</div>'}</div><button type="button" class="sj-v26-history-entry sjv28-inline-link" data-sj-sales-history-open="true">Lihat Semua &amp; Detail Item</button></section>`;
+}
+function shiftSummaryHTML(shifts=[]){
+  const rows=(shifts||[]).slice(-4).reverse();
+  return `<section class="sjv28-card"><div class="sjv28-section-head"><div><h2>Ringkasan Shift</h2><p>Shift pada periode laporan</p></div></div><div class="sjv28-shifts">${rows.length?rows.map(s=>`<div><span><b>${esc(s.id??s._key??s.key??'Shift')}</b><small>${esc(s.cashierName??s.namaKasir??s.currentCashierName??'-')}</small></span><strong>${esc(String(s.status??s.shiftStatus??'').toUpperCase()||'-')}</strong></div>`).join(''):'<div class="sjv28-empty">Belum ada shift pada periode ini.</div>'}</div></section>`;
+}
+function historyPreviewHTML(transactions=[]){
+  const rows=(transactions||[]).filter(tx=>!['VOID','VOIDED','CANCELLED','CANCELED'].includes(String(tx?.status||'').toUpperCase())).slice().sort((a,b)=>num(b?.ts??b?.timestamp)-num(a?.ts??a?.timestamp)).slice(0,6);
+  return `<section class="sjv28-card"><div class="sjv28-section-head"><div><h2>Riwayat Penjualan</h2><p>Read-only · pilih riwayat untuk drilldown item transaksi</p></div></div><div class="sjv28-history-preview">${rows.length?rows.map(tx=>`<button type="button" data-sj-sales-history-open="true"><span><b>${esc(tx.id??tx._key??tx.transactionId??'Transaksi')}</b><small>${esc(String(tx.paymentMethod??tx.method??tx.payment?.method??'-'))}</small></span><strong>${rupiah(tx?.pricing?.total??tx?.grandTotal??tx?.total)}</strong></button>`).join(''):'<div class="sjv28-empty">Belum ada transaksi.</div>'}</div><button type="button" class="sj-v26-history-entry" data-sj-sales-history-open="true"><span>${renderIcon('receipt',{size:20})}</span><span><b>Buka Riwayat Penjualan</b><small>Filter, Top Produk, dan detail item · read-only</small></span><span>›</span></button></section>`;
+}
+function hppHTML(summary={}){
+  const state=summary?.costing?.state||'unknown';if(state==='unknown')return '<div class="sjv28-hpp-note"><b>HPP</b><span>Belum tersedia</span><small>Snapshot HPP historis tidak dianggap Rp0.</small></div>';
+  return `<div class="sjv28-hpp-note"><b>HPP${state==='partial'?' Tercatat':''}</b><span>${summary.cogs==null?'Belum tersedia':rupiah(summary.cogs)}</span><small>${state==='partial'?'Sebagian transaksi belum memiliki HPP.':'Snapshot HPP tersedia.'}</small></div>`;
 }
 
-export function renderRef01ReportSummary(model={}){
-  const period=model.period||{preset:'today',label:'Hari Ini'};
-  const costing=model.costing||{state:'unknown'};
-  const grossAvailable=costing.state!=='unknown'&&model.grossProfit!==null&&model.grossProfit!==undefined;
-  const gross=grossAvailable?rupiah(model.grossProfit):'Belum tersedia';
-  const trend=trendMeta(model);
-  const chips=[['today','Hari Ini'],['yesterday','Kemarin'],['7d','7 Hari'],['month','Bulan Ini'],['date','Pilih Tanggal']];
-  const categories=[
-    ['sale','Penjualan','Ringkasan transaksi dan metode bayar','sales-payment'],
-    ['warehouse-box','Produk','Produk, stok, mutasi dan pembelian','purchase-funding'],
-    ['customers','Pelanggan','Hutang, pembayaran dan saldo','debts'],
-    ['reports','Keuangan','HPP, laba dan pengeluaran','profitability']
-  ];
-  return `<main class="sjr06-report sj-rep0" data-view="home"><header class="sjr06-report-head"><div><h1>Laporan</h1><p>Pantau kinerja toko Anda dengan mudah</p></div><button type="button" data-action="refresh" class="sjr06-refresh" aria-label="Segarkan laporan">↻</button></header><div class="sjr06-periods" aria-label="Pilih periode">${chips.map(([key,label])=>`<button type="button" class="${period.preset===key||(period.preset==='custom'&&key==='date')?'active':''}" data-action="period" data-period="${key}">${label}</button>`).join('')}<input class="sj-rep0-date" id="sj-rep0-date-input" type="date" aria-label="Pilih tanggal"></div><section class="sjr06-kpis"><button class="sjr06-kpi primary" type="button" data-action="category" data-category="sales-payment"><span>${renderIcon('reports',{size:21})}</span><small>Total Penjualan</small><strong>${rupiah(model.netSales)}</strong><em class="${trend.tone}">${trend.label}</em></button><button class="sjr06-kpi" type="button" data-action="category" data-category="sales-payment"><span>${renderIcon('receipt',{size:21})}</span><small>Transaksi</small><strong>${count(model.transactionCount)}</strong><em>${period.label||'Periode terpilih'}</em></button><button class="sjr06-kpi" type="button" data-action="category" data-category="profitability"><span>${renderIcon('chart',{size:21})}</span><small>Laba Kotor</small><strong>${esc(gross)}</strong><em>${grossAvailable?(model.margin==null?'Margin belum tersedia':`Margin ${Number(model.margin).toLocaleString('id-ID',{maximumFractionDigits:1})}%`):'HPP belum tersedia'}</em></button></section>${costing.state==='partial'?`<aside class="sjr06-cost-note">Sebagian transaksi belum memiliki snapshot HPP. Laba hanya mencakup transaksi dengan biaya tercatat.</aside>`:costing.state==='unknown'&&num(model.transactionCount)>0?`<aside class="sjr06-cost-note">HPP belum tersedia untuk periode ini. Sistem tidak menganggap biaya historis sebagai Rp0.</aside>`:''}<section class="sjr06-trend"><div class="sjr06-section-head"><div><h2>Tren Penjualan</h2><p>Perbandingan periode yang tersedia</p></div><span class="${trend.tone}">${trend.label}</span></div>${trendSvg(trend)}</section><section class="sjr06-categories"><h2>Kategori Laporan</h2>${categories.map(([icon,label,note,cat])=>`<button type="button" data-action="category" data-category="${cat}"><span class="ico">${renderIcon(icon,{size:20})}</span><span><b>${label}</b><small>${note}</small></span><span>${renderIcon('chevron',{size:17})}</span></button>`).join('')}</section><button type="button" class="sj-v26-history-entry" data-sj-sales-history-open="true"><span>${renderIcon('receipt',{size:21})}</span><span><b>Riwayat Penjualan</b><small>Lihat transaksi dan produk yang dijual · read-only</small></span><span>›</span></button></main>`;
+export function renderRef01ReportSummary(summary={},fullModel={}){return renderV28OwnerReport(summary,fullModel)}
+export function renderV28OwnerReport(summary={},fullModel={}){
+  const period=summary.period||fullModel.period||{preset:'today',label:'Hari Ini'},transactions=fullModel.transactions||[],analytics=salesAnalytics(transactions);
+  const customActive=period.preset==='custom';
+  return `<main class="sjr06-report sjv28-report sj-rep0" data-view="home"><header class="sjr06-report-head"><div><h1>Laporan Penjualan</h1><p>${esc(period.label||'Periode terpilih')} · canonical read-only sales report</p></div><button type="button" data-action="refresh" class="sjr06-refresh" aria-label="Segarkan laporan">${renderIcon('refresh',{size:19})}</button></header><div class="sjr06-periods sjv28-periods"><button data-action="period" data-period="today" class="${period.preset==='today'?'active':''}">Hari Ini</button><button data-action="period" data-period="7d" class="${period.preset==='7d'?'active':''}">7 Hari</button><button data-v28-period="30d">30 Hari</button><button data-action="period" data-period="month" class="${period.preset==='month'?'active':''}">Bulan Ini</button><button data-v28-period="custom" class="${customActive?'active':''}">Custom</button></div><div class="sjv28-custom" ${customActive?'':'hidden'}><label>Dari<input type="date" data-v28-custom="from"></label><label>Sampai<input type="date" data-v28-custom="to"></label><button type="button" data-v28-custom-apply>Terapkan</button></div><section class="sjv28-kpis"><div class="primary"><small>Penjualan Bersih</small><strong>${rupiah(analytics.netSales)}</strong><span>VOID dikeluarkan · refund dikurangi</span></div><div><small>Transaksi</small><strong>${count(analytics.transactionCount)}</strong><span>Transaksi valid</span></div><div><small>Rata-rata Transaksi</small><strong>${rupiah(analytics.averageTransaction)}</strong><span>Penjualan bersih / transaksi</span></div><div><small>Item Terjual</small><strong>${count(analytics.itemCount)}</strong><span>Setelah refund</span></div></section>${hppHTML(summary)}${chartHTML(transactions)}<section class="sjv28-card"><div class="sjv28-section-head"><div><h2>Metode Pembayaran</h2><p>Payment mix berdasarkan penjualan bersih</p></div></div>${paymentMixHTML(analytics.paymentMix)}</section>${topProductsHTML(analytics)}${shiftSummaryHTML(fullModel.shifts)}${historyPreviewHTML(transactions)}</main>`;
+}
+
+export function renderV28CashierShift(baseHtml='',fullModel={}){
+  const transactions=fullModel.transactions||[],analytics=salesAnalytics(transactions);
+  return `${baseHtml}<section class="sjv28-cashier-extra"><div class="sjv28-kpis"><div><small>Transaksi</small><strong>${count(analytics.transactionCount)}</strong></div><div><small>Item Terjual</small><strong>${count(analytics.itemCount)}</strong></div></div><section class="sjv28-card"><div class="sjv28-section-head"><div><h2>Metode Pembayaran</h2><p>Ringkasan Laporan Shift</p></div></div>${paymentMixHTML(analytics.paymentMix)}</section><section class="sjv28-card"><div class="sjv28-section-head"><div><h2>Riwayat Penjualan</h2><p>read-only · transaksi pada periode shift</p></div></div><button type="button" class="sj-v26-history-entry" data-sj-sales-history-open="true"><span>${renderIcon('receipt',{size:20})}</span><span><b>Buka Riwayat Penjualan</b><small>Detail transaksi dan item</small></span><span>›</span></button></section></section>`;
+}
+
+function localDate(ts){const d=new Date(ts);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function bindReportInteractions(runtime,report){
+  const root=runtime?.document?.getElementById?.('lap-menu-view');if(!root||root.dataset?.v28ReportBound==='true')return false;root.dataset.v28ReportBound='true';
+  root.addEventListener?.('click',event=>{
+    const metric=event.target?.closest?.('[data-v28-metric]');if(metric){uiState.metric=metric.dataset.v28Metric||'revenue';report.open?.();return}
+    const top=event.target?.closest?.('[data-v28-top-sort]');if(top){uiState.topSort=top.dataset.v28TopSort||'qty';report.open?.();return}
+    const period=event.target?.closest?.('[data-v28-period]');if(period){const preset=period.dataset.v28Period;if(preset==='30d'){const end=Date.now(),start=end-29*86400000;report.selectPeriod?.({preset:'custom',explicit:{from:localDate(start),to:localDate(end)}});report.open?.()}else root.querySelector?.('.sjv28-custom')?.removeAttribute?.('hidden');return}
+    if(event.target?.closest?.('[data-v28-custom-apply]')){const from=root.querySelector?.('[data-v28-custom="from"]')?.value,to=root.querySelector?.('[data-v28-custom="to"]')?.value;if(from&&to){report.selectPeriod?.({preset:'custom',explicit:{from,to}});report.open?.()}return}
+  });return true;
 }
 
 export function installReportRefinement(runtime=globalThis){
   if(runtime?.__SJ_REF01_REPORT_REFINEMENT)return runtime.__SJ_REF01_REPORT_REFINEMENT;
-  const report=runtime?.SJReportFoundationV010;
-  const core=report?.Core;
-  const api={installed:false};
+  const report=runtime?.SJReportFoundationV010,core=report?.Core,api={installed:false};
   if(core&&typeof core.renderOwnerSummary==='function'){
-    api.original=core.renderOwnerSummary;
-    core.renderOwnerSummary=model=>renderRef01ReportSummary(model);
-    api.installed=true;
+    api.originalOwner=core.renderOwnerSummary;core.renderOwnerSummary=summary=>renderV28OwnerReport(summary,report?.state?.model||{});
+    if(typeof core.renderCashierShift==='function'){api.originalCashier=core.renderCashierShift;core.renderCashierShift=detail=>renderV28CashierShift(api.originalCashier(detail),report?.state?.model||{})}
+    bindReportInteractions(runtime,report);api.installed=true;
   }
-  Object.freeze(api);
-  try{Object.defineProperty(runtime,'__SJ_REF01_REPORT_REFINEMENT',{value:api,writable:false,configurable:false})}catch(_){}
-  return api;
+  Object.freeze(api);try{Object.defineProperty(runtime,'__SJ_REF01_REPORT_REFINEMENT',{value:api,writable:false,configurable:false})}catch(_){}return api;
 }

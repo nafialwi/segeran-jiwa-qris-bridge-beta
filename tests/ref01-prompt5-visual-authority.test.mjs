@@ -99,8 +99,8 @@ test('Prompt 5 installs one icon authority over legacy refinement renderers so V
   const runtime={SJPro:{icon(){priorCalls++;return 'legacy'}}};
   const api=installRefinementIconAuthority(runtime);
   assert.equal(api.installed,true);
-  assert.equal(LEGACY_ICON_MAP.package,'warehouse-box');
-  assert.equal(LEGACY_ICON_MAP.cart,'sale');
+  assert.equal(LEGACY_ICON_MAP.package,'warehouse');
+  assert.equal(LEGACY_ICON_MAP.cart,'cart');
   assert.match(runtime.SJPro.icon('package'),/^<svg/);
   assert.match(runtime.SJPro.icon('bell'),/^<svg/);
   assert.equal(priorCalls,0);

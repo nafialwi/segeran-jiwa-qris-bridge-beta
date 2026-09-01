@@ -1,0 +1,2 @@
+877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f  baseline/legacy-v1.0.40.html
+ae0db0fd429bbc7527cb34de4b452313c7f5ab2fe81bfe66afa5fb3f39da6fc4  dist-ref01/index.html

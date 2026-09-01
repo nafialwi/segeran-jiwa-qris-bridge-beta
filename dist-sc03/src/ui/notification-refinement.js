@@ -79,12 +79,21 @@ export function installNotificationRefinement(runtime=globalThis,{decorate=decor
     return api;
   }
   const original=target.renderNotifications.bind(target);
+  const syncUnreadBadge=()=>runtime?.SJRef01ProductionSalesCompat?.syncUnreadBadge?.();
   target.renderNotifications=function(...args){
     const result=original(...args);
     try{decorate(runtime?.document)}catch(_){}
+    try{syncUnreadBadge()}catch(_){}
     return result;
   };
-  const api=Object.freeze({installed:true,decorate:()=>decorate(runtime?.document)});
+  const originalBell=typeof target.updateBell==='function'?target.updateBell.bind(target):null;
+  target.updateBell=function(){
+    const count=syncUnreadBadge();
+    if(Number.isFinite(Number(count))) return Number(count);
+    return originalBell?.();
+  };
+  try{syncUnreadBadge()}catch(_){}
+  const api=Object.freeze({installed:true,decorate:()=>decorate(runtime?.document),syncUnreadBadge});
   try{Object.defineProperty(runtime,'__SJ_REF01_NOTIFICATION_REFINEMENT',{value:api,writable:false,configurable:false})}catch(_){runtime.__SJ_REF01_NOTIFICATION_REFINEMENT=api}
   return api;
 }

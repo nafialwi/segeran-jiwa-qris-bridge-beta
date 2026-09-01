@@ -1,4 +1,5 @@
-import { renderIcon, renderFilledIcon } from './icons.js';
+import { renderIcon } from './icons.js';
+import { renderLockedIcon } from './locked-icon-registry.js';
 
 export const PRIMARY_NAV=Object.freeze([
   Object.freeze({route:'home',label:'Beranda',icon:'home',legacyTab:'tab5',motionMs:200}),
@@ -13,7 +14,7 @@ export function navState(activeRoute='home'){
 }
 
 function activeIcon(name,label){
-  return renderFilledIcon(name,{size:21,label,className:'sj-ref-icon sjr02-nav-icon-active'});
+  return renderLockedIcon(name,{active:true,size:21,label,className:'sj-ref-icon sjr02-nav-icon-active'})||renderIcon(name,{size:21,label,className:'sj-ref-icon sjr02-nav-icon-active'});
 }
 
 function ensureCapsule(document,nav){

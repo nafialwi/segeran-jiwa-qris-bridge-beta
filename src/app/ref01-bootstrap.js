@@ -74,6 +74,24 @@ function renderSettingsLanding(document,runtime,sc03,media,openFeature,{force=fa
   }
   return true;
 }
+function openAvatarActions(document,runtime,media,onChanged){
+  let panel=document?.getElementById?.('sj-ref-avatar-actions');
+  if(!panel){
+    panel=document?.createElement?.('div');if(!panel)return false;
+    panel.id='sj-ref-avatar-actions';panel.className='overlay';
+    panel.innerHTML=`<div class="modal sj-ref-avatar-modal"><div class="modal-title">Foto Profil</div><p>Gunakan foto akun saat ini atau kembali ke inisial.</p><div class="sj-ref-media-actions"><button type="button" data-ref01-avatar-action="upload">Upload / Ganti Foto</button><button type="button" data-ref01-avatar-action="initials">Gunakan Inisial</button><button type="button" data-ref01-avatar-action="close">Batal</button></div><input id="sj-ref-avatar-file" type="file" accept="image/*" hidden></div>`;
+    document.body?.appendChild?.(panel);
+    const input=panel.querySelector?.('#sj-ref-avatar-file');
+    panel.addEventListener?.('click',event=>{
+      const action=event.target?.dataset?.ref01AvatarAction;
+      if(action==='upload') input?.click?.();
+      if(action==='initials') media.removeProfilePhoto().then(()=>{panel.style.display='none';onChanged?.();notify(runtime,'Foto profil dihapus. Inisial digunakan.','success')}).catch(e=>notify(runtime,e.message||'Gagal menghapus foto profil.','error'));
+      if(action==='close'||event.target===panel) panel.style.display='none';
+    });
+    input?.addEventListener?.('change',async event=>{const file=event.target.files?.[0];if(!file)return;try{await media.saveProfilePhoto(file);panel.style.display='none';onChanged?.();notify(runtime,'Foto profil diperbarui.','success')}catch(e){notify(runtime,e.message||'Gagal memperbarui foto profil.','error')}finally{event.target.value=''}});
+  }
+  panel.style.display='flex';return true;
+}
 function enhanceProfileAvatars(document,runtime,media){
   const photo=media.currentPhoto();
   const nodes=Array.from(document?.querySelectorAll?.('.sjvc01-avatar,.sjui02-avatar,.sj5964-avatar')||[]);
@@ -82,6 +100,11 @@ function enhanceProfileAvatars(document,runtime,media){
     if(!node)continue;
     if(photo&&node.dataset?.ref01Photo!==photo){node.dataset.ref01Photo=photo;node.innerHTML=`<img src="${esc(photo)}" alt="Foto profil ${esc(accountName(runtime))}">`;changed++}
     else if(!photo&&node.dataset?.ref01Photo){delete node.dataset.ref01Photo;node.innerHTML=esc(accountName(runtime).trim().split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase()||'U');changed++}
+    if(node.dataset?.ref01AvatarBound!=='true'){
+      node.dataset.ref01AvatarBound='true';node.setAttribute?.('role','button');node.setAttribute?.('tabindex','0');node.setAttribute?.('aria-label','Ubah foto profil');
+      const open=e=>{e?.preventDefault?.();e?.stopPropagation?.();openAvatarActions(document,runtime,media,()=>enhanceProfileAvatars(document,runtime,media))};
+      node.addEventListener?.('click',open);node.addEventListener?.('keydown',e=>{if(e?.key==='Enter'||e?.key===' '){e.preventDefault?.();open(e)}});changed++;
+    }
   }
   const cashierProfiles=Array.from(document?.querySelectorAll?.('.sjvc01-cashier .sjvc01-profile,.sjui02-cashier .sjui02-profile')||[]);
   for(const profile of cashierProfiles){
@@ -124,7 +147,7 @@ function addStaleShiftAction(document,shiftAdapter){
 export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_RUNTIME,sc04=runtime?.__SJ_SC04_RUNTIME,observe=false}={}){
   if(runtime?.__SJ_REF01_RUNTIME) return runtime.__SJ_REF01_RUNTIME;
   if(!sc03) throw new Error('REF01_SC03_RUNTIME_REQUIRED');if(!sc04) throw new Error('REF01_SC04_RUNTIME_REQUIRED');
-  const document=runtime?.document??null;installStyle(document);installRefinementIconAuthority(runtime);installReportRefinement(runtime);installNotificationRefinement(runtime);
+  const document=runtime?.document??null;installStyle(document);installRefinementIconAuthority(runtime);installReportRefinement(runtime);const notificationRefinement=installNotificationRefinement(runtime);
   const media=createMediaLifecycle({imageAuthority:getImageAuthority(runtime),auth:getAuth(runtime)});const shift=createStaleShiftAdapter(runtime);const legacyShiftClose=installLegacyShiftCloseRecovery(runtime);const salesShiftUx=installSalesShiftUxRefinement(runtime,{shiftAdapter:shift});const productionSales=installProductionSalesStability(runtime);const manualSync=installManualSyncControls(runtime);const salesHistory=installSalesHistoryRefinement(runtime);const finishedWarehouse=installFinishedGoodsWarehouseRefinement(runtime);
   const backupActions=Object.freeze({
     backup:()=>typeof runtime?.backupDatabase==='function'?runtime.backupDatabase():notify(runtime,'Backup existing tidak tersedia pada runtime ini.','warning'),
@@ -139,11 +162,12 @@ export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_
     const feature=sc03?.features?.get?.(key);if(feature?.open)return feature.open();return notify(runtime,'Fitur belum tersedia pada runtime ini.','warning');
   }
   function enhance(){
-    if(!document)return false;const route=currentRoute(sc03),role=currentRole(sc03);enhanceBottomNav(document,route);reconcileRoleNavigation(document,runtime,role);tagSemanticScreens(document);installConnectivityBanner(document,runtime);renderSettingsLanding(document,runtime,sc03,media,openFeature);enhanceProfileAvatars(document,runtime,media);enhanceImageRemove(document);enhanceScanner(document,sc03);enhanceTransferDraft(document);syncTransferDraft(document);addStaleShiftAction(document,shift);salesShiftUx?.enhance?.();productionSales?.sortProducts?.([]);manualSync?.enhance?.();salesHistory?.enhance?.();finishedWarehouse?.enhance?.();decorateCriticalOperationalSurfaces(document);decorateStockReferenceSurface(document);reconcileTransactionSurfaces(document);document.documentElement&&(document.documentElement.dataset.sjRef01='true');return true;
+    if(!document)return false;const route=currentRoute(sc03),role=currentRole(sc03);enhanceBottomNav(document,route);reconcileRoleNavigation(document,runtime,role);tagSemanticScreens(document);installConnectivityBanner(document,runtime);renderSettingsLanding(document,runtime,sc03,media,openFeature);enhanceProfileAvatars(document,runtime,media);enhanceImageRemove(document);enhanceScanner(document,sc03);enhanceTransferDraft(document);syncTransferDraft(document);addStaleShiftAction(document,shift);salesShiftUx?.enhance?.();productionSales?.sortProducts?.([]);manualSync?.enhance?.();notificationRefinement?.syncUnreadBadge?.();salesHistory?.enhance?.();finishedWarehouse?.enhance?.();decorateCriticalOperationalSurfaces(document);decorateStockReferenceSurface(document);reconcileTransactionSurfaces(document);document.documentElement&&(document.documentElement.dataset.sjRef01='true');return true;
   }
-  let observer=null;if(observe&&document&&typeof runtime?.MutationObserver==='function'){observer=new runtime.MutationObserver(()=>{try{enhance()}catch(_){}});observer.observe(document.documentElement||document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']})}
-  runtime?.addEventListener?.('online',enhance);runtime?.addEventListener?.('offline',enhance);document?.addEventListener?.('click',()=>setTimeout(()=>{try{enhance()}catch(_){}},0));
-  const api=Object.freeze({phase:'REF-01',owner:OWNER,sc03,sc04,media,shift,legacyShiftClose,salesShiftUx,productionSales,manualSync,salesHistory,finishedWarehouse,backupActions,openFeature,enhance,stop:()=>observer?.disconnect?.(),snapshot:()=>Object.freeze({phase:'REF-01',owner:OWNER,familyCount:SCREEN_FAMILIES.length,families:SCREEN_FAMILIES,implicitCapabilities:IMPLICIT_CAPABILITIES,referenceCoverage:Object.keys(REFERENCE_MATRIX),route:currentRoute(sc03)})});
+  let enhanceScheduled=false;function scheduleEnhance(){if(enhanceScheduled)return;enhanceScheduled=true;const run=()=>{enhanceScheduled=false;try{enhance()}catch(_){}};if(typeof runtime?.requestAnimationFrame==='function')runtime.requestAnimationFrame(run);else setTimeout(run,0)}
+  let observer=null;if(observe&&document&&typeof runtime?.MutationObserver==='function'){observer=new runtime.MutationObserver(scheduleEnhance);observer.observe(document.documentElement||document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']})}
+  runtime?.addEventListener?.('online',scheduleEnhance);runtime?.addEventListener?.('offline',scheduleEnhance);
+  const api=Object.freeze({phase:'REF-01',owner:OWNER,sc03,sc04,media,shift,legacyShiftClose,salesShiftUx,productionSales,manualSync,salesHistory,finishedWarehouse,backupActions,openFeature,enhance,scheduleEnhance,stop:()=>observer?.disconnect?.(),snapshot:()=>Object.freeze({phase:'REF-01',owner:OWNER,familyCount:SCREEN_FAMILIES.length,families:SCREEN_FAMILIES,implicitCapabilities:IMPLICIT_CAPABILITIES,referenceCoverage:Object.keys(REFERENCE_MATRIX),route:currentRoute(sc03)})});
   Object.defineProperty(runtime,'__SJ_REF01_RUNTIME',{value:api,writable:false,configurable:false,enumerable:false});
   try{enhance()}catch(error){runtime?.console?.warn?.('[REF01] initial enhancement skipped',error)}
   return api;

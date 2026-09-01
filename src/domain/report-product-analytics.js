@@ -20,7 +20,7 @@ function lineNet(tx,index,item,originalQty){
 }
 
 export function transactionItemLines(tx={}){
-  const voided=String(tx?.status||'').toUpperCase()==='VOIDED';
+  const voided=['VOID','VOIDED','CANCELLED','CANCELED'].includes(String(tx?.status||'').toUpperCase());
   return baseItems(tx).map((item,index)=>{
     const originalQty=Math.max(0,num(item?.q??item?.qty??item?.quantity));
     const refundedQty=Math.min(originalQty,refundedAt(tx,index,item));

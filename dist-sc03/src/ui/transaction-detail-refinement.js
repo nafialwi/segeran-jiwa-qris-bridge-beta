@@ -31,11 +31,24 @@ export function reconcileTransactionSurfaces(document){
   const receipt=document.getElementById?.('modal-struk-fs');
   const receiptOpen=inlineVisible(receipt);
 
+  let receiptPresentation='legacy';
   if(receipt){
     mark(receipt,'sjr05-receipt-overlay','existing-receipt-authority');
     mark(receipt.querySelector?.('.modal'),'sjr05-receipt-sheet');
-    mark(receipt.querySelector?.('#struk-content'),'sjr05-receipt-content');
-    mark(receipt.querySelector?.('.fs-footer'),'sjr05-receipt-actions');
+    const content=receipt.querySelector?.('#struk-content');
+    const footer=receipt.querySelector?.('.fs-footer');
+    mark(content,'sjr05-receipt-content');
+    mark(footer,'sjr05-receipt-actions');
+    const success=Array.from(receipt.querySelectorAll?.('.sjvc011-success')||[]);
+    if(success.length){
+      receiptPresentation='success';
+      success.slice(1).forEach(node=>node.remove?.());
+      if(content?.style) content.style.display='none';
+      if(footer?.style) footer.style.display='none';
+    }else{
+      if(content?.style&&content.style.display==='none') content.style.display='';
+      if(footer?.style&&footer.style.display==='none') footer.style.display='';
+    }
   }
   body?.classList?.[receiptOpen?'add':'remove']?.('sjr05-receipt-open');
   setFocusedNav(nav,receiptOpen);
@@ -51,5 +64,5 @@ export function reconcileTransactionSurfaces(document){
   const reportTransactionDetail=Boolean(reportDetail);
   if(reportDetail) mark(reportDetail,'sjr05-report-transaction-detail','existing-report-transaction-detail-authority');
 
-  return Object.freeze({receiptOpen,transactionDetail,reportTransactionDetail});
+  return Object.freeze({receiptOpen,receiptPresentation,transactionDetail,reportTransactionDetail});
 }

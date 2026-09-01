@@ -1,3 +1,4 @@
+import { renderLockedIcon } from './locked-icon-registry.js';
 const make=(paths,viewBox='0 0 24 24',strokeWidth=1.9)=>Object.freeze({viewBox,paths:Object.freeze(paths),strokeWidth});
 const A=(name)=>Object.freeze({alias:name});
 
@@ -67,7 +68,7 @@ export const ICONS=Object.freeze({
   database:make(['M4 6c0-2 3.6-3 8-3s8 1 8 3-3.6 3-8 3-8-1-8-3Z','M4 6v6c0 2 3.6 3 8 3s8-1 8-3V6','M4 12v6c0 2 3.6 3 8 3s8-1 8-3v-6'])
 });
 
-function resolve(name){let icon=ICONS[name]??ICONS['warehouse-box'];let guard=0;while(icon?.alias&&guard++<5)icon=ICONS[icon.alias];return icon||ICONS['warehouse-box']}
+function resolve(name){let icon=ICONS[name]??null;let guard=0;while(icon?.alias&&guard++<5)icon=ICONS[icon.alias]??null;return icon||null}
 function esc(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
 function solidCanonical(name){
   const alias={cart:'sale',chart:'reports',package:'warehouse-box',product:'warehouse-box',inventory:'warehouse-box',user:'account-circle',users:'customers',employee:'id-card',device:'devices',store:'storefront',security:'shield-lock',activity:'history',diagnostics:'stethoscope',backup:'cloud-upload',clock:'shift',repeat:'refund'};
@@ -119,7 +120,8 @@ export function renderFilledIcon(name,{size=20,label='',className='sj-ref-icon'}
   return `<svg class="${esc(className)}" data-sj-icon-variant="solid" width="${Number(size)||20}" height="${Number(size)||20}" viewBox="0 0 24 24"${aria}>${body}</svg>`;
 }
 export function renderIcon(name,{size=20,label='',className='sj-ref-icon'}={}){
-  const icon=resolve(name);
+  const locked=renderLockedIcon(name,{size,label,className});if(locked)return locked;
+  const icon=resolve(name);if(!icon)return '';
   const aria=label?` role="img" aria-label="${esc(label)}"`:' aria-hidden="true"';
   return `<svg class="${esc(className)}" width="${Number(size)||20}" height="${Number(size)||20}" viewBox="${icon.viewBox}" fill="none" stroke="currentColor" stroke-width="${icon.strokeWidth}" stroke-linecap="round" stroke-linejoin="round"${aria}>${icon.paths.map(d=>`<path d="${esc(d)}"></path>`).join('')}</svg>`;
 }

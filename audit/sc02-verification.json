@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-01T06:36:56.683Z",
+  "generatedAt": "2026-09-01T14:44:54.673Z",
   "phase": "SC-02",
   "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
   "distSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
@@ -23,6 +23,7 @@
     "src/data/repositories/user-repository.js",
     "src/domain/costing-service.js",
     "src/domain/debt-service.js",
+    "src/domain/finished-goods-stock.js",
     "src/domain/index.js",
     "src/domain/inventory-service.js",
     "src/domain/pricing-service.js",
@@ -31,6 +32,7 @@
     "src/domain/refund-void-service.js",
     "src/domain/report-product-analytics.js",
     "src/domain/report-service.js",
+    "src/domain/report-v28-analytics.js",
     "src/domain/shift-service.js",
     "src/domain/transaction-service.js"
   ],
