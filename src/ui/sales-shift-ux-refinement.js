@@ -2,9 +2,15 @@ import { POS_ROOT } from '../data/firebase-client.js';
 import { resolveProductCode, resolveScannedCandidates } from '../domain/product-code-resolver.js';
 import { historicalShiftRows, shiftContextLabel } from './shift-refinement.js';
 
-function activeProducts(runtime){
-  const rows=runtime?.cloudData?.global?.menu;
-  return (Array.isArray(rows)?rows:[]).filter(p=>{try{return runtime?.SJHarden?.isActiveProduct?runtime.SJHarden.isActiveProduct(p):!p?.archived}catch(_){return !p?.archived}});
+export function activeProducts(runtime){
+  const providers=[
+    ()=>runtime?.SJRefinementSalesV100?.activeProducts?.(),
+    ()=>runtime?.SJCommercialUIV5953?.activeProducts?.(),
+    ()=>runtime?.cloudData?.global?.menu
+  ];
+  let rows=[];
+  for(const read of providers){try{const value=read();if(Array.isArray(value)&&value.length){rows=value;break}}catch(_){}}
+  return rows.filter(p=>{try{return runtime?.SJHarden?.isActiveProduct?runtime.SJHarden.isActiveProduct(p):!p?.archived}catch(_){return !p?.archived}});
 }
 function notify(runtime,message,kind='info'){try{return runtime?.showToast?.(message,kind)}catch(_){return undefined}}
 function audit(runtime,type,detail){try{return runtime?.sjAudit?.(type,detail)}catch(_){return undefined}}
@@ -22,6 +28,26 @@ export function createSafeResolveAndAdd({getProducts,addProduct,notify:send=()=>
     }
     send(`Kode tidak ditemukan: ${resolved.code}`,'warning');log('BARCODE_SCAN_MISS',`${resolved.code} • ${source}`);return resolved;
   };
+}
+
+export function decorateSalesProductCard(card,runtime=globalThis){
+  if(!card||card.querySelector?.('[data-sj-card-qty]'))return false;
+  const plus=card.querySelector?.('[data-add]');if(!plus||!plus.parentNode)return false;
+  const id=String(card.dataset?.pid||plus.dataset?.add||'');if(!id)return false;
+  const document=runtime?.document;if(!document?.createElement)return false;
+  const wrap=document.createElement('div');wrap.className='sj-ref-card-step';wrap.dataset.sjCardQty='1';
+  const minus=document.createElement('button');minus.type='button';minus.className='item-minus-btn sj-ref-card-minus';minus.id=`minus-btn-${id}`;minus.setAttribute?.('aria-label','Kurangi jumlah');minus.textContent='−';
+  const qty=document.createElement('span');qty.className='item-qty-badge sj-ref-card-qty';qty.id=`badge-qty-${id}`;qty.textContent='0';
+  minus.addEventListener?.('click',event=>{event?.stopPropagation?.();try{if(typeof runtime?.quickRemoveCart==='function')runtime.quickRemoveCart(event,id);else runtime?.SJCommercialFinalV5961?.adjustCart?.(id,-1)}catch(_){}});
+  plus.parentNode.insertBefore(wrap,plus);wrap.appendChild?.(minus);wrap.appendChild?.(qty);wrap.appendChild?.(plus);
+  return true;
+}
+
+export function enhanceSalesProductQuantityControls(runtime=globalThis){
+  const cards=Array.from(runtime?.document?.querySelectorAll?.('.sjui03a-product,.sjvc01-product')||[]);let changed=0;
+  for(const card of cards)if(decorateSalesProductCard(card,runtime))changed++;
+  try{runtime?.updateMenuBadges?.()}catch(_){}
+  return changed;
 }
 
 export function installMiniCartPresentation(runtime=globalThis){
@@ -70,42 +96,43 @@ export function installSmartBarcodeResolver(runtime=globalThis){
   return Object.freeze({installed:true,resolveAndAdd:safe,openCameraScanner,stop});
 }
 
-function dateMinusDays(dateText,days){const d=new Date(`${dateText}T12:00:00Z`);d.setUTCDate(d.getUTCDate()-days);return d.toISOString().slice(0,10)}
 function currentDate(runtime){return String(runtime?.document?.getElementById?.('date-sel')?.value||runtime?.activeDateOnly||'')}
 function currentShiftLabel(runtime){const select=runtime?.document?.getElementById?.('shift-sel'),text=select?.selectedOptions?.[0]?.textContent;try{return String(text||runtime?.SJShift?.label?.(select?.value||runtime?.activeShift)||'Shift')}catch(_){return String(text||'Shift')}}
-async function readRecentShifts(runtime,date){
+async function readDateShifts(runtime,date){
   const db=runtime?.firebase?.database?.();if(!db||!date)return {};
-  const start=`${dateMinusDays(date,45)}-S1`,end=`${date}-S3`;
-  const snap=await db.ref(POS_ROOT).orderByKey().startAt(start).endAt(end).once('value');return snap?.val?.()||{};
+  const snap=await db.ref(POS_ROOT).orderByKey().startAt(`${date}-S1`).endAt(`${date}-S3`).once('value');return snap?.val?.()||{};
 }
+export function shiftRowsForDate(snapshot,date,options={}){return historicalShiftRows(snapshot,options).filter(row=>row.date===String(date||''))}
 function statusText(row){if(row.open&&row.overdue)return 'BELUM DITUTUP';if(row.open)return 'AKTIF';return 'DITUTUP'}
 
 export function installHistoricalShiftContext(runtime=globalThis,{shiftAdapter}={}){
   const document=runtime?.document;if(!document)return Object.freeze({installed:false,enhance:()=>false});
-  let loading=false;
+  let loading=false,selectedDate='';
   function closeSheet(){const sheet=document.getElementById?.('sj-ref-shift-history');if(sheet)sheet.style.display='none'}
-  function ensureSheet(){let sheet=document.getElementById?.('sj-ref-shift-history');if(sheet)return sheet;sheet=document.createElement('div');sheet.id='sj-ref-shift-history';sheet.className='sj-ref-shift-history';sheet.innerHTML='<div class="sj-ref-shift-history-card"><div class="sj-ref-shift-history-head"><div><b>Tanggal & Shift</b><span>Pilih hanya shift yang sudah ada</span></div><button type="button" data-history-close>×</button></div><div data-history-body></div></div>';sheet.querySelector('[data-history-close]')?.addEventListener('click',closeSheet);sheet.addEventListener('click',e=>{if(e.target===sheet)closeSheet()});document.body?.appendChild(sheet);return sheet}
-  async function openSheet(){
-    const sheet=ensureSheet(),body=sheet?.querySelector?.('[data-history-body]');if(!sheet||!body||loading)return;sheet.style.display='flex';loading=true;body.innerHTML='<div class="sj-ref-history-loading">Memuat shift yang sudah ada…</div>';
+  function ensureSheet(){let sheet=document.getElementById?.('sj-ref-shift-history');if(sheet)return sheet;sheet=document.createElement('div');sheet.id='sj-ref-shift-history';sheet.className='sj-ref-shift-history';sheet.innerHTML='<div class="sj-ref-shift-history-card"><div class="sj-ref-shift-history-head"><div><b>Tanggal & Shift</b><span>Pilih tanggal untuk melihat transaksi dan shift yang sudah ada</span></div><button type="button" data-history-close>×</button></div><label class="sj-ref-history-date"><span>Pilih tanggal</span><input type="date" data-history-date></label><button type="button" class="sj-ref-history-recap" data-history-recap>Lihat Rekap Semua Shift</button><div data-history-body></div></div>';sheet.querySelector('[data-history-close]')?.addEventListener('click',closeSheet);sheet.addEventListener('click',e=>{if(e.target===sheet)closeSheet()});sheet.querySelector('[data-history-date]')?.addEventListener('change',e=>renderDate(String(e.target?.value||'')));sheet.querySelector('[data-history-recap]')?.addEventListener('click',()=>{const date=selectedDate||currentDate(runtime);if(!date)return;shiftAdapter?.selectRecap?.(date);closeSheet();runtime?.showView?.(3)});document.body?.appendChild(sheet);return sheet}
+  async function renderDate(date){
+    const sheet=ensureSheet(),body=sheet?.querySelector?.('[data-history-body]'),input=sheet?.querySelector?.('[data-history-date]');if(!sheet||!body||loading||!date)return;selectedDate=date;if(input&&input.value!==date)input.value=date;loading=true;body.innerHTML='<div class="sj-ref-history-loading">Memuat shift pada tanggal pilihan…</div>';
     try{
-      const date=currentDate(runtime),snapshot=await readRecentShifts(runtime,date),rows=historicalShiftRows(snapshot,{now:new Date()}),role=runtime?.__SJ_SC03_RUNTIME?.guard?.currentRole?.(),owner=role==='owner';
-      const currentKey=`${date}${document.getElementById('shift-sel')?.value||''}`;
-      body.innerHTML=`<div class="sj-ref-current-shift"><span>Konteks aktif</span><b>${shiftContextLabel(date,currentShiftLabel(runtime))}</b></div>${rows.length?rows.map(row=>`<article class="sj-ref-history-row ${row.overdue?'overdue':''}" data-history-key="${row.key}"><div><b>${shiftContextLabel(row.date,`Shift ${row.code.slice(1)}`)}</b><span>${statusText(row)}${row.open?` · ${row.durationLabel}`:''}</span></div><button type="button" data-history-action="${row.overdue&&owner?'close':'open'}" ${row.key===currentKey&&!row.overdue?'disabled':''}>${row.overdue&&owner?'Buka Closing':row.key===currentKey?'Aktif':'Buka'}</button></article>`).join(''):'<div class="sj-ref-history-empty">Belum ada record shift pada 45 hari terakhir.</div>'}`;
+      const snapshot=await readDateShifts(runtime,date),rows=shiftRowsForDate(snapshot,date,{now:new Date()}),role=runtime?.__SJ_SC03_RUNTIME?.guard?.currentRole?.(),owner=role==='owner',active=currentDate(runtime),activeShift=document.getElementById('shift-sel')?.value||'',currentKey=`${active}${activeShift}`;
+      body.innerHTML=`<div class="sj-ref-current-shift"><span>Tanggal pilihan</span><b>${shiftContextLabel(date,'Semua Shift')}</b><small>${rows.length?`${rows.length} shift tersimpan`:'Belum ada shift tersimpan'}</small></div>${rows.length?rows.map(row=>`<article class="sj-ref-history-row ${row.overdue?'overdue':''}" data-history-key="${row.key}"><div><b>${shiftContextLabel(row.date,`Shift ${row.code.slice(1)}`)}</b><span>${statusText(row)}${row.open?` · ${row.durationLabel}`:''}</span></div><button type="button" data-history-action="${row.overdue&&owner?'close':'open'}" ${row.key===currentKey&&!row.overdue?'disabled':''}>${row.overdue&&owner?'Buka Closing':row.key===currentKey?'Aktif':'Buka Shift'}</button></article>`).join(''):'<div class="sj-ref-history-empty">Tidak ada shift tersimpan pada tanggal ini. Rekap tetap dapat dibuka tanpa membuat shift baru.</div>'}`;
       body.querySelectorAll?.('[data-history-key]')?.forEach?.(row=>row.querySelector?.('button')?.addEventListener?.('click',()=>{const key=row.dataset.historyKey,action=row.querySelector('button')?.dataset.historyAction;if(action==='close')shiftAdapter?.openClosing?.(key);else shiftAdapter?.select?.(key);closeSheet()}));
-    }catch(error){body.innerHTML='<div class="sj-ref-history-empty">Riwayat shift belum dapat dimuat. Koneksi dan data aktif tidak diubah.</div>';audit(runtime,'SHIFT_HISTORY_READ_FAILED',String(error?.message||error))}finally{loading=false}
+    }catch(error){body.innerHTML='<div class="sj-ref-history-empty">Data tanggal ini belum dapat dimuat. Tidak ada shift baru yang dibuat.</div>';audit(runtime,'SHIFT_HISTORY_READ_FAILED',String(error?.message||error))}finally{loading=false}
   }
+  async function openSheet(){const sheet=ensureSheet();if(!sheet)return;sheet.style.display='flex';await renderDate(currentDate(runtime))}
   function enhance(){
     const date=currentDate(runtime);if(!date)return false;const shift=currentShiftLabel(runtime),label=shiftContextLabel(date,shift);
-    const salesChip=document.querySelector?.('.sjvc01-status span,.sjui03a-status span');if(salesChip){salesChip.textContent=label;salesChip.setAttribute?.('role','button');salesChip.setAttribute?.('tabindex','0');salesChip.setAttribute?.('aria-label',`Tanggal dan shift: ${label}`);if(salesChip.dataset?.sjHistoryBound!=='1'){salesChip.dataset.sjHistoryBound='1';salesChip.addEventListener('click',openSheet);salesChip.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSheet()}})}}
+    const salesChip=document.querySelector?.('.sjvc01-status span,.sjui03a-status span');if(salesChip){salesChip.textContent=label;salesChip.setAttribute?.('role','button');salesChip.setAttribute?.('tabindex','0');salesChip.setAttribute?.('aria-label',`Pilih tanggal dan shift: ${label}`);if(salesChip.dataset?.sjHistoryBound!=='1'){salesChip.dataset.sjHistoryBound='1';salesChip.addEventListener('click',openSheet);salesChip.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSheet()}})}}
     let globalButton=document.getElementById?.('sj-ref-date-context');const controls=document.querySelector?.('.sjpro-header-controls');if(controls&&!globalButton){globalButton=document.createElement('button');globalButton.type='button';globalButton.id='sj-ref-date-context';globalButton.className='sj-ref-date-context';globalButton.addEventListener('click',openSheet);controls.insertBefore(globalButton,controls.firstChild)}if(globalButton)globalButton.textContent=new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'short',year:'numeric',timeZone:'Asia/Jakarta'}).format(new Date(`${date}T12:00:00`)).replace(/\./g,'');return true;
   }
-  return Object.freeze({installed:true,enhance,openSheet,closeSheet});
+  return Object.freeze({installed:true,enhance,openSheet,closeSheet,renderDate});
 }
 
 export function installSalesShiftUxRefinement(runtime=globalThis,{shiftAdapter}={}){
   if(runtime?.__SJ_SALES_SHIFT_UX)return runtime.__SJ_SALES_SHIFT_UX;
   const barcode=installSmartBarcodeResolver(runtime),miniCart=installMiniCartPresentation(runtime),history=installHistoricalShiftContext(runtime,{shiftAdapter});
-  const api=Object.freeze({barcode,miniCart,history,enhance:()=>history.enhance()});
+  const enhance=()=>{let changed=0;try{changed+=enhanceSalesProductQuantityControls(runtime)}catch(_){}try{history.enhance()}catch(_){}return changed};
+  const sales=runtime?.SJRefinementSalesV100;if(sales&&typeof sales.renderSales==='function'&&!sales.__sjSalesShiftPostRender){const base=sales.renderSales.bind(sales);sales.renderSales=function(...args){const out=base(...args);try{runtime?.requestAnimationFrame?runtime.requestAnimationFrame(enhance):enhance()}catch(_){}return out};try{Object.defineProperty(sales,'__sjSalesShiftPostRender',{value:true,enumerable:false})}catch(_){sales.__sjSalesShiftPostRender=true}}
+  const api=Object.freeze({barcode,miniCart,history,enhance});
   try{Object.defineProperty(runtime,'__SJ_SALES_SHIFT_UX',{value:api,writable:false,configurable:false,enumerable:false})}catch(_){}
   try{api.enhance()}catch(_){}return api;
 }

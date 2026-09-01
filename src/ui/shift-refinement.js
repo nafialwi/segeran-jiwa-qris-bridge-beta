@@ -21,8 +21,9 @@ export function shiftPresentation({key,data={},now=new Date(),timeZone=DEFAULT_O
 export function createStaleShiftAdapter(runtime=globalThis){
   const document=runtime?.document;
   function select(key){const parsed=parseShiftKey(key);if(!parsed) throw new Error('SHIFT_KEY_INVALID');const date=document?.getElementById?.('date-sel'),shift=document?.getElementById?.('shift-sel');if(date)date.value=parsed.date;if(shift)shift.value=parsed.selector;runtime?.changeDateAndShift?.();runtime?.showView?.(2);runtime?.openOpr?.(1);runtime?.SJShift?.render?.();return parsed}
+  function selectRecap(dateText){const dateValue=String(dateText||'');if(!/^\d{4}-\d{2}-\d{2}$/.test(dateValue))throw new Error('SHIFT_DATE_INVALID');const date=document?.getElementById?.('date-sel'),shift=document?.getElementById?.('shift-sel');if(date)date.value=dateValue;if(shift)shift.value='';runtime?.changeDateAndShift?.();return Object.freeze({date:dateValue,selector:'',recap:true})}
   function openClosing(key){const parsed=select(key);if(typeof runtime?.SJShift?.openCloseModal!=='function') throw new Error('SHIFT_CLOSE_AUTHORITY_UNAVAILABLE');runtime.SJShift.openCloseModal();return parsed}
-  return Object.freeze({select,openClosing});
+  return Object.freeze({select,selectRecap,openClosing});
 }
 
 
