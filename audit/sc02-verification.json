@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-01T04:05:01.078Z",
+  "generatedAt": "2026-09-01T04:46:00.944Z",
   "phase": "SC-02",
   "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
   "distSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
@@ -29,6 +29,7 @@
     "src/domain/product-code-resolver.js",
     "src/domain/purchase-wac-service.js",
     "src/domain/refund-void-service.js",
+    "src/domain/report-product-analytics.js",
     "src/domain/report-service.js",
     "src/domain/shift-service.js",
     "src/domain/transaction-service.js"

@@ -190,10 +190,10 @@ test('legacy shift recovery augments the existing CLOSE write with recovery meta
   assert.equal(calls.length,1);
 });
 
-test('inline product quantity stepper uses equal touch targets, separators, and centered quantity for precise mobile control',()=>{
+test('inline product quantity stepper uses one compact pill with balanced circular controls and centered tabular quantity',()=>{
   const css=fs.readFileSync(new URL('../src/ui/ref01.css',import.meta.url),'utf8');
-  assert.match(css,/\.sj-ref-card-step:has\(\.item-minus-btn\.show\)\{[^}]*grid-template-columns:38px 32px 38px/s);
-  assert.match(css,/\.sj-ref-card-step:has\(\.item-minus-btn\.show\)::before/);
-  assert.match(css,/\.sj-ref-card-step:has\(\.item-minus-btn\.show\)::after/);
+  assert.match(css,/\.sj-ref-card-step:has\(\.item-minus-btn\.show\)\{[^}]*grid-template-columns:32px 28px 32px[^}]*width:96px[^}]*border-radius:999px/s);
+  assert.doesNotMatch(css,/\.sj-ref-card-step:has\(\.item-minus-btn\.show\)::before/);
+  assert.doesNotMatch(css,/\.sj-ref-card-step:has\(\.item-minus-btn\.show\)::after/);
   assert.match(css,/\.sj-ref-card-step \.item-qty-badge\.show\{[^}]*font-variant-numeric:tabular-nums/s);
 });

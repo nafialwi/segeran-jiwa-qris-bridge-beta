@@ -15,6 +15,8 @@ import { decorateCriticalOperationalSurfaces } from '../ui/critical-operational-
 import { decorateStockReferenceSurface } from '../ui/stock-refinement.js';
 import { installSalesShiftUxRefinement } from '../ui/sales-shift-ux-refinement.js';
 import { installLegacyShiftCloseRecovery } from '../ui/legacy-shift-close-recovery.js';
+import { installSalesHistoryRefinement } from '../ui/report-sales-history-refinement.js';
+import { installFinishedGoodsWarehouseRefinement } from '../ui/finished-goods-warehouse-refinement.js';
 
 const OWNER='ref01-ui-runtime';
 
@@ -122,7 +124,7 @@ export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_
   if(runtime?.__SJ_REF01_RUNTIME) return runtime.__SJ_REF01_RUNTIME;
   if(!sc03) throw new Error('REF01_SC03_RUNTIME_REQUIRED');if(!sc04) throw new Error('REF01_SC04_RUNTIME_REQUIRED');
   const document=runtime?.document??null;installStyle(document);installRefinementIconAuthority(runtime);installReportRefinement(runtime);installNotificationRefinement(runtime);
-  const media=createMediaLifecycle({imageAuthority:getImageAuthority(runtime),auth:getAuth(runtime)});const shift=createStaleShiftAdapter(runtime);const legacyShiftClose=installLegacyShiftCloseRecovery(runtime);const salesShiftUx=installSalesShiftUxRefinement(runtime,{shiftAdapter:shift});
+  const media=createMediaLifecycle({imageAuthority:getImageAuthority(runtime),auth:getAuth(runtime)});const shift=createStaleShiftAdapter(runtime);const legacyShiftClose=installLegacyShiftCloseRecovery(runtime);const salesShiftUx=installSalesShiftUxRefinement(runtime,{shiftAdapter:shift});const salesHistory=installSalesHistoryRefinement(runtime);const finishedWarehouse=installFinishedGoodsWarehouseRefinement(runtime);
   const backupActions=Object.freeze({
     backup:()=>typeof runtime?.backupDatabase==='function'?runtime.backupDatabase():notify(runtime,'Backup existing tidak tersedia pada runtime ini.','warning'),
     restore:()=>document?.getElementById?.('restore-file')?.click?.()??notify(runtime,'Restore existing tidak tersedia pada runtime ini.','warning')
@@ -136,11 +138,11 @@ export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_
     const feature=sc03?.features?.get?.(key);if(feature?.open)return feature.open();return notify(runtime,'Fitur belum tersedia pada runtime ini.','warning');
   }
   function enhance(){
-    if(!document)return false;const route=currentRoute(sc03),role=currentRole(sc03);enhanceBottomNav(document,route);reconcileRoleNavigation(document,runtime,role);tagSemanticScreens(document);installConnectivityBanner(document,runtime);renderSettingsLanding(document,runtime,sc03,media,openFeature);enhanceProfileAvatars(document,runtime,media);enhanceImageRemove(document);enhanceScanner(document,sc03);enhanceTransferDraft(document);syncTransferDraft(document);addStaleShiftAction(document,shift);salesShiftUx?.enhance?.();decorateCriticalOperationalSurfaces(document);decorateStockReferenceSurface(document);reconcileTransactionSurfaces(document);document.documentElement&&(document.documentElement.dataset.sjRef01='true');return true;
+    if(!document)return false;const route=currentRoute(sc03),role=currentRole(sc03);enhanceBottomNav(document,route);reconcileRoleNavigation(document,runtime,role);tagSemanticScreens(document);installConnectivityBanner(document,runtime);renderSettingsLanding(document,runtime,sc03,media,openFeature);enhanceProfileAvatars(document,runtime,media);enhanceImageRemove(document);enhanceScanner(document,sc03);enhanceTransferDraft(document);syncTransferDraft(document);addStaleShiftAction(document,shift);salesShiftUx?.enhance?.();salesHistory?.enhance?.();finishedWarehouse?.enhance?.();decorateCriticalOperationalSurfaces(document);decorateStockReferenceSurface(document);reconcileTransactionSurfaces(document);document.documentElement&&(document.documentElement.dataset.sjRef01='true');return true;
   }
   let observer=null;if(observe&&document&&typeof runtime?.MutationObserver==='function'){observer=new runtime.MutationObserver(()=>{try{enhance()}catch(_){}});observer.observe(document.documentElement||document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']})}
   runtime?.addEventListener?.('online',enhance);runtime?.addEventListener?.('offline',enhance);document?.addEventListener?.('click',()=>setTimeout(()=>{try{enhance()}catch(_){}},0));
-  const api=Object.freeze({phase:'REF-01',owner:OWNER,sc03,sc04,media,shift,legacyShiftClose,salesShiftUx,backupActions,openFeature,enhance,stop:()=>observer?.disconnect?.(),snapshot:()=>Object.freeze({phase:'REF-01',owner:OWNER,familyCount:SCREEN_FAMILIES.length,families:SCREEN_FAMILIES,implicitCapabilities:IMPLICIT_CAPABILITIES,referenceCoverage:Object.keys(REFERENCE_MATRIX),route:currentRoute(sc03)})});
+  const api=Object.freeze({phase:'REF-01',owner:OWNER,sc03,sc04,media,shift,legacyShiftClose,salesShiftUx,salesHistory,finishedWarehouse,backupActions,openFeature,enhance,stop:()=>observer?.disconnect?.(),snapshot:()=>Object.freeze({phase:'REF-01',owner:OWNER,familyCount:SCREEN_FAMILIES.length,families:SCREEN_FAMILIES,implicitCapabilities:IMPLICIT_CAPABILITIES,referenceCoverage:Object.keys(REFERENCE_MATRIX),route:currentRoute(sc03)})});
   Object.defineProperty(runtime,'__SJ_REF01_RUNTIME',{value:api,writable:false,configurable:false,enumerable:false});
   try{enhance()}catch(error){runtime?.console?.warn?.('[REF01] initial enhancement skipped',error)}
   return api;
