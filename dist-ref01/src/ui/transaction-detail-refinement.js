@@ -42,10 +42,12 @@ export function reconcileTransactionSurfaces(document){
     const success=Array.from(receipt.querySelectorAll?.('.sjvc011-success')||[]);
     if(success.length){
       receiptPresentation='success';
+      receipt.classList?.add?.('sjr05-receipt-success');
       success.slice(1).forEach(node=>node.remove?.());
       if(content?.style) content.style.display='none';
       if(footer?.style) footer.style.display='none';
     }else{
+      receipt.classList?.remove?.('sjr05-receipt-success');
       if(content?.style&&content.style.display==='none') content.style.display='';
       if(footer?.style&&footer.style.display==='none') footer.style.display='';
     }

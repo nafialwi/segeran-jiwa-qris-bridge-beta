@@ -20,21 +20,24 @@ test('REF-01 media lifecycle delegates product/store images to existing authorit
   assert.equal(media.authorityFor('store'),'existing-store-settings-writer');
 });
 
-test('REF-01 profile photo uses existing image storage authority plus Firebase Auth profile without RTDB schema writes',async()=>{
-  const calls=[];
-  const user={uid:'uid-7',photoURL:null,async updateProfile(value){calls.push(['updateProfile',value]);this.photoURL=value.photoURL}};
+test('REF-01 profile photo uses zero-cost device persistence and never requires Firebase Storage or RTDB',async()=>{
+  const calls=[];let stored=null;
+  const avatarStore={read(){return stored},write(value){stored={...value};calls.push(['store',value.mode]);return value},clear(){stored=null}};
+  const user={uid:'uid-7',photoURL:null,async updateProfile(){calls.push(['updateProfile']);throw new Error('must not write auth profile')}};
   const authority={
     async compressFile(f){calls.push(['compress',f.name]);return 'data:image/jpeg;base64,abc'},
-    async uploadDataUrl(data,path){calls.push(['upload',data,path]);return 'https://cdn.test/avatar.jpg'}
+    async uploadDataUrl(){calls.push(['upload']);throw new Error('storage disabled')}
   };
-  const media=createMediaLifecycle({imageAuthority:authority,auth:{currentUser:user},now:()=>1700000000000,random:()=>0.123});
-  const url=await media.saveProfilePhoto(file());
-  assert.equal(url,'https://cdn.test/avatar.jpg');
-  assert.equal(user.photoURL,url);
-  assert.match(calls.find(x=>x[0]==='upload')[2],/^profiles\/uid-7\/avatar-/);
-  assert.equal(calls.some(x=>String(x[0]).includes('database')),false);
-  await media.removeProfilePhoto();
-  assert.equal(user.photoURL,null);
+  const media=createMediaLifecycle({imageAuthority:authority,auth:{currentUser:user},avatarStore,now:()=>1700000000000});
+  const photo=await media.saveProfilePhoto(file());
+  assert.equal(photo,'data:image/jpeg;base64,abc');
+  assert.equal(media.currentPhoto(),photo);
+  assert.equal(calls.some(x=>x[0]==='upload'||x[0]==='updateProfile'),false);
+  const recreated=createMediaLifecycle({imageAuthority:authority,auth:{currentUser:user},avatarStore,now:()=>1700000001000});
+  assert.equal(recreated.currentPhoto(),photo,'avatar survives lifecycle recreation on the same browser store');
+  await recreated.removeProfilePhoto();
+  assert.equal(recreated.currentPhoto(),null);
+  assert.equal(stored.mode,'initials');
 });
 
 test('REF-01 profile media path is user-scoped and never stores credential/session data',()=>{

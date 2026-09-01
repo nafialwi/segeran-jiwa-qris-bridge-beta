@@ -10,6 +10,8 @@ function activeProducts(){
   return rows;
 }
 function productQty(id){try{return(cart||[]).filter(function(x){return String(x.baseProductId||x.id)===String(id)}).reduce(function(s,x){return s+n(x.q)},0)}catch(_){return 0}}
+function productById(id){try{return(cloudData.global.menu||[]).find(function(x){return String(x.id)===String(id)})||null}catch(_){return null}}
+function outletStock(id){try{var key=String(id),inv=cloudData.global.inventory||{};if(Object.prototype.hasOwnProperty.call(inv,key))return Math.max(0,n(inv[key]));var p=productById(key);return Math.max(0,n(p&&p.stok))}catch(_){return 0}}
 function hasNormalCartLine(id){try{return(cart||[]).some(function(x){return String(x.id)===String(id)&&String(x.inventoryMode||'').toUpperCase()!=='RECIPE'})}catch(_){return false}}
 function normalLine(id){try{return(cart||[]).find(function(x){return String(x.id)===String(id)&&String(x.inventoryMode||'').toUpperCase()!=='RECIPE'})||null}catch(_){return null}}
 function syncCartPresentation(){
@@ -58,6 +60,6 @@ async function refreshNow(){
     return{ok:true};
   }catch(error){return{ok:false,error:error}}
 }
-window.SJRef01ProductionSalesCompat={version:'2.8.0',activeProducts:activeProducts,productQty:productQty,hasNormalCartLine:hasNormalCartLine,addNormalProduct:addNormalProduct,adjustNormalProduct:adjustNormalProduct,unreadNotificationCount:unreadNotificationCount,syncUnreadBadge:syncUnreadBadge,refreshNow:refreshNow};
+window.SJRef01ProductionSalesCompat={version:'2.9.0',activeProducts:activeProducts,productById:productById,outletStock:outletStock,productQty:productQty,hasNormalCartLine:hasNormalCartLine,addNormalProduct:addNormalProduct,adjustNormalProduct:adjustNormalProduct,unreadNotificationCount:unreadNotificationCount,syncUnreadBadge:syncUnreadBadge,refreshNow:refreshNow};
 window.quickAddCart=function(id){return window.SJRef01ProductionSalesCompat.addNormalProduct(id)};try{quickAddCart=window.quickAddCart}catch(_){}
 })();

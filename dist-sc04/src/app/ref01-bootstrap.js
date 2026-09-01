@@ -2,6 +2,7 @@ import { enhanceBottomNav } from '../ui/bottom-nav.js';
 import { SCREEN_FAMILIES, IMPLICIT_CAPABILITIES } from '../ui/refinement-contract.js';
 import { renderIcon } from '../ui/icons.js';
 import { createMediaLifecycle } from '../ui/media-lifecycle.js';
+import { createBrowserJsonStore } from '../data/local-store.js';
 import { createStaleShiftAdapter, shiftPresentation } from '../ui/shift-refinement.js';
 import { tagScreenContracts } from '../ui/screen-contracts.js';
 import { renderSettingsMarkup } from '../ui/settings-refinement.js';
@@ -25,6 +26,14 @@ function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function notify(runtime,message,kind='info'){try{if(typeof runtime?.showToast==='function') return runtime.showToast(message,kind)}catch(_){}try{runtime?.console?.info?.(`[REF01/${kind}] ${message}`)}catch(_){} }
 function getAuth(runtime){try{return runtime?.SJProductionArchitectureP3?.auth?.()??runtime?.firebase?.auth?.()??null}catch(_){return null}}
 function getImageAuthority(runtime){return runtime?.SJProductionArchitectureP3??null}
+function profileIdentity(runtime,sc04){
+  try{const username=sc04?.session?.snapshot?.()?.envelope?.username;if(username)return String(username).trim().toLowerCase()}catch(_){}
+  try{const uid=getAuth(runtime)?.currentUser?.uid;if(uid)return `uid-${String(uid)}`}catch(_){}
+  return `name-${accountName(runtime).trim().toLowerCase()}`;
+}
+function profileAvatarStore(runtime,sc04){
+  try{return createBrowserJsonStore({runtime,key:`segeran-jiwa.profile-avatar.v1.${encodeURIComponent(profileIdentity(runtime,sc04))}`})}catch(_){return null}
+}
 
 function installStyle(document){
   if(!document?.head||document.querySelector?.('link[data-sj-ref01-style="true"]')) return false;
@@ -148,7 +157,7 @@ export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_
   if(runtime?.__SJ_REF01_RUNTIME) return runtime.__SJ_REF01_RUNTIME;
   if(!sc03) throw new Error('REF01_SC03_RUNTIME_REQUIRED');if(!sc04) throw new Error('REF01_SC04_RUNTIME_REQUIRED');
   const document=runtime?.document??null;installStyle(document);installRefinementIconAuthority(runtime);installReportRefinement(runtime);const notificationRefinement=installNotificationRefinement(runtime);
-  const media=createMediaLifecycle({imageAuthority:getImageAuthority(runtime),auth:getAuth(runtime)});const shift=createStaleShiftAdapter(runtime);const legacyShiftClose=installLegacyShiftCloseRecovery(runtime);const salesShiftUx=installSalesShiftUxRefinement(runtime,{shiftAdapter:shift});const productionSales=installProductionSalesStability(runtime);const manualSync=installManualSyncControls(runtime);const salesHistory=installSalesHistoryRefinement(runtime);const finishedWarehouse=installFinishedGoodsWarehouseRefinement(runtime);
+  const media=createMediaLifecycle({imageAuthority:getImageAuthority(runtime),auth:getAuth(runtime),avatarStore:profileAvatarStore(runtime,sc04)});const shift=createStaleShiftAdapter(runtime);const legacyShiftClose=installLegacyShiftCloseRecovery(runtime);const salesShiftUx=installSalesShiftUxRefinement(runtime,{shiftAdapter:shift});const productionSales=installProductionSalesStability(runtime);const manualSync=installManualSyncControls(runtime);const salesHistory=installSalesHistoryRefinement(runtime);const finishedWarehouse=installFinishedGoodsWarehouseRefinement(runtime);
   const backupActions=Object.freeze({
     backup:()=>typeof runtime?.backupDatabase==='function'?runtime.backupDatabase():notify(runtime,'Backup existing tidak tersedia pada runtime ini.','warning'),
     restore:()=>document?.getElementById?.('restore-file')?.click?.()??notify(runtime,'Restore existing tidak tersedia pada runtime ini.','warning')
@@ -162,7 +171,7 @@ export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_
     const feature=sc03?.features?.get?.(key);if(feature?.open)return feature.open();return notify(runtime,'Fitur belum tersedia pada runtime ini.','warning');
   }
   function enhance(){
-    if(!document)return false;const route=currentRoute(sc03),role=currentRole(sc03);enhanceBottomNav(document,route);reconcileRoleNavigation(document,runtime,role);tagSemanticScreens(document);installConnectivityBanner(document,runtime);renderSettingsLanding(document,runtime,sc03,media,openFeature);enhanceProfileAvatars(document,runtime,media);enhanceImageRemove(document);enhanceScanner(document,sc03);enhanceTransferDraft(document);syncTransferDraft(document);addStaleShiftAction(document,shift);salesShiftUx?.enhance?.();productionSales?.sortProducts?.([]);manualSync?.enhance?.();notificationRefinement?.syncUnreadBadge?.();salesHistory?.enhance?.();finishedWarehouse?.enhance?.();decorateCriticalOperationalSurfaces(document);decorateStockReferenceSurface(document);reconcileTransactionSurfaces(document);document.documentElement&&(document.documentElement.dataset.sjRef01='true');return true;
+    if(!document)return false;const route=currentRoute(sc03),role=currentRole(sc03);enhanceBottomNav(document,route);reconcileRoleNavigation(document,runtime,role);tagSemanticScreens(document);installConnectivityBanner(document,runtime);renderSettingsLanding(document,runtime,sc03,media,openFeature);enhanceProfileAvatars(document,runtime,media);enhanceImageRemove(document);enhanceScanner(document,sc03);enhanceTransferDraft(document);syncTransferDraft(document);addStaleShiftAction(document,shift);salesShiftUx?.enhance?.();productionSales?.sortProducts?.([]);manualSync?.enhance?.();notificationRefinement?.syncUnreadBadge?.();salesHistory?.enhance?.();finishedWarehouse?.enhance?.();decorateCriticalOperationalSurfaces(document,runtime);decorateStockReferenceSurface(document);reconcileTransactionSurfaces(document);document.documentElement&&(document.documentElement.dataset.sjRef01='true');return true;
   }
   let enhanceScheduled=false;function scheduleEnhance(){if(enhanceScheduled)return;enhanceScheduled=true;const run=()=>{enhanceScheduled=false;try{enhance()}catch(_){}};if(typeof runtime?.requestAnimationFrame==='function')runtime.requestAnimationFrame(run);else setTimeout(run,0)}
   let observer=null;if(observe&&document&&typeof runtime?.MutationObserver==='function'){observer=new runtime.MutationObserver(scheduleEnhance);observer.observe(document.documentElement||document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']})}

@@ -35,6 +35,7 @@ test('finished-goods UI includes stock-tracked products even if recipe metadata 
 
 test('finished-goods UI makes safe flow explicit and does not contain direct RTDB mutation calls',()=>{
   const src=fs.readFileSync('src/ui/finished-goods-warehouse-refinement.js','utf8');
-  for(const text of ['Stok Barang Jadi','Gudang','Gerai','Penjualan','Stok Akhir','tetap di Gerai','Persetujuan Owner'])assert.ok(src.includes(text),text);
+  for(const text of ['Stok Barang Jadi','Gudang','Gerai','Penjualan','Stok Akhir','tetap di Gerai','Rekonsiliasi Owner'])assert.ok(src.includes(text),text);
+  assert.match(src,/Draft ini belum mengubah stok/i);
   assert.ok(!/\.(set|update|transaction|remove)\s*\(/.test(src));
 });

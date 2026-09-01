@@ -9,26 +9,37 @@ export function profilePhotoPath(uid,stamp=Date.now(),suffix=Math.random().toStr
   if(!safeUid) throw new Error('PROFILE_UID_REQUIRED');
   return `profiles/${safeUid}/avatar-${stamp}-${String(suffix).replace(/[^a-zA-Z0-9_-]/g,'')}.jpg`;
 }
-export function createMediaLifecycle({imageAuthority,auth,now=()=>Date.now(),random=()=>Math.random()}={}){
+export function createMediaLifecycle({imageAuthority,auth,avatarStore,now=()=>Date.now()}={}){
   const currentUser=()=>auth?.currentUser??null;
-  function authorityFor(target){return target==='product'?'existing-product-writer':target==='store'?'existing-store-settings-writer':target==='profile'?'existing-storage-plus-firebase-auth-profile':'unknown'}
+  function authorityFor(target){return target==='product'?'existing-product-writer':target==='store'?'existing-store-settings-writer':target==='profile'?'zero-cost-device-profile-avatar':'unknown'}
   function bindExisting(event,target,preview){
     if(typeof imageAuthority?.handleImage!=='function') throw new Error('EXISTING_IMAGE_AUTHORITY_UNAVAILABLE');
     return imageAuthority.handleImage(event,target,preview);
   }
+  function readAvatarState(){try{return avatarStore?.read?.()??null}catch(_){return null}}
+  function currentPhoto(){
+    const stored=readAvatarState();
+    if(stored?.mode==='initials') return null;
+    if(stored?.mode==='photo'&&String(stored?.dataUrl||'').startsWith('data:image/')) return stored.dataUrl;
+    return currentUser()?.photoURL??null;
+  }
+  async function compressProfilePhoto(file){
+    if(typeof imageAuthority?.compressFileForTarget==='function') return imageAuthority.compressFileForTarget(file,'profile-avatar');
+    if(typeof imageAuthority?.compressFile==='function') return imageAuthority.compressFile(file);
+    throw new Error('EXISTING_IMAGE_COMPRESSION_AUTHORITY_UNAVAILABLE');
+  }
   async function saveProfilePhoto(file){
     const valid=validateImageFile(file);if(!valid.ok) throw Object.assign(new Error(valid.reason),{code:valid.reason});
-    const user=currentUser();if(!user?.uid||typeof user.updateProfile!=='function') throw new Error('FIREBASE_AUTH_PROFILE_UNAVAILABLE');
-    if(typeof imageAuthority?.compressFile!=='function'||typeof imageAuthority?.uploadDataUrl!=='function') throw new Error('EXISTING_IMAGE_STORAGE_AUTHORITY_UNAVAILABLE');
-    const data=await imageAuthority.compressFile(file);
-    const suffix=Number(random()).toString(36).replace(/^0\./,'').slice(0,7)||'ref01';
-    const url=await imageAuthority.uploadDataUrl(data,profilePhotoPath(user.uid,now(),suffix));
-    await user.updateProfile({photoURL:url});
-    return url;
+    if(!avatarStore?.write) throw new Error('PROFILE_AVATAR_STORE_UNAVAILABLE');
+    const data=await compressProfilePhoto(file);
+    if(!String(data||'').startsWith('data:image/')) throw new Error('PROFILE_AVATAR_IMAGE_INVALID');
+    avatarStore.write({version:1,mode:'photo',dataUrl:data,updatedAt:now()});
+    return data;
   }
   async function removeProfilePhoto(){
-    const user=currentUser();if(!user||typeof user.updateProfile!=='function') throw new Error('FIREBASE_AUTH_PROFILE_UNAVAILABLE');
-    await user.updateProfile({photoURL:null});return null;
+    if(!avatarStore?.write) throw new Error('PROFILE_AVATAR_STORE_UNAVAILABLE');
+    avatarStore.write({version:1,mode:'initials',dataUrl:'',updatedAt:now()});
+    return null;
   }
-  return Object.freeze({validate:validateImageFile,authorityFor,bindExisting,saveProfilePhoto,removeProfilePhoto,currentPhoto:()=>currentUser()?.photoURL??null});
+  return Object.freeze({validate:validateImageFile,authorityFor,bindExisting,saveProfilePhoto,removeProfilePhoto,currentPhoto});
 }
