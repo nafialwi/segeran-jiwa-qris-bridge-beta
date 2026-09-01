@@ -51,3 +51,7 @@ No external npm dependencies are required.
 ## External source/preview binding
 
 The local SC-04 source checkpoint is prepared for GitHub. An actual repository URL/authorized GitHub connection is required before the remote can become source authority. Cloudflare static preview is intentionally downstream of that GitHub binding and must remain zero-cost; no Firebase backend migration or billing activation is part of this phase.
+
+
+## QA Batch 1 corrective v2.2
+See `PROMPT5_QA_BATCH1_V22_IMPLEMENTATION_REPORT.md` for the post-v2.1 real-device visual corrective work.

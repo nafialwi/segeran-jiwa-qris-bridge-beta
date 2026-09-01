@@ -1,4 +1,4 @@
-import { renderIcon } from './icons.js';
+import { renderFilledIcon } from './icons.js';
 
 export const LEGACY_ICON_MAP=Object.freeze({
   dashboard:'home',cart:'sale',package:'warehouse-box',chart:'reports',settings:'settings',bell:'bell',clock:'shift',wallet:'wallet',
@@ -9,7 +9,7 @@ export const LEGACY_ICON_MAP=Object.freeze({
 export function installRefinementIconAuthority(runtime=globalThis){
   if(runtime?.__SJ_REF01_ICON_AUTHORITY)return runtime.__SJ_REF01_ICON_AUTHORITY;
   const sjpro=runtime?.SJPro;
-  const api={installed:false,render(name){return renderIcon(LEGACY_ICON_MAP[name]||name,{size:20})}};
+  const api={installed:false,render(name){return renderFilledIcon(LEGACY_ICON_MAP[name]||name,{size:20})}};
   if(sjpro&&typeof sjpro.icon==='function'){
     sjpro.icon=(name)=>api.render(name);
     api.installed=true;

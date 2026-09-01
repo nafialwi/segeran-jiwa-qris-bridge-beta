@@ -24,3 +24,20 @@ export function createStaleShiftAdapter(runtime=globalThis){
   function openClosing(key){const parsed=select(key);if(typeof runtime?.SJShift?.openCloseModal!=='function') throw new Error('SHIFT_CLOSE_AUTHORITY_UNAVAILABLE');runtime.SJShift.openCloseModal();return parsed}
   return Object.freeze({select,openClosing});
 }
+
+
+function dateLabel(date,timeZone=DEFAULT_OPERATIONAL_TIME_ZONE){
+  const d=new Date(`${String(date||'')}T12:00:00`);if(Number.isNaN(d.getTime()))return String(date||'');
+  return new Intl.DateTimeFormat('id-ID',{timeZone,day:'2-digit',month:'short',year:'numeric'}).format(d).replace(/\./g,'');
+}
+export function shiftContextLabel(date,shiftLabel,timeZone=DEFAULT_OPERATIONAL_TIME_ZONE){
+  return `${dateLabel(date,timeZone)} · ${String(shiftLabel||'Shift').trim()}`;
+}
+export function historicalShiftRows(snapshot,{now=new Date(),timeZone=DEFAULT_OPERATIONAL_TIME_ZONE}={}){
+  const rows=[];
+  for(const [key,data] of Object.entries(snapshot||{})){
+    if(!parseShiftKey(key))continue;
+    try{rows.push(Object.freeze({...shiftPresentation({key,data:data||{},now,timeZone}),data:data||{}}))}catch(_){}
+  }
+  return rows.sort((a,b)=>b.key.localeCompare(a.key));
+}

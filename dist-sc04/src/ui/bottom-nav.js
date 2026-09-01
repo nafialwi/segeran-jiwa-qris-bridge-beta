@@ -1,4 +1,4 @@
-import { renderIcon } from './icons.js';
+import { renderIcon, renderFilledIcon } from './icons.js';
 
 export const PRIMARY_NAV=Object.freeze([
   Object.freeze({route:'home',label:'Beranda',icon:'home',legacyTab:'tab5',motionMs:200}),
@@ -13,11 +13,7 @@ export function navState(activeRoute='home'){
 }
 
 function activeIcon(name,label){
-  const base=renderIcon(name,{size:21,label,className:'sj-ref-icon sjr02-nav-icon-active'});
-  // REF_02 explicitly requires outline -> stronger/filled active state. Keep the
-  // same icon geometry authority and strengthen it without introducing a second
-  // icon family.
-  return base.replace('fill="none"','fill="currentColor"');
+  return renderFilledIcon(name,{size:21,label,className:'sj-ref-icon sjr02-nav-icon-active'});
 }
 
 function ensureCapsule(document,nav){
