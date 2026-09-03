@@ -12,7 +12,7 @@ function fakeDb(initial={}){
   const data=clone(initial),mutations=[];
   return {data,mutations,ref(path){return{
     once:async()=>({val:()=>clone(getAt(data,path))}),
-    transaction:async fn=>{mutations.push(['transaction',path]);const current=clone(getAt(data,path)),next=fn(current);if(next===undefined)return{committed:false,snapshot:{val:()=>clone(current)}};setAt(data,path,next);return{committed:true,snapshot:{val:()=>clone(next)}}}
+    transaction:async fn=>{mutations.push(['transaction',path,fn?.__sjS10AQuarantine===true]);const current=clone(getAt(data,path)),next=fn(current);if(next===undefined)return{committed:false,snapshot:{val:()=>clone(current)}};setAt(data,path,next);return{committed:true,snapshot:{val:()=>clone(next)}}}
   }}};
 }
 function snapshot(amount=5000){return {capturedAt:1000,amount,cartFingerprint:'CF',pricingFingerprint:'PF',items:[{id:'P1',n:'Es Teh',q:1,p:amount,note:'',cp:2000,c:'MINUMAN',discountType:'PERCENT',discountValue:0}],pricing:{version:'0.1.0',subtotal:amount,itemDiscountTotal:0,transactionDiscountTotal:0,discountTotal:0,netSubtotal:amount,serviceCharge:0,taxBase:amount,tax:0,total:amount,settings:{},cartDiscount:{type:'PERCENT',value:0},lines:[]}}}
@@ -51,6 +51,7 @@ test('S10A writer quarantines late signal idempotently and forbids matched/confi
   assert.equal(first.autoMatchBlocked,true);
   assert.equal(first.lateDetectedAt,3000);
   assert.deepEqual(first.lateCandidatePendingIds,['A']);
+  assert.equal(db.mutations.find(x=>x[1]===`${QRIS_ROOT}/signals/S1`)?.[2],true,'late quarantine updater must carry the in-memory S10A authority marker');
   const second=await writer.quarantineLateSignal({providerTransactionId:'S1',status:'LATE_AFTER_CANCEL',lateCandidatePendingIds:['A']});
   assert.deepEqual(second,first);
   const bad=initial();bad[QRIS_ROOT].signals.S1.status='MATCHED';bad[QRIS_ROOT].signals.S1.matchedTransactionId='A';

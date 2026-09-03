@@ -70,3 +70,36 @@ test('S10A.1 suppresses only the immediate legacy unmatched toast for a synchron
   context.showToast('Transaksi tunai berhasil.','success');
   assert.deepEqual(toasts,[{message:'Transaksi tunai berhasil.',type:'success'}]);
 });
+
+
+test('S10A.2 suppresses legacy match-state transaction for synchronously blocked signal before P3 monitored base transaction',async()=>{
+  const {context,db,txCalls}=harness({signals:{P1:{providerTransactionId:'P1',status:'UNMATCHED',amount:5000}}});
+  context.SJRC01S10A1QrisEventShield.markBlocked('P1',5000);
+  const result=await db.ref(`${QRIS_ROOT}/signals/P1`).transaction(cur=>({...cur,status:'UNMATCHED'}));
+  assert.equal(result.committed,false);
+  assert.deepEqual(txCalls,[]);
+});
+
+test('S10A.2 suppresses legacy match-state transaction for durable late-review signal after refresh',async()=>{
+  const {db,txCalls}=harness({signals:{P1:{providerTransactionId:'P1',status:'LATE_AFTER_CANCEL',resolutionState:'REVIEW_REQUIRED',autoMatchBlocked:true,amount:5000}}});
+  const result=await db.ref(`${QRIS_ROOT}/signals/P1`).transaction(cur=>({...cur,status:'UNMATCHED'}));
+  assert.equal(result.committed,false);
+  assert.deepEqual(txCalls,[]);
+});
+
+test('S10A.2 allows explicitly marked authoritative quarantine updater through blocked signal isolation',async()=>{
+  const {context,db,txCalls}=harness({signals:{P1:{providerTransactionId:'P1',status:'UNMATCHED',amount:5000}}});
+  context.SJRC01S10A1QrisEventShield.markBlocked('P1',5000);
+  const update=cur=>({...cur,status:'LATE_AFTER_CANCEL',resolutionState:'REVIEW_REQUIRED',autoMatchBlocked:true});
+  Object.defineProperty(update,'__sjS10AQuarantine',{value:true});
+  const result=await db.ref(`${QRIS_ROOT}/signals/P1`).transaction(update);
+  assert.equal(result.committed,true);
+  assert.deepEqual(txCalls,[`${QRIS_ROOT}/signals/P1`]);
+});
+
+test('S10A.2 leaves normal signal transaction path unchanged',async()=>{
+  const {db,txCalls}=harness({signals:{N1:{providerTransactionId:'N1',status:'UNMATCHED',amount:7000}}});
+  const result=await db.ref(`${QRIS_ROOT}/signals/N1`).transaction(cur=>({...cur,status:'UNMATCHED'}));
+  assert.equal(result.committed,true);
+  assert.deepEqual(txCalls,[`${QRIS_ROOT}/signals/N1`]);
+});

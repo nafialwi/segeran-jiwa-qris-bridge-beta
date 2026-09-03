@@ -49,7 +49,7 @@ export function createQrisDeferredSettlementWriter({db,serverTimestamp=defaultSe
     if(!isLateQuarantineStatus(lateStatus))throw new Error('QRIS_S10A_INVALID_LATE_STATUS');
     const candidateIds=ids(lateCandidatePendingIds);if(!candidateIds.length)throw new Error('QRIS_S10A_LATE_CANDIDATE_REQUIRED');
     let reason='QRIS_S10A_SIGNAL_CONFLICT';
-    const result=await db.ref(qrisPath('signals',providerId)).transaction(cur=>{
+    const quarantineUpdater=cur=>{
       if(!cur){reason='QRIS_S10A_SIGNAL_NOT_FOUND';return}
       if(cur.matchedTransactionId||['MATCHED','CONFIRMED','CASH_OUT_CLAIMED'].includes(String(cur.status||''))){reason='QRIS_S10A_SIGNAL_ALREADY_LINKED';return}
       if(isLateQuarantineStatus(cur.status)){
@@ -58,7 +58,9 @@ export function createQrisDeferredSettlementWriter({db,serverTimestamp=defaultSe
       }
       if(!eligibleSignal.has(String(cur.status||'DETECTED'))){reason='QRIS_S10A_SIGNAL_NOT_ELIGIBLE';return}
       return {...cur,status:lateStatus,resolutionState:'REVIEW_REQUIRED',autoMatchBlocked:true,lateDetectedAt:serverTimestamp(),lateCandidatePendingIds:candidateIds};
-    });
+    };
+    Object.defineProperty(quarantineUpdater,'__sjS10AQuarantine',{value:true,writable:false,configurable:false,enumerable:false});
+    const result=await db.ref(qrisPath('signals',providerId)).transaction(quarantineUpdater);
     if(!result?.committed)throw new Error(reason);
     return result.snapshot?.val?.()||null;
   }

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-03T17:36:24.530Z",
-  "phase": "RC01-S10A",
+  "generatedAt": "2026-09-03T17:36:24.642Z",
+  "phase": "RC01-S10A.2",
   "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
   "posRoot": "toko_segeranjiwa_v58",
   "qrisRoot": "segeranjiwa_qris_beta_v1",
@@ -11,10 +11,11 @@
     "src/data/writers/qris-deferred-settlement-writer.js"
   ],
   "contracts": {
-    "parkedSale": true,
-    "lateQuarantine": true,
-    "secondQrisGuard": true,
-    "immutableRecovery": true
+    "quarantinedSignalIsolation": true,
+    "authoritativeQuarantineBypass": true,
+    "normalSignalPathUnchanged": true,
+    "eventShieldReused": true,
+    "paymentAuthorityUnchanged": true
   },
   "violations": []
 }

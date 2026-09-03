@@ -4,7 +4,8 @@
 (function(){
 'use strict';
 if(window.SJRC01S10A1QrisEventShield)return;
-var VERSION='RC01-S10A.1';
+var VERSION='RC01-S10A.2';
+var PREVIOUS_VERSION='RC01-S10A.1';
 var QRIS_ROOT='segeranjiwa_qris_beta_v1';
 var EVENT_SUFFIX_RE=/^([A-Za-z0-9_-]{1,180})__(RECEIVED|UNMATCHED|AMBIGUOUS|MATCHED|CONFIRMED|DISMISSED)$/;
 var UNMATCHED_TOAST_RE=/^QRIS\s+Rp\s?([\d.]+)\s+masuk dan belum cocok dengan transaksi pending\.?$/i;
@@ -27,6 +28,16 @@ function providerFromEventRef(ref){
     var eventId=url.slice(idx+marker.length).split(/[?#]/)[0],match=eventId.match(EVENT_SUFFIX_RE);return match?match[1]:'';
   }catch(_){return''}
 }
+function providerFromSignalRef(ref){
+  try{
+    var url=decodeURIComponent(String(ref&&ref.toString?ref.toString():''));
+    var marker='/'+QRIS_ROOT+'/signals/',idx=url.indexOf(marker);if(idx<0)return'';
+    var providerId=url.slice(idx+marker.length).split(/[?#]/)[0];
+    if(providerId.indexOf('/')>=0||!/^[A-Za-z0-9_-]{1,180}$/.test(providerId))return'';
+    return providerId;
+  }catch(_){return''}
+}
+function isAuthoritativeQuarantineUpdater(updateFn){return !!(updateFn&&updateFn.__sjS10AQuarantine===true)}
 async function durableLate(providerId){
   if(isBlocked(providerId))return true;
   try{
@@ -44,13 +55,22 @@ function patchEventTransactions(){
     if(proto.transaction.__sjS10A1){transactionPatched=true;return true}
     baseTransaction=proto.transaction;
     function wrappedTransaction(){
-      var providerId=providerFromEventRef(this);if(!providerId)return baseTransaction.apply(this,arguments);
-      var ref=this,args=arguments;
-      return Promise.resolve().then(async function(){
-        if(eventChannel==='DENIED_DEGRADED'||await durableLate(providerId))return syntheticTransaction();
-        try{return await baseTransaction.apply(ref,args)}
-        catch(error){if(isPermissionDenied(error)){eventChannel='DENIED_DEGRADED';return syntheticTransaction()}throw error}
-      });
+      var eventProviderId=providerFromEventRef(this),signalProviderId=providerFromSignalRef(this),ref=this,args=arguments;
+      if(eventProviderId){
+        return Promise.resolve().then(async function(){
+          if(eventChannel==='DENIED_DEGRADED'||await durableLate(eventProviderId))return syntheticTransaction();
+          try{return await baseTransaction.apply(ref,args)}
+          catch(error){if(isPermissionDenied(error)){eventChannel='DENIED_DEGRADED';return syntheticTransaction()}throw error}
+        });
+      }
+      if(signalProviderId){
+        if(isAuthoritativeQuarantineUpdater(args[0]))return baseTransaction.apply(this,args);
+        return Promise.resolve().then(async function(){
+          if(await durableLate(signalProviderId))return syntheticTransaction();
+          return baseTransaction.apply(ref,args);
+        });
+      }
+      return baseTransaction.apply(this,arguments);
     }
     wrappedTransaction.__sjS10A1=true;wrappedTransaction.__sjS10A1Base=baseTransaction;proto.transaction=wrappedTransaction;transactionPatched=true;return true;
   }catch(_){return false}
@@ -69,7 +89,8 @@ function patchToast(){
     wrapped.__sjS10A1=true;wrapped.__sjS10A1Base=baseShowToast;showToast=wrapped;try{window.showToast=wrapped}catch(_){}toastPatched=true;return true;
   }catch(_){return false}
 }
+function signalIsolationState(providerId){return isBlocked(providerId)?'BLOCKED':'NORMAL'}
 function install(){patchEventTransactions();patchToast();return transactionPatched&&toastPatched}
-window.SJRC01S10A1QrisEventShield=Object.freeze({version:VERSION,markBlocked:markBlocked,isBlocked:isBlocked,eventChannelState:function(){return eventChannel},retryInstall:install});
+window.SJRC01S10A1QrisEventShield=Object.freeze({version:VERSION,previousVersion:PREVIOUS_VERSION,markBlocked:markBlocked,isBlocked:isBlocked,signalIsolationState:signalIsolationState,eventChannelState:function(){return eventChannel},retryInstall:install});
 install();
 })();

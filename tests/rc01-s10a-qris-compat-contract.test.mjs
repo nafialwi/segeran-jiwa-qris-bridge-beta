@@ -60,3 +60,13 @@ test('S10A.1 build contract injects early QRIS event-sync shield before frozen l
   const entry=build.indexOf('src/ref01-entry.js');
   assert.ok(ref>=0&&s10a>ref&&entry>s10a);
 });
+
+
+test('S10A.2 reuses the early shield for quarantined signal match-state isolation without a second build injection',()=>{
+  const shield=text('src/compat/rc01-qris-event-sync-shield.js');
+  const writer=text('src/data/writers/qris-deferred-settlement-writer.js');
+  const build=text('scripts/build-ref01.mjs');
+  for(const token of ['signals/','signalIsolationState','__sjS10AQuarantine']) assert.ok(shield.includes(token),`missing S10A.2 shield token ${token}`);
+  assert.ok(writer.includes('__sjS10AQuarantine'),'S10A.2 authoritative quarantine updater marker missing');
+  assert.equal((build.match(/rc01-qris-event-sync-shield\.js/g)||[]).length,1,'S10A.2 must reuse the existing early shield injection');
+});
