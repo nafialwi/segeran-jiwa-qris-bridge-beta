@@ -4,7 +4,8 @@ const REMOVE_RE=/\.remove\s*\(/g;
 export const APPROVED_MUTATION_FILES=Object.freeze([
   'src/data/writers/finance-writer.js',
   'src/data/writers/qris-cash-out-coordinator.js',
-  'src/data/writers/purchase-reconciliation-writer.js'
+  'src/data/writers/purchase-reconciliation-writer.js',
+  'src/data/writers/qris-deferred-settlement-writer.js'
 ]);
 const APPROVED=new Set(APPROVED_MUTATION_FILES);
 const add=(out,code,detail)=>out.push({code,detail});
@@ -62,6 +63,22 @@ function validatePurchaseReconciliationWriter(source,out){
   }
 }
 
+
+function validateQrisDeferredSettlementWriter(source,out){
+  const methods=methodsOf(source);
+  for(const method of methods)if(method!=='transaction')add(out,'QRIS_DEFERRED_SETTLEMENT_METHOD_CONTRACT',method);
+  const required=[
+    /qrisPath\(\s*['"]pending['"]\s*,\s*pid\s*\)/,
+    /qrisPath\(\s*['"]signals['"]\s*,\s*providerId\s*\)/
+  ];
+  for(const re of required)if(!re.test(source))add(out,'QRIS_DEFERRED_SETTLEMENT_PATH_CONTRACT',String(re));
+  for(const match of String(source).matchAll(/db\.ref\s*\(([^)]*)\)\s*\.\s*(transaction|set|update|remove)\s*\(/g)){
+    const expr=match[1].trim(),method=match[2];
+    if(!/^(?:qrisPath\(\s*['"]pending['"]|qrisPath\(\s*['"]signals['"])/.test(expr))add(out,'QRIS_DEFERRED_SETTLEMENT_PATH_CONTRACT',`${method}:${expr}`);
+  }
+  if(/posPath\s*\(/.test(source)||/toko_segeranjiwa_v58/.test(source)||/db\.ref\s*\(\s*['"`]/.test(source))add(out,'QRIS_DEFERRED_SETTLEMENT_PATH_CONTRACT','non-QRIS/direct literal path');
+}
+
 export function validateMutationSource(relativePath,source){
   const rel=String(relativePath||'').replaceAll('\\','/'),text=String(source||''),out=[];
   const methods=methodsOf(text);
@@ -72,5 +89,6 @@ export function validateMutationSource(relativePath,source){
   if(rel==='src/data/writers/finance-writer.js')validateFinanceWriter(text,out);
   if(rel==='src/data/writers/qris-cash-out-coordinator.js')validateQrisCoordinator(text,out);
   if(rel==='src/data/writers/purchase-reconciliation-writer.js')validatePurchaseReconciliationWriter(text,out);
+  if(rel==='src/data/writers/qris-deferred-settlement-writer.js')validateQrisDeferredSettlementWriter(text,out);
   return out;
 }

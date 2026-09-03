@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-03T11:22:55.747Z",
+  "generatedAt": "2026-09-03T15:08:08.487Z",
   "phase": "SC-03",
   "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
   "compatibilityDistSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
@@ -16,6 +16,7 @@
     "src/app/index.js",
     "src/app/p4-finance-bootstrap.js",
     "src/app/p5-packaging-bootstrap.js",
+    "src/app/qris-deferred-settlement-bootstrap.js",
     "src/app/ref01-bootstrap.js",
     "src/app/route-contract.js",
     "src/app/router.js",

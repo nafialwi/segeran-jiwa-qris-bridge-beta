@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-03T11:22:55.017Z",
+  "generatedAt": "2026-09-03T15:08:07.767Z",
   "phase": "SC-02",
   "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
   "distSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
@@ -25,6 +25,7 @@
     "src/data/writers/finance-writer.js",
     "src/data/writers/purchase-reconciliation-writer.js",
     "src/data/writers/qris-cash-out-coordinator.js",
+    "src/data/writers/qris-deferred-settlement-writer.js",
     "src/domain/costing-service.js",
     "src/domain/costing-v34-coverage.js",
     "src/domain/costing-v34-evidence.js",
@@ -39,6 +40,7 @@
     "src/domain/pricing-service.js",
     "src/domain/product-code-resolver.js",
     "src/domain/purchase-wac-service.js",
+    "src/domain/qris-deferred-settlement-policy.js",
     "src/domain/refund-void-service.js",
     "src/domain/report-product-analytics.js",
     "src/domain/report-service.js",
@@ -50,12 +52,14 @@
   "directMutationFiles": [
     "src/data/writers/finance-writer.js",
     "src/data/writers/purchase-reconciliation-writer.js",
-    "src/data/writers/qris-cash-out-coordinator.js"
+    "src/data/writers/qris-cash-out-coordinator.js",
+    "src/data/writers/qris-deferred-settlement-writer.js"
   ],
   "approvedMutationFiles": [
     "src/data/writers/finance-writer.js",
     "src/data/writers/qris-cash-out-coordinator.js",
-    "src/data/writers/purchase-reconciliation-writer.js"
+    "src/data/writers/purchase-reconciliation-writer.js",
+    "src/data/writers/qris-deferred-settlement-writer.js"
   ],
   "mutationPolicyViolations": [],
   "legacyTokenPresence": {

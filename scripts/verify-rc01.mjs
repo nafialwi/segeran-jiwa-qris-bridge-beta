@@ -10,8 +10,9 @@ const QRIS_ROOT='segeranjiwa_qris_beta_v1';
 const EXPECTED_WRITERS=[
   'src/data/writers/finance-writer.js',
   'src/data/writers/purchase-reconciliation-writer.js',
-  'src/data/writers/qris-cash-out-coordinator.js'
-];
+  'src/data/writers/qris-cash-out-coordinator.js',
+  'src/data/writers/qris-deferred-settlement-writer.js'
+].sort();
 const sha=p=>createHash('sha256').update(readFileSync(p)).digest('hex');
 const text=rel=>readFileSync(join(ROOT,rel),'utf8');
 const violations=[];
