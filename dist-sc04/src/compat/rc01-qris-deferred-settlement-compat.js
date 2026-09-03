@@ -172,7 +172,9 @@ function patchQrisSheet(){
   var cancel=page.querySelector('#sj-qris-commercial-cancel');if(cancel&&!cancel.__s10a){cancel.__s10a=true;cancel.onclick=async function(){var id=statusActiveId(),fresh=id&&runtime?await runtime.readPending(id):null;if(!fresh)return;var warning='Batalkan pending QRIS '+money(fresh.amount)+'?\n\nIni tidak membatalkan pembayaran yang mungkin sudah dikirim pelanggan. Signal terlambat akan masuk Perlu Tindakan.';if(confirm(warning))beta().cancelWaiting(true)}}
 }
 function queueLate(conflict){
-  if(!conflict||!conflict.providerTransactionId)return;lateQueue[conflict.providerTransactionId]=conflict;
+  if(!conflict||!conflict.providerTransactionId)return;
+  try{if(window.SJRC01S10A1QrisEventShield&&typeof SJRC01S10A1QrisEventShield.markBlocked==='function')SJRC01S10A1QrisEventShield.markBlocked(conflict.providerTransactionId,n(conflict.amount))}catch(_){}
+  lateQueue[conflict.providerTransactionId]=conflict;
   setTimeout(drainLateQueue,0);
 }
 async function drainLateQueue(){

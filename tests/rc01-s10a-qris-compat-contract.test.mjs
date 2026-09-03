@@ -48,3 +48,15 @@ test('S10A recovery contract restores immutable pricing only around existing con
   assert.ok(src.includes('paid snapshot price is authoritative'));
   assert.ok(src.includes('originalRevalidate.apply'));
 });
+
+
+test('S10A.1 build contract injects early QRIS event-sync shield before frozen legacy Beta while keeping existing end-of-body order',()=>{
+  const build=text('scripts/build-ref01.mjs');
+  assert.ok(build.includes('rc01-qris-event-sync-shield.js'));
+  assert.ok(build.includes('injectBeforeQrisBeta'));
+  assert.ok(build.includes('SJQrisSignalBeta'));
+  const ref=build.indexOf('ref01-production-sales-compat.js');
+  const s10a=build.indexOf('rc01-qris-deferred-settlement-compat.js');
+  const entry=build.indexOf('src/ref01-entry.js');
+  assert.ok(ref>=0&&s10a>ref&&entry>s10a);
+});

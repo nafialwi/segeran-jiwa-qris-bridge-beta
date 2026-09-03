@@ -29,7 +29,8 @@
     "verify:rc01": "npm run verify:ref01 && npm run build:rc01 && node scripts/verify-rc01.mjs",
     "build:rc01": "node scripts/build-rc01.mjs",
     "dev:rc01": "node scripts/dev-server.mjs dist-rc01",
-    "verify:rc01:s10a": "npm run verify:rc01 && node scripts/verify-rc01-s10a.mjs"
+    "verify:rc01:s10a": "npm run verify:rc01 && node scripts/verify-rc01-s10a.mjs",
+    "verify:rc01:s10a1": "npm run verify:rc01:s10a && node scripts/verify-rc01-s10a1.mjs"
   },
   "engines": {
     "node": ">=20"
