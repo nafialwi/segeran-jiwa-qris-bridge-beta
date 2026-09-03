@@ -16,7 +16,11 @@ function hasNormalCartLine(id){try{return(cart||[]).some(function(x){return Stri
 function normalLine(id){try{return(cart||[]).find(function(x){return String(x.id)===String(id)&&String(x.inventoryMode||'').toUpperCase()!=='RECIPE'})||null}catch(_){return null}}
 function syncCartPresentation(){
   try{if(typeof updateCartUI==='function')updateCartUI()}catch(_){}
-  try{var modal=document.getElementById('modal-cart');if(modal&&modal.style.display==='flex'&&window.SJFinalRefinementVC01A2&&typeof SJFinalRefinementVC01A2.openCart==='function')SJFinalRefinementVC01A2.openCart()}catch(_){}
+  try{
+    var modal=document.getElementById('modal-cart'),empty=!(cart||[]).length;
+    if(empty&&modal&&modal.style.display==='flex'){try{if(typeof clsModal==='function')clsModal('modal-cart');else modal.style.display='none'}catch(_){modal.style.display='none'}}
+    else if(!empty&&modal&&modal.style.display==='flex'&&window.SJFinalRefinementVC01A2&&typeof SJFinalRefinementVC01A2.openCart==='function')SJFinalRefinementVC01A2.openCart();
+  }catch(_){}
   try{if(document.getElementById('view1')&&document.getElementById('view1').classList.contains('active')&&window.SJRefinementSalesV100&&typeof SJRefinementSalesV100.renderSales==='function')setTimeout(function(){SJRefinementSalesV100.renderSales()},0)}catch(_){}
 }
 function addNormalProduct(id){

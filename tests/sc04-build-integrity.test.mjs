@@ -26,8 +26,11 @@ test('SC-04 build appends exactly one session runtime entry while immutable roll
 
 test('SC-04 package exposes build/dev/full verification while retaining all prior gates',()=>{
   const pkg=JSON.parse(readFileSync(join(ROOT,'package.json'),'utf8'));
-  const minor=Number(String(pkg.version).split('.')[1]);
-  assert.ok(Number.isFinite(minor)&&minor>=4,`SC-04 phase floor regressed: ${pkg.version}`);
+  const parts=String(pkg.version).split('.').map(Number);
+  const [major,minor,patch]=parts;
+  const atLeastSc04=Number.isFinite(major)&&Number.isFinite(minor)&&Number.isFinite(patch)&&
+    (major>2||(major===2&&(minor>4||(minor===4&&patch>=0))));
+  assert.ok(atLeastSc04,`SC-04 phase floor regressed: ${pkg.version}`);
   for(const name of ['verify:sc02','verify:sc03','build:sc03','build:sc04','dev:sc04','verify:sc04']) assert.equal(typeof pkg.scripts[name],'string',name);
   assert.ok(pkg.scripts['verify:sc04'].includes('verify-sc04.mjs'));
   assert.ok(pkg.scripts['verify:sc04'].includes('npm test'));

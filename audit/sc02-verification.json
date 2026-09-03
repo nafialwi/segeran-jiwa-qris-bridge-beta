@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-01T17:35:50.208Z",
+  "generatedAt": "2026-09-03T11:22:55.017Z",
   "phase": "SC-02",
   "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
   "distSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
@@ -14,6 +14,7 @@
     "src/data/qris-adapter.js",
     "src/data/repositories/_read.js",
     "src/data/repositories/debt-repository.js",
+    "src/data/repositories/finance-repository.js",
     "src/data/repositories/inventory-repository.js",
     "src/data/repositories/purchase-repository.js",
     "src/data/repositories/report-repository.js",
@@ -21,11 +22,20 @@
     "src/data/repositories/shift-repository.js",
     "src/data/repositories/transaction-repository.js",
     "src/data/repositories/user-repository.js",
+    "src/data/writers/finance-writer.js",
+    "src/data/writers/purchase-reconciliation-writer.js",
+    "src/data/writers/qris-cash-out-coordinator.js",
     "src/domain/costing-service.js",
+    "src/domain/costing-v34-coverage.js",
+    "src/domain/costing-v34-evidence.js",
     "src/domain/debt-service.js",
+    "src/domain/finance-v33-analytics.js",
+    "src/domain/finance-v33-service.js",
     "src/domain/finished-goods-stock.js",
     "src/domain/index.js",
     "src/domain/inventory-service.js",
+    "src/domain/inventory-v32-analytics.js",
+    "src/domain/packaging-cup-v34.js",
     "src/domain/pricing-service.js",
     "src/domain/product-code-resolver.js",
     "src/domain/purchase-wac-service.js",
@@ -37,7 +47,17 @@
     "src/domain/shift-service.js",
     "src/domain/transaction-service.js"
   ],
-  "directMutationFiles": [],
+  "directMutationFiles": [
+    "src/data/writers/finance-writer.js",
+    "src/data/writers/purchase-reconciliation-writer.js",
+    "src/data/writers/qris-cash-out-coordinator.js"
+  ],
+  "approvedMutationFiles": [
+    "src/data/writers/finance-writer.js",
+    "src/data/writers/qris-cash-out-coordinator.js",
+    "src/data/writers/purchase-reconciliation-writer.js"
+  ],
+  "mutationPolicyViolations": [],
   "legacyTokenPresence": {
     "processTransaction": true,
     "SJQrisSignalBeta": true,

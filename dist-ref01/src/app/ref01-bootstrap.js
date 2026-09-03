@@ -19,6 +19,13 @@ import { installLegacyShiftCloseRecovery } from '../ui/legacy-shift-close-recove
 import { installSalesHistoryRefinement } from '../ui/report-sales-history-refinement.js';
 import { installFinishedGoodsWarehouseRefinement } from '../ui/finished-goods-warehouse-refinement.js';
 import { installProductionSalesStability, installManualSyncControls } from '../ui/production-sales-stability.js';
+import { createPresentationLifecycle } from '../ui/presentation-authority.js';
+import { applyV31UxPolish } from '../ui/v31-ux-polish.js';
+import { installOwnerDashboardHybrid } from '../ui/owner-dashboard-hybrid.js';
+import { installInventoryWorkspaceV32 } from '../ui/inventory-workspace-v32.js';
+import { installFinanceWorkspaceV33 } from '../ui/finance-v33-workspace.js';
+import { installQrisCashOutUiV33 } from '../ui/qris-cash-out-ui.js';
+import { installP5PackagingV34 } from './p5-packaging-bootstrap.js';
 
 const OWNER='ref01-ui-runtime';
 
@@ -40,7 +47,158 @@ function installStyle(document){
   const link=document.createElement('link');link.rel='stylesheet';link.href='./src/ui/ref01.css';link.dataset.sjRef01Style='true';document.head.appendChild(link);return true;
 }
 function currentRoute(sc03){try{return sc03?.state?.snapshot?.().primary||'home'}catch(_){return'home'}}
+
+function localQaEffectiveSettings(runtime,role){
+  try{
+    if(runtime?.__SJ_LOCAL_QA_READ_ONLY!==true)return null;
+    const full=runtime?.__SJ_LOCAL_QA_UI_SETTINGS;if(!full||typeof full!=='object')return null;
+    const key=role==='cashier'||role==='transaksi'?'transaksi':'manajemen';
+    const scoped=full?.roleLayouts?.[key]||{};
+    return Object.assign({},scoped,{
+      managementColumns:full.managementColumns,
+      productMasterColumns:full.productMasterColumns,
+      longPressEdit:full.longPressEdit
+    });
+  }catch(_){return null}
+}
+
+export function reconcileLayoutPreferences(document,runtime,{role=null}={}){
+  const root=document?.documentElement;if(!root)return Object.freeze({});
+  let settings={};
+  try{
+    settings=localQaEffectiveSettings(runtime,role)
+      ||runtime?.SJMobileProfessionalP1?.effective?.()
+      ||runtime?.SJAppMintBaseV5963?.settings?.()
+      ||runtime?.SJMobileUX?.settings?.()
+      ||{};
+  }catch(_){settings={}}
+  const num=(value,allowed,fallback)=>allowed.includes(Number(value))?Number(value):fallback;
+  const normalized=Object.freeze({
+    productColumns:num(settings.productColumns,[2,3,4],3),
+    operationColumns:num(settings.operationColumns,[1,2,3],2),
+    reportColumns:num(settings.reportColumns,[1,2,3],2),
+    managementColumns:num(settings.managementColumns,[1,2,3],2),
+    productMasterColumns:num(settings.productMasterColumns,[2,3],2),
+    compactCards:settings.compactCards===true
+  });
+  root.dataset.sjProductCols=String(normalized.productColumns);
+  root.dataset.sjOperationCols=String(normalized.operationColumns);
+  root.dataset.sjReportCols=String(normalized.reportColumns);
+  root.dataset.sjManagementCols=String(normalized.managementColumns);
+  root.dataset.sjMasterCols=String(normalized.productMasterColumns);
+  root.dataset.sjCompact=normalized.compactCards?'1':'0';
+  return normalized;
+}
 function currentRole(sc03){try{return sc03?.guard?.currentRole?.()||null}catch(_){return null}}
+
+export function applyV31SurfaceGrammar(document){
+  const root=document?.documentElement;if(!root)return Object.freeze({applied:false,surfaces:0,headers:0});
+  root.dataset.sjV31='true';
+  document?.body?.classList?.add?.('sj-v31-runtime');
+  const surfaces=Array.from(document?.querySelectorAll?.('.sjvc01-sales,.sjvc02-page,.sjr01-settings-page,.sjv29-report-page,.sj-ref-report-semantic')||[]);
+  for(const node of surfaces)try{node.dataset.sjV31Surface='true'}catch(_){}
+  const headers=Array.from(document?.querySelectorAll?.('.sjvc01-saleshead,.sjvc02-head,.sjr01-settings-header,.sjv29-report-head')||[]);
+  for(const node of headers)try{node.classList?.add?.('sj-v31-page-head')}catch(_){}
+  return Object.freeze({applied:true,surfaces:surfaces.length,headers:headers.length});
+}
+
+const OPERATIONAL_AUTHORITY_MARK='__sjV30OperationalPresentationAuthority';
+export function installOperationalPresentationAuthority(runtime=globalThis,{reconcile=()=>{}}={}){
+  const target=runtime?.SJFinalRefinementVC02A;
+  const originalRender=target?.renderOperations;
+  const originals=[];
+  const timer=typeof runtime?.setTimeout==='function'?runtime.setTimeout.bind(runtime):setTimeout;
+  const post=reason=>timer(()=>{try{reconcile(reason)}catch(_){}},0);
+  let installed=false;
+  if(target&&typeof originalRender==='function'&&!originalRender?.[OPERATIONAL_AUTHORITY_MARK]){
+    function wrappedRender(...args){const out=originalRender.apply(this,args);reconcile('late-operational-render');return out}
+    try{Object.defineProperty(wrappedRender,OPERATIONAL_AUTHORITY_MARK,{value:true,enumerable:false})}catch(_){wrappedRender[OPERATIONAL_AUTHORITY_MARK]=true}
+    target.renderOperations=wrappedRender;originals.push(['renderOperations',target,originalRender,wrappedRender]);installed=true;
+  }else if(originalRender?.[OPERATIONAL_AUTHORITY_MARK])installed=true;
+  const wrapRuntime=(name,reason,when=()=>true)=>{
+    const original=runtime?.[name];if(typeof original!=='function'||original?.[OPERATIONAL_AUTHORITY_MARK])return false;
+    function wrapped(...args){const out=original.apply(this,args);if(when(args))post(reason);return out}
+    try{Object.defineProperty(wrapped,OPERATIONAL_AUTHORITY_MARK,{value:true,enumerable:false})}catch(_){wrapped[OPERATIONAL_AUTHORITY_MARK]=true}
+    runtime[name]=wrapped;originals.push([name,runtime,original,wrapped]);return true;
+  };
+  installed=wrapRuntime('showView','post-operational-route',args=>Number(args?.[0])===2)||installed;
+  installed=wrapRuntime('closeOpr','post-operational-close')||installed;
+  post('operational-install');
+  return Object.freeze({
+    installed,
+    stop(){for(const [name,host,original,wrapped] of originals.splice(0))try{if(host?.[name]===wrapped)host[name]=original}catch(_){}}
+  });
+}
+
+const LOCAL_QA_LAYOUT_MARK='__sjV30LocalQaLayoutAuthority';
+export function installLocalQaLayoutAuthority(runtime=globalThis,{role=()=>null,onChanged=()=>{}}={}){
+  if(runtime?.__SJ_LOCAL_QA_READ_ONLY!==true)return Object.freeze({installed:false,stop(){}});
+  const mobile=runtime?.SJMobileUX;const original=mobile?.saveSettings;
+  if(!mobile||typeof original!=='function')return Object.freeze({installed:false,stop(){}});
+  if(original?.[LOCAL_QA_LAYOUT_MARK])return Object.freeze({installed:true,stop(){}});
+  async function wrapped(...args){
+    try{const selected=mobile.collectSettings?.();if(selected&&typeof selected==='object')runtime.__SJ_LOCAL_QA_UI_SETTINGS=JSON.parse(JSON.stringify(selected))}catch(_){}
+    const out=await original.apply(this,args);
+    try{onChanged('local-qa-layout-save',role())}catch(_){}
+    return out;
+  }
+  try{Object.defineProperty(wrapped,LOCAL_QA_LAYOUT_MARK,{value:true,enumerable:false})}catch(_){wrapped[LOCAL_QA_LAYOUT_MARK]=true}
+  mobile.saveSettings=wrapped;
+  return Object.freeze({installed:true,stop(){try{if(mobile.saveSettings===wrapped)mobile.saveSettings=original}catch(_){}}});
+}
+
+
+const SALES_GRID_AUTHORITY_MARK='__sjV30SalesGridPresentationAuthority';
+export function applySalesGridLayout(document,columns){
+  const n=[2,3,4].includes(Number(columns))?Number(columns):3;
+  const gap=n===4?'5px':n===3?'8px':'9px';
+  const grids=Array.from(document?.querySelectorAll?.('.sjvc01-grid,.sjui03a-grid')||[]);
+  for(const grid of grids){
+    if(!grid?.style)continue;
+    grid.style.gridTemplateColumns=`repeat(${n},minmax(0,1fr))`;
+    grid.style.gap=gap;
+    if(grid.dataset)grid.dataset.sjEffectiveProductCols=String(n);
+  }
+  return grids.length;
+}
+export function installSalesGridPresentationAuthority(runtime=globalThis,{document=runtime?.document,getColumns=()=>Number(document?.documentElement?.dataset?.sjProductCols||3)}={}){
+  const target=runtime?.SJRefinementSalesV100;
+  const original=target?.renderSales;
+  if(!target||typeof original!=='function')return Object.freeze({installed:false,apply:()=>applySalesGridLayout(document,getColumns()),stop(){}});
+  if(original?.[SALES_GRID_AUTHORITY_MARK])return Object.freeze({installed:true,apply:()=>applySalesGridLayout(document,getColumns()),stop(){}});
+  function wrapped(...args){
+    const out=original.apply(this,args);
+    applySalesGridLayout(document,getColumns());
+    return out;
+  }
+  try{Object.defineProperty(wrapped,SALES_GRID_AUTHORITY_MARK,{value:true,enumerable:false})}catch(_){wrapped[SALES_GRID_AUTHORITY_MARK]=true}
+  target.renderSales=wrapped;
+  applySalesGridLayout(document,getColumns());
+  return Object.freeze({
+    installed:true,
+    apply:()=>applySalesGridLayout(document,getColumns()),
+    stop(){try{if(target.renderSales===wrapped)target.renderSales=original}catch(_){}}
+  });
+}
+
+const SETTINGS_AUTHORITY_MARK='__sjV30SettingsPresentationAuthority';
+export function installSettingsPresentationAuthority(runtime=globalThis,{reconcile=()=>{}}={}){
+  const target=runtime?.SJRefinementPass3V5960;
+  const original=target?.renderManagementMenu;
+  if(!target||typeof original!=='function')return Object.freeze({installed:false,stop(){}});
+  if(original?.[SETTINGS_AUTHORITY_MARK])return Object.freeze({installed:true,stop(){}});
+  function wrapped(...args){
+    const out=original.apply(this,args);
+    reconcile('late-management-render');
+    return out;
+  }
+  try{Object.defineProperty(wrapped,SETTINGS_AUTHORITY_MARK,{value:true,enumerable:false})}catch(_){wrapped[SETTINGS_AUTHORITY_MARK]=true}
+  target.renderManagementMenu=wrapped;
+  return Object.freeze({
+    installed:true,
+    stop(){try{if(target.renderManagementMenu===wrapped)target.renderManagementMenu=original}catch(_){}}
+  });
+}
 
 function accountName(runtime){
   try{const value=runtime?.SJAccountV5964?.displayName?.();if(value)return String(value)}catch(_){}
@@ -153,16 +311,22 @@ function addStaleShiftAction(document,shiftAdapter){
   const rows=Array.from(document?.querySelectorAll?.('[data-shift-key]')||[]);let changed=0;for(const row of rows){const key=row.dataset?.shiftKey;if(!key||row.querySelector?.('[data-ref01-stale]'))continue;const text=String(row.textContent||'').toLowerCase();if(!/aktif|open/.test(text))continue;let model=null;try{model=shiftPresentation({key,data:{shiftStatus:'ACTIVE'},now:new Date()})}catch(_){continue}if(!model.overdue)continue;const box=document.createElement('div');box.className='sj-ref-overdue';box.dataset.ref01Stale='true';box.innerHTML=`<b>Shift lama masih terbuka</b><span>${esc(key)} · Rekonsiliasi perlu diselesaikan Owner.</span><button type="button">Buka Closing</button>`;box.querySelector('button')?.addEventListener('click',event=>{event.stopPropagation?.();shiftAdapter.openClosing(key)});row.insertAdjacentElement?.('afterend',box);changed++}return changed;
 }
 
-export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_RUNTIME,sc04=runtime?.__SJ_SC04_RUNTIME,observe=false}={}){
+export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_RUNTIME,sc04=runtime?.__SJ_SC04_RUNTIME,p4=runtime?.__SJ_P4_FINANCE_RUNTIME,observe=false}={}){
   if(runtime?.__SJ_REF01_RUNTIME) return runtime.__SJ_REF01_RUNTIME;
   if(!sc03) throw new Error('REF01_SC03_RUNTIME_REQUIRED');if(!sc04) throw new Error('REF01_SC04_RUNTIME_REQUIRED');
   const document=runtime?.document??null;installStyle(document);installRefinementIconAuthority(runtime);installReportRefinement(runtime);const notificationRefinement=installNotificationRefinement(runtime);
-  const media=createMediaLifecycle({imageAuthority:getImageAuthority(runtime),auth:getAuth(runtime),avatarStore:profileAvatarStore(runtime,sc04)});const shift=createStaleShiftAdapter(runtime);const legacyShiftClose=installLegacyShiftCloseRecovery(runtime);const salesShiftUx=installSalesShiftUxRefinement(runtime,{shiftAdapter:shift});const productionSales=installProductionSalesStability(runtime);const manualSync=installManualSyncControls(runtime);const salesHistory=installSalesHistoryRefinement(runtime);const finishedWarehouse=installFinishedGoodsWarehouseRefinement(runtime);
+  const media=createMediaLifecycle({imageAuthority:getImageAuthority(runtime),auth:getAuth(runtime),avatarStore:profileAvatarStore(runtime,sc04)});const shift=createStaleShiftAdapter(runtime);const legacyShiftClose=installLegacyShiftCloseRecovery(runtime);const salesShiftUx=installSalesShiftUxRefinement(runtime,{shiftAdapter:shift});const ownerDashboardHybrid=installOwnerDashboardHybrid(runtime);const productionSales=installProductionSalesStability(runtime);const manualSync=installManualSyncControls(runtime);const salesHistory=installSalesHistoryRefinement(runtime);const finishedWarehouse=installFinishedGoodsWarehouseRefinement(runtime);let inventoryWorkspace=installInventoryWorkspaceV32(runtime);
+  const p5Packaging=installP5PackagingV34(runtime,{inventoryWorkspace});
+  const financeWorkspace=p4?installFinanceWorkspaceV33(runtime,{document,p4,readRole:()=>currentRole(sc03),notify:(message,kind)=>notify(runtime,message,kind)}):null;
+  const qrisCashOutUi=p4?installQrisCashOutUiV33(runtime,{document,p4,readRole:()=>currentRole(sc03),notify:(message,kind)=>notify(runtime,message,kind)}):null;
+  function ensureInventoryWorkspaceV32(){if(!inventoryWorkspace?.installed)inventoryWorkspace=installInventoryWorkspaceV32(runtime);return inventoryWorkspace}
+  let salesGridPresentation=null;
   const backupActions=Object.freeze({
     backup:()=>typeof runtime?.backupDatabase==='function'?runtime.backupDatabase():notify(runtime,'Backup existing tidak tersedia pada runtime ini.','warning'),
     restore:()=>document?.getElementById?.('restore-file')?.click?.()??notify(runtime,'Restore existing tidak tersedia pada runtime ini.','warning')
   });
   function openFeature(key){
+    if(key==='settings.materials-warehouse'){const v3=ensureInventoryWorkspaceV32();if(v3?.open)return v3.open?.('summary');return notify(runtime,'Bahan & Gudang V3 belum siap. Coba buka kembali sesaat lagi.','warning')}
     if(key==='ref01.appearance'){if(typeof runtime?.SJMobileUX?.openSettings==='function')return runtime.SJMobileUX.openSettings();return renderInfoPanel(document,{title:'Tampilan Aplikasi',message:'REF-01 mengikuti perangkat secara responsif. Kepadatan komponen menjaga target sentuh minimal 44px.',rows:[['Mobile','320 / 390 / 430'],['Tablet','≥ 768px'],['Desktop','≥ 1200px']]})}
     if(key==='ref01.security'){const s=sc04?.session?.snapshot?.()||{};return renderInfoPanel(document,{title:'Keamanan & Sinkronisasi',message:'Session Manager SC-04 adalah authority sesi.',rows:[['Session',s.envelope?'Tersimpan':'Tidak tersimpan'],['Koneksi',runtime?.navigator?.onLine===false?'Offline':'Online']]})}
     if(key==='ref01.backup') return renderInfoPanel(document,{title:'Backup & Restore',message:'Semua aksi memakai authority existing. Restore tetap membutuhkan guard Owner dan file backup terverifikasi.',rows:[['Backup','Unduh snapshot database existing'],['Restore','Pilih file JSON untuk restore existing']],actions:[{label:'Backup sekarang',run:backupActions.backup},{label:'Pilih file restore',run:backupActions.restore}]});
@@ -171,12 +335,25 @@ export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_
     const feature=sc03?.features?.get?.(key);if(feature?.open)return feature.open();return notify(runtime,'Fitur belum tersedia pada runtime ini.','warning');
   }
   function enhance(){
-    if(!document)return false;const route=currentRoute(sc03),role=currentRole(sc03);enhanceBottomNav(document,route);reconcileRoleNavigation(document,runtime,role);tagSemanticScreens(document);installConnectivityBanner(document,runtime);renderSettingsLanding(document,runtime,sc03,media,openFeature);enhanceProfileAvatars(document,runtime,media);enhanceImageRemove(document);enhanceScanner(document,sc03);enhanceTransferDraft(document);syncTransferDraft(document);addStaleShiftAction(document,shift);salesShiftUx?.enhance?.();productionSales?.sortProducts?.([]);manualSync?.enhance?.();notificationRefinement?.syncUnreadBadge?.();salesHistory?.enhance?.();finishedWarehouse?.enhance?.();decorateCriticalOperationalSurfaces(document,runtime);decorateStockReferenceSurface(document);reconcileTransactionSurfaces(document);document.documentElement&&(document.documentElement.dataset.sjRef01='true');return true;
+    if(!document)return false;ensureInventoryWorkspaceV32();const route=currentRoute(sc03),role=currentRole(sc03);const effectiveLayout=reconcileLayoutPreferences(document,runtime,{role});salesGridPresentation?.apply?.(effectiveLayout.productColumns);applyV31SurfaceGrammar(document);enhanceBottomNav(document,route);applyV31UxPolish(document,runtime,{role});reconcileRoleNavigation(document,runtime,role);tagSemanticScreens(document);installConnectivityBanner(document,runtime);renderSettingsLanding(document,runtime,sc03,media,openFeature);enhanceProfileAvatars(document,runtime,media);enhanceImageRemove(document);enhanceScanner(document,sc03);enhanceTransferDraft(document);syncTransferDraft(document);addStaleShiftAction(document,shift);salesShiftUx?.enhance?.();productionSales?.sortProducts?.([]);manualSync?.enhance?.();notificationRefinement?.reconcileAuthority?.();notificationRefinement?.syncUnreadBadge?.();salesHistory?.enhance?.();finishedWarehouse?.enhance?.();p5Packaging?.enhance?.();financeWorkspace?.enhance?.();qrisCashOutUi?.enhance?.();decorateCriticalOperationalSurfaces(document,runtime);decorateStockReferenceSurface(document);reconcileTransactionSurfaces(document);document.documentElement&&(document.documentElement.dataset.sjRef01='true');return true;
   }
   let enhanceScheduled=false;function scheduleEnhance(){if(enhanceScheduled)return;enhanceScheduled=true;const run=()=>{enhanceScheduled=false;try{enhance()}catch(_){}};if(typeof runtime?.requestAnimationFrame==='function')runtime.requestAnimationFrame(run);else setTimeout(run,0)}
-  let observer=null;if(observe&&document&&typeof runtime?.MutationObserver==='function'){observer=new runtime.MutationObserver(scheduleEnhance);observer.observe(document.documentElement||document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']})}
-  runtime?.addEventListener?.('online',scheduleEnhance);runtime?.addEventListener?.('offline',scheduleEnhance);
-  const api=Object.freeze({phase:'REF-01',owner:OWNER,sc03,sc04,media,shift,legacyShiftClose,salesShiftUx,productionSales,manualSync,salesHistory,finishedWarehouse,backupActions,openFeature,enhance,scheduleEnhance,stop:()=>observer?.disconnect?.(),snapshot:()=>Object.freeze({phase:'REF-01',owner:OWNER,familyCount:SCREEN_FAMILIES.length,families:SCREEN_FAMILIES,implicitCapabilities:IMPLICIT_CAPABILITIES,referenceCoverage:Object.keys(REFERENCE_MATRIX),route:currentRoute(sc03)})});
+  const presentationLifecycle=createPresentationLifecycle(runtime,{document,reconcile:()=>enhance()});presentationLifecycle.install();
+  salesGridPresentation=installSalesGridPresentationAuthority(runtime,{document,getColumns:()=>Number(document?.documentElement?.dataset?.sjProductCols||3)});
+  const localQaLayout=installLocalQaLayoutAuthority(runtime,{role:()=>currentRole(sc03),onChanged:()=>{reconcileLayoutPreferences(document,runtime,{role:currentRole(sc03)});presentationLifecycle.schedule('local-qa-layout-save')}});
+  const operationalPresentation=installOperationalPresentationAuthority(runtime,{reconcile:()=>enhance()});
+  const settingsPresentation=installSettingsPresentationAuthority(runtime,{reconcile:()=>{
+    try{
+      const container=document?.getElementById?.('mst-container-view');
+      const onLanding=!container||container.style?.display==='none';
+      if(currentRoute(sc03)==='settings'&&currentRole(sc03)==='owner'&&onLanding){
+        renderSettingsLanding(document,runtime,sc03,media,openFeature,{force:true});
+        enhanceProfileAvatars(document,runtime,media);
+      }
+    }catch(_){}
+  }});
+  const unsubscribeState=typeof sc03?.state?.subscribe==='function'?sc03.state.subscribe(snapshot=>presentationLifecycle.schedule(`state:${snapshot?.primary||'unknown'}`)):(()=>{});
+  const api=Object.freeze({phase:'REF-01',owner:OWNER,sc03,sc04,media,shift,legacyShiftClose,salesShiftUx,ownerDashboardHybrid,productionSales,manualSync,salesHistory,finishedWarehouse,inventoryWorkspace,p5Packaging,financeWorkspace,qrisCashOutUi,presentationLifecycle,salesGridPresentation,localQaLayout,operationalPresentation,settingsPresentation,backupActions,openFeature,enhance,scheduleEnhance,stop:()=>{unsubscribeState();localQaLayout.stop();salesGridPresentation?.stop?.();operationalPresentation.stop();settingsPresentation.stop();presentationLifecycle.stop()},snapshot:()=>Object.freeze({phase:'REF-01',owner:OWNER,familyCount:SCREEN_FAMILIES.length,families:SCREEN_FAMILIES,implicitCapabilities:IMPLICIT_CAPABILITIES,referenceCoverage:Object.keys(REFERENCE_MATRIX),route:currentRoute(sc03),presentation:presentationLifecycle.snapshot()})});
   Object.defineProperty(runtime,'__SJ_REF01_RUNTIME',{value:api,writable:false,configurable:false,enumerable:false});
   try{enhance()}catch(error){runtime?.console?.warn?.('[REF01] initial enhancement skipped',error)}
   return api;

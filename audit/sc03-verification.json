@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-01T17:35:51.108Z",
+  "generatedAt": "2026-09-03T11:22:55.747Z",
   "phase": "SC-03",
   "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
   "compatibilityDistSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
@@ -14,6 +14,8 @@
     "src/app/app-state.js",
     "src/app/bootstrap.js",
     "src/app/index.js",
+    "src/app/p4-finance-bootstrap.js",
+    "src/app/p5-packaging-bootstrap.js",
     "src/app/ref01-bootstrap.js",
     "src/app/route-contract.js",
     "src/app/router.js",
@@ -25,6 +27,7 @@
     "src/core/legacy-bridge.js",
     "src/core/legacy-command-registry.js",
     "src/core/role-guard.js",
+    "src/core/sensitive-authorizer.js",
     "src/core/session-manager.js",
     "src/modules/dashboard/cashier-dashboard.js",
     "src/modules/dashboard/owner-dashboard.js",

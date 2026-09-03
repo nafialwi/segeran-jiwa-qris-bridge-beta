@@ -1,0 +1,11 @@
+P4 Final Hardening source provenance
+Date: 2026-09-03
+Base package: SEGERAN_JIWA_POS_v3.3_P4_PHASE_C_RC5D_FUNDING_SEMANTICS_ANDROID_QA_2026-09-03.zip
+Base package SHA256: 93e39444bc4273d7097716df33e9a2f0c97664b75a225f236bd028dc11df5d27
+Final Hardening delta:
+- source/src/ui/bottom-nav.js
+- source/src/ui/finance-v33-workspace.js
+- source/src/ui/ref01.css
+- source/tests/v33-p4-final-hardening.test.mjs
+- source/docs/superpowers/plans/2026-09-03-p4-final-hardening.md
+No production deployment. No database/schema change. No new writer.

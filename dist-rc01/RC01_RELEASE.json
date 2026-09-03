@@ -1,0 +1,8 @@
+{
+  "release": "v3.4 RC-01",
+  "phase": "RC-01 Release Hardening + AppMint Gate",
+  "p5LockedSourceSha256": "485219ac9470cd629f080909e91c05700fe1eb5c6c8f393403644de3ef715530",
+  "legacyBaselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
+  "sourceAuthority": "P5 v3.4 FINAL LOCKED + RC01 release-only deltas",
+  "productionDeploymentAuthorized": false
+}

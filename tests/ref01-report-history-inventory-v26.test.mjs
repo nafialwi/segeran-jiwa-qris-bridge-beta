@@ -104,17 +104,17 @@ test('finished goods selector filter removes ingredient options and keeps produc
   assert.notEqual(options[1].removed,true);
 });
 
-test('finished goods hub delegates receive/transfer/outlet actions to existing authorities',()=>{
+test('finished goods hub delegates receive/transfer through V3 presentation and outlet to existing authority',()=>{
   const calls=[];
   const runtime={
-    SJInventoryV2:{open:tab=>calls.push(['inventory',tab])},
+    __SJ_V32_INVENTORY_WORKSPACE:{openAction:action=>{calls.push(['v3',action]);return true}},
     openOpr:id=>calls.push(['opr',id]),
     document:{getElementById(){return null},querySelector(){return null},querySelectorAll(){return []}}
   };
   const api=installFinishedGoodsWarehouseRefinement(runtime);
   assert.equal(api.installed,true);
   api.openReceive();api.openTransfer();api.openOutletStock();
-  assert.deepEqual(calls,[['inventory','purchase'],['inventory','transfer'],['opr',3]]);
+  assert.deepEqual(calls,[['v3','purchase'],['v3','transfer'],['opr',3]]);
 });
 
 test('recipe cancellation presentation relabels existing non-destructive toggle rather than adding delete behavior',()=>{

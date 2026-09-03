@@ -1,5 +1,5 @@
 import { SETTINGS_LAYOUT } from './refinement-visual-contract.js';
-import { renderIcon, renderFilledIcon } from './icons.js';
+import { renderIcon } from './icons.js';
 
 const esc=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const initials=(name)=>String(name||'Owner Utama').trim().split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase()||'OU';
@@ -7,7 +7,7 @@ const initials=(name)=>String(name||'Owner Utama').trim().split(/\s+/).map(x=>x[
 function itemMarkup(item,layout){
   const compact=layout.includes('compact');
   const cls=compact?'sjr01-setting-card sjr01-setting-card--compact':'sjr01-setting-card sjr01-setting-card--wide';
-  return `<button type="button" class="${cls}" data-ref01-feature="${esc(item.feature)}"><span class="sjr01-setting-icon">${renderFilledIcon(item.icon,{size:compact?26:30,label:item.label})}</span><span class="sjr01-setting-copy"><b>${esc(item.label)}</b><small>${esc(item.note)}</small></span>${compact?'':`<span class="sjr01-setting-chevron">${renderIcon('chevron',{size:17})}</span>`}</button>`;
+  return `<button type="button" class="${cls}" data-ref01-feature="${esc(item.feature)}"><span class="sjr01-setting-icon">${renderIcon(item.icon,{size:compact?26:30,label:item.label})}</span><span class="sjr01-setting-copy"><b>${esc(item.label)}</b><small>${esc(item.note)}</small></span>${compact?'':`<span class="sjr01-setting-chevron">${renderIcon('chevron',{size:17})}</span>`}</button>`;
 }
 
 function groupMarkup(name,group){

@@ -22,7 +22,9 @@ test('REF-01 runtime no longer uses global click-to-enhance lifecycle',()=>{
   const entry=read('src/ref01-entry.js');
   assert.ok(!/document\?\.addEventListener\?\.\('click',[\s\S]*?enhance\(\)/.test(src),'global click enhancer must be removed');
   assert.ok(src.includes('scheduleEnhance'),'runtime should expose deterministic scheduled enhancement');
-  assert.ok(entry.includes('observe:true'),'DOM render lifecycle must enable the observer fallback without tap-empty dependency');
+  assert.ok(src.includes('createPresentationLifecycle'),'runtime must install the canonical deterministic presentation lifecycle');
+  assert.ok(!src.includes('MutationObserver'),'REF-01 bootstrap must not use broad DOM observer fallback');
+  assert.ok(!entry.includes('observe:true'),'entry must not opt back into broad observer lifecycle');
   assert.ok(src.includes('notificationRefinement?.syncUnreadBadge?.()'),'late legacy badge overrides must be reconciled to unread-only semantics');
 });
 

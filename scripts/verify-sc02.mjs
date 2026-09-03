@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from '
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { POS_ROOT, QRIS_ROOT } from '../src/data/firebase-client.js';
+import { APPROVED_MUTATION_FILES, validateMutationSource } from './sc04-mutation-policy.mjs';
 
 const ROOT=dirname(dirname(fileURLToPath(import.meta.url)));
 const EXPECTED='877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f';
@@ -26,13 +27,17 @@ function addViolation(list,code,detail){list.push({code,detail});}
 
 const violations=[];
 const directMutationFiles=[];
+const mutationPolicyViolations=[];
 const scannedFiles=[...walk(join(ROOT,'src','data')),...walk(join(ROOT,'src','domain'))];
 for(const file of scannedFiles){
-  const text=readFileSync(file,'utf8');
-  if(mutationRe.test(text)) directMutationFiles.push(relative(ROOT,file));
-  if(/firebase\.initializeApp\s*\(/.test(text)) addViolation(violations,'EXTRACTED_FIREBASE_INIT',relative(ROOT,file));
+  const text=readFileSync(file,'utf8'),rel=relative(ROOT,file).replaceAll('\\','/');
+  if(mutationRe.test(text)) directMutationFiles.push(rel);
+  for(const item of validateMutationSource(rel,text)) mutationPolicyViolations.push(item);
+  if(/firebase\.initializeApp\s*\(/.test(text)) addViolation(violations,'EXTRACTED_FIREBASE_INIT',rel);
 }
-if(directMutationFiles.length) addViolation(violations,'DIRECT_MUTATION_IN_EXTRACTED_BOUNDARY',directMutationFiles.join(', '));
+for(const item of mutationPolicyViolations) addViolation(violations,item.code,item.detail);
+const unexpectedMutationFiles=directMutationFiles.filter(file=>!APPROVED_MUTATION_FILES.includes(file));
+if(unexpectedMutationFiles.length) addViolation(violations,'DIRECT_MUTATION_IN_EXTRACTED_BOUNDARY',unexpectedMutationFiles.join(', '));
 
 const baselineHash=existsSync(baseline)?sha(baseline):null;
 const distHash=existsSync(dist)?sha(dist):null;
@@ -80,6 +85,8 @@ const result={
   qrisRoot:QRIS_ROOT,
   scannedFiles:scannedFiles.map(f=>relative(ROOT,f)),
   directMutationFiles,
+  approvedMutationFiles:APPROVED_MUTATION_FILES,
+  mutationPolicyViolations,
   legacyTokenPresence,
   qrisDelegationChecks,
   violations
@@ -90,4 +97,4 @@ if(violations.length){
   for(const v of violations) console.error(`- ${v.code}: ${v.detail}`);
   process.exit(1);
 }
-console.log(`SC-02 verification PASS: ${scannedFiles.length} extracted JS files scanned; 0 direct Firebase mutations; roots and compatibility hash fixed.`);
+console.log(`SC-02 verification PASS: ${scannedFiles.length} extracted JS files scanned; mutations restricted to ${APPROVED_MUTATION_FILES.length} P4 dedicated writers; roots and compatibility hash fixed.`);

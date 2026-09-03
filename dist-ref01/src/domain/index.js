@@ -13,3 +13,6 @@ export { createDebtService, remainingDebt, outstandingFor } from './debt-service
 export { createShiftService } from './shift-service.js';
 export { createRefundVoidService } from './refund-void-service.js';
 export { createReportService } from './report-service.js';
+
+export { createFinanceV33Service } from './finance-v33-service.js';
+export { buildFinanceReadModel, buildCashFlowRows, classifyExpense, qrisCashOutSemantics } from './finance-v33-analytics.js';

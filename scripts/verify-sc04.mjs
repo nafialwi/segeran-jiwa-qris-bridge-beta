@@ -3,6 +3,7 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from '
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { POS_ROOT, QRIS_ROOT } from '../src/data/firebase-client.js';
+import { APPROVED_MUTATION_FILES, validateMutationSource } from './sc04-mutation-policy.mjs';
 
 const ROOT=dirname(dirname(fileURLToPath(import.meta.url)));
 const EXPECTED='877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f';
@@ -31,14 +32,19 @@ if(!candidateText.includes('src/sc04-entry.js')) add(violations,'SC04_ENTRY_MISS
 const sourceFiles=walk(join(ROOT,'src'));
 const mutation=/\.(?:set|update|transaction|remove)\s*\(/;
 const directMutationFiles=[];
+const mutationPolicyViolations=[];
 const storageFiles=[];
 for(const file of sourceFiles){
   const text=readFileSync(file,'utf8');
-  if(mutation.test(text)) directMutationFiles.push(relative(ROOT,file));
-  if(/firebase\.initializeApp\s*\(/.test(text)) add(violations,'SECOND_FIREBASE_INIT',relative(ROOT,file));
-  if(/localStorage/i.test(text)) storageFiles.push(relative(ROOT,file));
+  const rel=relative(ROOT,file).replaceAll('\\','/');
+  if(mutation.test(text)) directMutationFiles.push(rel);
+  for(const item of validateMutationSource(rel,text)) mutationPolicyViolations.push(item);
+  if(/firebase\.initializeApp\s*\(/.test(text)) add(violations,'SECOND_FIREBASE_INIT',rel);
+  if(/localStorage/i.test(text)) storageFiles.push(rel);
 }
-if(directMutationFiles.length) add(violations,'DIRECT_RTDB_MUTATION_IN_MODULAR_SOURCE',directMutationFiles.join(', '));
+for(const item of mutationPolicyViolations) add(violations,item.code,`${item.detail}`);
+const unexpectedMutationFiles=directMutationFiles.filter(file=>!APPROVED_MUTATION_FILES.includes(file));
+if(unexpectedMutationFiles.length) add(violations,'DIRECT_RTDB_MUTATION_OUTSIDE_ALLOWLIST',unexpectedMutationFiles.join(', '));
 const singleStorageBoundary=JSON.stringify(storageFiles)===JSON.stringify(['src/data/local-store.js']);
 if(!singleStorageBoundary) add(violations,'SESSION_STORAGE_BOUNDARY_DRIFT',storageFiles.join(', '));
 
@@ -78,7 +84,7 @@ const result={
   generatedAt:new Date().toISOString(),phase:'SC-04',baselineSha256,compatibilityDistSha256,candidateSha256,
   expectedBaselineSha256:EXPECTED,posRoot:POS_ROOT,qrisRoot:QRIS_ROOT,entryCount,
   session:{singleStorageBoundary,storageFiles,firebaseLocalPersistence,noStoredCredentials,noShiftCreation,liveRevocationGuard,offlineFailClosed},
-  authWrapperOwnership,directMutationFiles,violations
+  authWrapperOwnership,directMutationFiles,approvedMutationFiles:APPROVED_MUTATION_FILES,mutationPolicyViolations,violations
 };
 writeFileSync(join(ROOT,'audit','sc04-verification.json'),JSON.stringify(result,null,2)+'\n');
 if(violations.length){
@@ -86,4 +92,4 @@ if(violations.length){
   for(const item of violations) console.error(`- ${item.code}: ${item.detail}`);
   process.exit(1);
 }
-console.log(`SC-04 verification PASS: session storage isolated; Firebase Auth LOCAL persistence present; auth wrappers 3/3 single-owner; 0 modular RTDB mutations; roots/hash fixed.`);
+console.log(`SC-04 verification PASS: session/auth guards intact; modular RTDB mutations exact-allowlisted to ${APPROVED_MUTATION_FILES.length} dedicated writers; destructive remove forbidden; roots/hash fixed.`);

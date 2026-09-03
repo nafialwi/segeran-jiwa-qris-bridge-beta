@@ -55,14 +55,14 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import { chartBucketsForScope } from '../src/domain/report-v28-analytics.js';
 
-test('v2.9 report chart adapts buckets to Shift/Day/Week/Month scope using real scoped transactions',()=>{
+test('v3.2 report chart adapts buckets to Shift/Day/Week/Month scope using real scoped transactions',()=>{
   const at=(day,hour)=>new Date(2026,8,day,hour,0,0,0).getTime();
   const tx=(id,shift,day,hour,total=10000)=>({id,_shift:`2026-09-${String(day).padStart(2,'0')}-${shift}`,ts:at(day,hour),status:'PAID',pricing:{netSubtotal:total,total},items:[{id:'P',name:'P',qty:1,price:total}]});
   const rows=[tx('A','S1',1,8),tx('B','S1',1,9),tx('C','S3',1,20),tx('D','S3',2,21)];
   assert.deepEqual(chartBucketsForScope(rows,{scope:'shift'}).map(x=>x.key),['08','09','20','21']);
   assert.deepEqual(chartBucketsForScope(rows.filter(x=>x._shift.startsWith('2026-09-01')),{scope:'day'}).map(x=>x.key),['S1','S3']);
   assert.deepEqual(chartBucketsForScope(rows,{scope:'week'}).map(x=>x.key),['2026-09-01','2026-09-02']);
-  assert.deepEqual(chartBucketsForScope(rows,{scope:'month'}).map(x=>x.key),['2026-09-01','2026-09-02']);
+  assert.deepEqual(chartBucketsForScope(rows,{scope:'month'}).map(x=>x.key),['2026-09-W1'],'month overview uses compact weekly buckets on mobile');
   const s3=chartBucketsForScope(rows.filter(x=>x._shift.endsWith('-S3')),{scope:'day',shift:'S3'});
   assert.deepEqual(s3.map(x=>x.key),['20','21'],'a selected day-shift uses hourly detail rather than an unhelpful single shift bar');
 });

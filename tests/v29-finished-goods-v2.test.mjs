@@ -34,29 +34,26 @@ test('v2.9 finished-goods hub has Gudang Gerai Pergerakan tabs search and clearl
   assert.doesNotMatch(html,/<select[^>]*data-v29-fg-product/i);
 });
 
-test('v2.9 owner product actions delegate to existing Inventory V2 and preselect product/location',()=>{
+test('v2.9 owner product actions delegate through V3 action surface with product/location context',()=>{
   const calls=[];
-  const fields={
-    'sjinv-opname-item':{value:'',dispatchEvent(){calls.push(['change','opname-item',this.value])}},
-    'sjinv-opname-loc':{value:'outlet',dispatchEvent(){calls.push(['change','opname-loc',this.value])}},
-    'sjinv-transfer-item':{value:'',dispatchEvent(){calls.push(['change','transfer-item',this.value])}},
-    'sjinv-purchase-item':{value:'',dispatchEvent(){calls.push(['change','purchase-item',this.value])}}
-  };
   const runtime={
     __SJ_SC03_RUNTIME:{guard:{currentRole:()=> 'owner'}},
-    SJInventoryV2:{open:tab=>calls.push(['open',tab])},
+    __SJ_V32_INVENTORY_WORKSPACE:{
+      openAction:(action,itemType,id,options={})=>{calls.push(['v3',action,itemType,id,options.location||'']);return true},
+      open:tab=>{calls.push(['v3-open',tab]);return true}
+    },
     setTimeout:fn=>fn(),
-    document:{getElementById:id=>fields[id]||null,querySelector(){return null},querySelectorAll(){return []}}
+    document:{getElementById(){return null},querySelector(){return null},querySelectorAll(){return []}}
   };
   const api=installFinishedGoodsWarehouseRefinement(runtime);
   api.openWarehouseOpname('P1');
-  assert.deepEqual(calls.slice(0,3),[['open','opname'],['change','opname-item','P:P1'],['change','opname-loc','warehouse']]);
+  assert.deepEqual(calls,[['v3','opname','product','P1','warehouse']]);
   calls.length=0;
   api.openTransferForProduct('P2');
-  assert.deepEqual(calls.slice(0,2),[['open','transfer'],['change','transfer-item','P:P2']]);
+  assert.deepEqual(calls,[['v3','transfer','product','P2','']]);
   calls.length=0;
   api.openAdvancedPurchase('P1');
-  assert.deepEqual(calls.slice(0,2),[['open','purchase'],['change','purchase-item','P:P1']]);
+  assert.deepEqual(calls,[['v3','purchase','product','P1','']]);
 });
 
 test('v2.9 exception draft copy is truthful: no persistent approval queue and no automatic mutation',()=>{

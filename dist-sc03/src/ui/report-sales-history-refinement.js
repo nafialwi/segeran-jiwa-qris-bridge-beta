@@ -117,9 +117,9 @@ export function installSalesHistoryRefinement(runtime=globalThis){
     show(renderSalesTransactionDetail(tx,{core:report.Core,role:roleOf(runtime)}));
     root()?.querySelector?.('[data-sales-action="history"]')?.addEventListener?.('click',openHistory);return true;
   }
-  if(document?.addEventListener&&!document.__sjV27SalesHistoryDelegated){
-    document.__sjV27SalesHistoryDelegated=true;
-    document.addEventListener('click',event=>{const trigger=event.target?.closest?.('[data-sj-sales-history-open]');if(!trigger)return;event.preventDefault?.();openHistory()});
+  if(typeof root()?.addEventListener==='function'&&root()?.dataset?.sjV30SalesHistoryDelegated!=='true'){
+    const host=root();host.dataset.sjV30SalesHistoryDelegated='true';
+    root()?.addEventListener?.('click',event=>{const trigger=event.target?.closest?.('[data-sj-sales-history-open]');if(!trigger)return;event.preventDefault?.();openHistory()});
   }
   function enhance(){return !!root()?.querySelector?.('[data-sj-sales-history-open]')}
   const api=Object.freeze({installed:true,openHistory,openTransaction,refreshHistoryResults,enhance,state});

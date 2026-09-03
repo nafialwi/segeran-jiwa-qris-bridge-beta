@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-09-03T11:22:57.734Z",
+  "phase": "RC-01",
+  "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
+  "posRoot": "toko_segeranjiwa_v58",
+  "qrisRoot": "segeranjiwa_qris_beta_v1",
+  "mutationAllowlist": [
+    "src/data/writers/finance-writer.js",
+    "src/data/writers/purchase-reconciliation-writer.js",
+    "src/data/writers/qris-cash-out-coordinator.js"
+  ],
+  "contracts": {
+    "reconnect": true,
+    "androidBack": true,
+    "barcodeCamera": true,
+    "qris": true,
+    "printer": true,
+    "share": true,
+    "pdfPrint": true,
+    "notificationDeepLink": true,
+    "closingReport": true
+  },
+  "violations": []
+}

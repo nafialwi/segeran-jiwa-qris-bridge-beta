@@ -44,14 +44,34 @@ export function chartBuckets(transactions=[]){
 
 const SHIFT_LABELS=Object.freeze({S1:'Pagi',S2:'Siang',S3:'Malam'});
 function hourKey(ts){const d=new Date(ts||0);return Number.isFinite(d.getTime())?String(d.getHours()).padStart(2,'0'):''}
-function scopedBucketIdentity(tx,{scope='day',shift='ALL'}={}){
-  scope=String(scope||'day').toLowerCase();shift=String(shift||'ALL').toUpperCase();const ts=timestampOf(tx);
-  if(scope==='shift'||(scope==='day'&&shift!=='ALL')){const key=hourKey(ts);return key?{key,label:`${key}.00`}:null}
-  if(scope==='day'){
-    const key=reportShiftCode(tx);return key?{key,label:SHIFT_LABELS[key]?`Shift ${SHIFT_LABELS[key]}`:key}:null;
+function parseYmd(value){const m=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return null;const d=new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),12);return Number.isFinite(d.getTime())?d:null}
+function daysBetween(from,to){const a=parseYmd(from),b=parseYmd(to);return a&&b?Math.floor((b-a)/86400000)+1:0}
+function weekOfMonth(date){const d=parseYmd(date);return d?Math.ceil(d.getDate()/7):0}
+function weekStart(date){const d=parseYmd(date);if(!d)return null;const offset=(d.getDay()+6)%7;d.setDate(d.getDate()-offset);return d}
+function localYmd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function shortDate(date){const d=parseYmd(date);return d?d.toLocaleDateString('id-ID',{day:'2-digit',month:'short'}):String(date||'')}
+
+export function chartBucketModeForScope(options={}){
+  const scope=String(options.scope||'day').toLowerCase(),shift=String(options.shift||'ALL').toUpperCase(),week=String(options.week||'ALL').toUpperCase();
+  if(scope==='shift'||(scope==='day'&&shift!=='ALL'))return'hour';
+  if(scope==='day')return'shift';
+  if(scope==='week')return'day';
+  if(scope==='month')return week!=='ALL'?'day':'week';
+  if(scope==='custom')return daysBetween(options.from,options.to)>31?'week':'day';
+  return'day';
+}
+function scopedBucketIdentity(tx,options={}){
+  const mode=chartBucketModeForScope(options),ts=timestampOf(tx),date=reportDateKey(tx)||(ts?dayKey(ts):'');
+  if(mode==='hour'){const key=hourKey(ts);return key?{key,label:`${key}.00`}:null}
+  if(mode==='shift'){const key=reportShiftCode(tx);return key?{key,label:SHIFT_LABELS[key]?`Shift ${SHIFT_LABELS[key]}`:key}:null}
+  if(!date)return null;
+  if(mode==='week'){
+    if(String(options.scope||'').toLowerCase()==='month'){
+      const n=weekOfMonth(date);return n?{key:`${date.slice(0,7)}-W${n}`,label:`Minggu ${n}`}:null;
+    }
+    const start=weekStart(date);if(!start)return null;const key=localYmd(start);return{key,label:`Mulai ${shortDate(key)}`};
   }
-  const key=reportDateKey(tx)||(ts?dayKey(ts):'');if(!key)return null;
-  const d=new Date(`${key}T12:00:00`);return{key,label:Number.isFinite(d.getTime())?d.toLocaleDateString('id-ID',{day:'2-digit',month:'short'}):key};
+  return{key:date,label:shortDate(date)};
 }
 export function chartBucketsForScope(transactions=[],options={}){
   const rows=Object.create(null);
@@ -62,4 +82,3 @@ export function chartBucketsForScope(transactions=[],options={}){
   }
   return Object.freeze(Object.values(rows).sort((a,b)=>a.key.localeCompare(b.key)).map(row=>Object.freeze({...row,revenue:Math.round(row.revenue)})));
 }
-

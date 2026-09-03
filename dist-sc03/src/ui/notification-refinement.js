@@ -74,26 +74,36 @@ export function installNotificationRefinement(runtime=globalThis,{decorate=decor
   if(runtime?.__SJ_REF01_NOTIFICATION_REFINEMENT) return runtime.__SJ_REF01_NOTIFICATION_REFINEMENT;
   const target=runtime?.SJX;
   if(!target||typeof target.renderNotifications!=='function'){
-    const api=Object.freeze({installed:false});
+    const api=Object.freeze({installed:false,reconcileAuthority:()=>false});
     try{Object.defineProperty(runtime,'__SJ_REF01_NOTIFICATION_REFINEMENT',{value:api,configurable:true})}catch(_){}
     return api;
   }
-  const original=target.renderNotifications.bind(target);
   const syncUnreadBadge=()=>runtime?.SJRef01ProductionSalesCompat?.syncUnreadBadge?.();
-  target.renderNotifications=function(...args){
-    const result=original(...args);
-    try{decorate(runtime?.document)}catch(_){}
-    try{syncUnreadBadge()}catch(_){}
-    return result;
-  };
-  const originalBell=typeof target.updateBell==='function'?target.updateBell.bind(target):null;
-  target.updateBell=function(){
-    const count=syncUnreadBadge();
-    if(Number.isFinite(Number(count))) return Number(count);
-    return originalBell?.();
-  };
-  try{syncUnreadBadge()}catch(_){}
-  const api=Object.freeze({installed:true,decorate:()=>decorate(runtime?.document),syncUnreadBadge});
+  let managedRender=null,managedBell=null,renderDelegate=null,bellFallback=null;
+  function bindRender(){
+    if(target.renderNotifications===managedRender)return false;
+    renderDelegate=typeof target.renderNotifications==='function'?target.renderNotifications.bind(target):null;
+    managedRender=function(...args){
+      const result=renderDelegate?.(...args);
+      try{decorate(runtime?.document)}catch(_){}
+      try{syncUnreadBadge()}catch(_){}
+      return result;
+    };
+    target.renderNotifications=managedRender;return true;
+  }
+  function bindBell(){
+    if(target.updateBell===managedBell)return false;
+    bellFallback=typeof target.updateBell==='function'?target.updateBell.bind(target):null;
+    managedBell=function(){
+      const count=syncUnreadBadge();
+      if(Number.isFinite(Number(count)))return Number(count);
+      return bellFallback?.();
+    };
+    target.updateBell=managedBell;return true;
+  }
+  function reconcileAuthority(){bindRender();bindBell();try{syncUnreadBadge()}catch(_){}return true}
+  reconcileAuthority();
+  const api=Object.freeze({installed:true,decorate:()=>decorate(runtime?.document),syncUnreadBadge,reconcileAuthority});
   try{Object.defineProperty(runtime,'__SJ_REF01_NOTIFICATION_REFINEMENT',{value:api,writable:false,configurable:false})}catch(_){runtime.__SJ_REF01_NOTIFICATION_REFINEMENT=api}
   return api;
 }

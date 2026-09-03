@@ -1,9 +1,9 @@
-import { renderFilledIcon } from './icons.js';
+import { renderIcon } from './icons.js';
 
 function replaceIcon(node,name,label){
   if(!node)return false;
   if(node.dataset?.ref01SemanticIcon===name)return false;
-  node.innerHTML=renderFilledIcon(name,{size:18,label});
+  node.innerHTML=renderIcon(name,{size:18,label});
   if(node.dataset)node.dataset.ref01SemanticIcon=name;
   return true;
 }

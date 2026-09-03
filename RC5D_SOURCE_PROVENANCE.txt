@@ -1,0 +1,16 @@
+RC5-D source provenance
+=======================
+Date: 2026-09-03
+Baseline Android-tested package: SEGERAN_JIWA_POS_v3.3_P4_PHASE_C_RC5C_HISTORICAL_RECONCILIATION_ANDROID_QA_2026-09-03.zip
+Baseline SHA256: dfe83c8f4cec4dd0f4573bd65df73036790f276e0d285d22cb69b45557f0b15d
+
+RC5-D is baseline RC5-C plus the following controlled source delta:
+- src/domain/finance-v33-analytics.js
+- src/domain/finance-v33-service.js
+- src/ui/finance-v33-workspace.js
+- tests/v33-p4-rc5b-purchase-reconciliation.test.mjs (fund-source fixtures made explicit for original CASH semantics)
+- tests/v33-p4-rc5d-funding-semantics.test.mjs (new)
+- docs/superpowers/plans/2026-09-03-p4-rc5d-funding-semantics-controlled-resolution.md (new)
+- RC5-D handoff/local-QA documentation
+
+RC5-D adds no writer file and no RTDB namespace. Exact SC04 mutation allowlist remains three dedicated writers. No destructive delete, no automatic WAC rewrite, no production deployment, and no production mutation were performed while building this package.

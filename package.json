@@ -1,6 +1,6 @@
 {
   "name": "segeran-jiwa-pos-clean-baseline",
-  "version": "2.9.0",
+  "version": "3.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -19,8 +19,16 @@
     "verify:sc04": "npm run audit && npm run build && npm run build:sc03 && npm run build:sc04 && node scripts/verify-inline-scripts.mjs && npm run contracts && node scripts/verify-sc02.mjs && node scripts/verify-sc03.mjs && node scripts/verify-sc04.mjs && npm test",
     "build:ref01": "node scripts/build-ref01.mjs",
     "dev:ref01": "node scripts/dev-server.mjs dist-ref01",
-    "verify:ref01": "node scripts/verify-v28-icons.mjs && npm run verify:sc04 && npm run build:ref01 && node scripts/verify-ref01.mjs && npm test",
-    "verify:v28:icons": "node scripts/verify-v28-icons.mjs"
+    "verify:ref01": "node scripts/verify-v28-icons.mjs && npm run verify:v30:presentation && npm run verify:v31:ux && npm run verify:v32:p3 && npm run verify:v33:finance && npm run verify:sc04 && npm run build:ref01 && node scripts/verify-ref01.mjs && npm test",
+    "verify:v28:icons": "node scripts/verify-v28-icons.mjs",
+    "qa:local": "npm run build:ref01 && SJ_LOCAL_QA=1 node scripts/dev-server.mjs dist-ref01",
+    "verify:v30:presentation": "node scripts/verify-v30-presentation.mjs",
+    "verify:v31:ux": "node scripts/verify-v31-ux.mjs",
+    "verify:v32:p3": "node scripts/verify-v32-reporting-inventory.mjs",
+    "verify:v33:finance": "node scripts/verify-v33-finance.mjs",
+    "verify:rc01": "npm run verify:ref01 && npm run build:rc01 && node scripts/verify-rc01.mjs",
+    "build:rc01": "node scripts/build-rc01.mjs",
+    "dev:rc01": "node scripts/dev-server.mjs dist-rc01"
   },
   "engines": {
     "node": ">=20"

@@ -12,7 +12,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
 const roleOf=runtime=>{try{return runtime?.__SJ_SC03_RUNTIME?.guard?.currentRole?.()||null}catch(_){return null}};
 const roleLabel=role=>role==='owner'?'Owner':'Kasir';
-const isOwnerRole=role=>role==='owner'||role===null;
+const isOwnerRole=role=>['owner','manajemen'].includes(String(role||'').toLowerCase());
 const formatQty=v=>num(v).toLocaleString('id-ID');
 
 export function keepFinishedProductOptions(select){
@@ -56,7 +56,13 @@ function renderCashierProductActions(row){
 export function renderFinishedGoodsRows({role,rows=[]}={}){
   if(!rows.length)return '<div class="sj-v26-empty">Produk tidak ditemukan.</div>';
   const owner=isOwnerRole(role);
-  return rows.map(row=>`<article class="sj-v29-fg-row" data-v29-fg-product="${esc(row.id)}"><div class="sj-v29-fg-product"><b>${esc(row.name)}</b>${row.sku?`<small>${esc(row.sku)}</small>`:''}</div>${renderStockCells(row)}${owner?renderOwnerProductActions(row):renderCashierProductActions(row)}</article>`).join('');
+  return rows.map(row=>`<article class="sj-v29-fg-row" data-v29-fg-product="${esc(row.id)}"><button type="button" class="sj-v32-fg-open-detail" data-v32-fg-open-detail="${esc(row.id)}"><div class="sj-v29-fg-product"><b>${esc(row.name)}</b>${row.sku?`<small>${esc(row.sku)}</small>`:''}</div>${renderStockCells(row)}<span class="sj-v32-fg-open-hint">Buka detail &amp; atur →</span></button>${owner?renderOwnerProductActions(row):renderCashierProductActions(row)}</article>`).join('');
+}
+
+export function renderFinishedGoodsDetailV32({role,row}={}){
+  if(!row)return '<div class="sj-v26-empty">Detail produk tidak ditemukan.</div>';
+  const owner=isOwnerRole(role),total=num(row.warehouseQty)+num(row.outletQty);
+  return `<section class="sj-v32-fg-detail" data-v32-fg-detail="${esc(row.id)}"><button type="button" class="sj-v32-inv-back" data-v32-fg-detail-back>‹ Kembali ke Stok Barang Jadi</button><header><div><small>Barang Jadi${row.sku?` · ${esc(row.sku)}`:''}</small><h3>${esc(row.name)}</h3><p>Gudang → Gerai → Penjualan. Stok produk jadi tidak dicampur dengan bahan resep.</p></div></header><div class="sj-v32-fg-detail-stock"><article><small>Gudang</small><strong>${formatQty(row.warehouseQty)}</strong></article><article><small>Gerai</small><strong>${formatQty(row.outletQty)}</strong></article><article><small>Total</small><strong>${formatQty(total)}</strong></article></div><section class="sj-v32-inv-detail-section"><div class="sj-v32-inv-section-head"><h3>Proses Item</h3><span>${owner?'Owner':'Kasir'}</span></div>${owner?renderOwnerProductActions(row):renderCashierProductActions(row)}</section><section class="sj-v32-inv-detail-section"><div class="sj-v32-inv-section-head"><h3>Pergerakan</h3><span>Audit</span></div><button type="button" class="sj-v32-fg-movement-link" data-v29-fg-action="movements">${renderIcon('activity',{size:20})}<span><b>Lihat Pergerakan Stok</b><small>Transfer, pembelian, dan opname dari Inventory V2.</small></span><span>›</span></button></section></section>`;
 }
 
 function renderMovementPanel(){
@@ -79,7 +85,7 @@ function makeChangeEvent(runtime){
 export function installFinishedGoodsWarehouseRefinement(runtime=globalThis){
   if(runtime?.__SJ_V26_FINISHED_WAREHOUSE)return runtime.__SJ_V26_FINISHED_WAREHOUSE;
   const document=runtime?.document;
-  let lastBalances={outlet:{},warehouse:{}},lastRows=[],hubState={tab:'warehouse',query:''},selectedDraftProductId='';
+  let lastBalances={outlet:{},warehouse:{}},lastRows=[],hubState={tab:'warehouse',query:'',detailId:''},selectedDraftProductId='';
 
   function filterLegacy(tab,{productId='',location=''}={}){
     runtime?.setTimeout?.(()=>{
@@ -89,23 +95,30 @@ export function installFinishedGoodsWarehouseRefinement(runtime=globalThis){
         keepFinishedProductOptions(select);
         if(productId)select.value=`P:${productId}`;
         select.dispatchEvent?.(makeChangeEvent(runtime));
+        if(productId){const field=select.closest?.('.sjinv-field');if(field)field.style.display='none'}
       }
       if(tab==='opname'&&location){
         const locationSelect=document?.getElementById?.('sjinv-opname-loc');
         if(locationSelect){locationSelect.value=location;locationSelect.dispatchEvent?.(makeChangeEvent(runtime))}
       }
       const body=document?.getElementById?.('sjinv-body');
-      if(body){body.dataset.sjFinishedGoodsOnly='true';relabelRecipeCancellation(body)}
+      if(body){
+        body.dataset.sjFinishedGoodsOnly='true';relabelRecipeCancellation(body);
+        const row=lastRows.find(x=>String(x.id)===String(productId));
+        if(productId&&row&&!body.querySelector?.('[data-v32-fg-prefilled-context]'))body.insertAdjacentHTML?.('afterbegin',`<div class="sj-v32-prefilled" data-v32-fg-prefilled-context><span><b>${esc(row.name)}</b><small>Barang Jadi</small></span><span>Gudang ${formatQty(row.warehouseQty)} · Gerai ${formatQty(row.outletQty)}</span></div>`);
+      }
     },0);
   }
 
-  function openReceive(){runtime?.SJInventoryV2?.open?.('purchase');filterLegacy('purchase');return true}
-  function openTransfer(){runtime?.SJInventoryV2?.open?.('transfer');filterLegacy('transfer');return true}
-  function openWarehouseOpname(productId=''){if(!isOwnerRole(roleOf(runtime)))return false;runtime?.SJInventoryV2?.open?.('opname');filterLegacy('opname',{productId,location:'warehouse'});return true}
-  function openTransferForProduct(productId=''){if(!isOwnerRole(roleOf(runtime)))return false;runtime?.SJInventoryV2?.open?.('transfer');filterLegacy('transfer',{productId});return true}
-  function openAdvancedPurchase(productId=''){if(!isOwnerRole(roleOf(runtime)))return false;runtime?.SJInventoryV2?.open?.('purchase');filterLegacy('purchase',{productId});return true}
-  function openOwnerReconciliation(productId=''){if(!isOwnerRole(roleOf(runtime)))return false;runtime?.SJInventoryV2?.open?.('opname');filterLegacy('opname',{productId,location:'outlet'});return true}
-  function openMovements(){runtime?.SJInventoryV2?.open?.('movements');filterLegacy('movements');return true}
+  function v3Inventory(){return runtime?.__SJ_V32_INVENTORY_WORKSPACE||null}
+  function requireV3Inventory(){const v3=v3Inventory();if(v3?.open||v3?.openAction)return v3;try{runtime?.showToast?.('Tampilan inventori V3 belum siap. Coba buka kembali sesaat lagi.','warning')}catch(_){}return null}
+  function openReceive(){const v3=requireV3Inventory();return v3?.openAction?v3.openAction('purchase'):false}
+  function openTransfer(){const v3=requireV3Inventory();return v3?.openAction?v3.openAction('transfer'):false}
+  function openWarehouseOpname(productId=''){if(!isOwnerRole(roleOf(runtime)))return false;const v3=requireV3Inventory();return v3?.openAction?v3.openAction?.('opname','product',productId,{location:'warehouse'}):false}
+  function openTransferForProduct(productId=''){if(!isOwnerRole(roleOf(runtime)))return false;const v3=requireV3Inventory();return v3?.openAction?v3.openAction?.('transfer','product',productId):false}
+  function openAdvancedPurchase(productId=''){if(!isOwnerRole(roleOf(runtime)))return false;const v3=requireV3Inventory();return v3?.openAction?v3.openAction?.('purchase','product',productId):false}
+  function openOwnerReconciliation(productId=''){if(!isOwnerRole(roleOf(runtime)))return false;const v3=requireV3Inventory();return v3?.openAction?v3.openAction?.('opname','product',productId,{location:'outlet'}):false}
+  function openMovements(){const v3=requireV3Inventory();return v3?.open?v3.open?.('activity'):false}
   function openOutletStock(){runtime?.openOpr?.(3);return true}
 
   function closeHub(){const hub=document?.getElementById?.('sj-v26-warehouse-hub');if(hub)hub.style.display='none'}
@@ -166,7 +179,8 @@ export function installFinishedGoodsWarehouseRefinement(runtime=globalThis){
 
   function renderHubBody(hub){
     const body=hub?.querySelector?.('[data-wh-body]');if(!body)return;
-    body.innerHTML=renderFinishedGoodsHubView({role:roleOf(runtime),tab:hubState.tab,rows:lastRows,query:hubState.query});
+    const detail=hubState.detailId?lastRows.find(x=>String(x.id)===String(hubState.detailId)):null;
+    body.innerHTML=detail?renderFinishedGoodsDetailV32({role:roleOf(runtime),row:detail}):renderFinishedGoodsHubView({role:roleOf(runtime),tab:hubState.tab,rows:lastRows,query:hubState.query});
   }
 
   function ensureHub(){
@@ -176,8 +190,11 @@ export function installFinishedGoodsWarehouseRefinement(runtime=globalThis){
     hub.querySelector?.('[data-wh-close]')?.addEventListener?.('click',closeHub);
     hub.addEventListener?.('click',event=>{
       if(event.target===hub){closeHub();return}
+      if(event.target?.closest?.('[data-v32-fg-detail-back]')){hubState.detailId='';renderHubBody(hub);return}
+      const detailButton=event.target?.closest?.('[data-v32-fg-open-detail]');
+      if(detailButton){hubState.detailId=detailButton.dataset.v32FgOpenDetail||'';renderHubBody(hub);return}
       const tab=event.target?.closest?.('[data-v29-fg-tab]');
-      if(tab){hubState.tab=tab.dataset.v29FgTab;hubState.query='';renderHubBody(hub);return}
+      if(tab){hubState.tab=tab.dataset.v29FgTab;hubState.query='';hubState.detailId='';renderHubBody(hub);return}
       const actionButton=event.target?.closest?.('[data-v29-fg-action]');if(!actionButton)return;
       const action=actionButton.dataset.v29FgAction,productId=actionButton.dataset.productId||'';
       if(action==='warehouse-opname'){closeHub();openWarehouseOpname(productId)}
@@ -198,9 +215,19 @@ export function installFinishedGoodsWarehouseRefinement(runtime=globalThis){
     const hub=ensureHub();if(!hub)return false;hub.style.display='flex';
     const body=hub.querySelector?.('[data-wh-body]');if(body)body.innerHTML='<div class="sj-v26-empty">Memuat stok Gudang dan Gerai…</div>';
     try{
-      const products=finishedProductsForStock(runtime),balances=await readBalances(runtime);lastBalances=balances;lastRows=buildFinishedGoodsRows(products,balances);hubState={tab:'warehouse',query:''};renderHubBody(hub);
+      const products=finishedProductsForStock(runtime),balances=await readBalances(runtime);lastBalances=balances;lastRows=buildFinishedGoodsRows(products,balances);hubState={tab:'warehouse',query:'',detailId:''};renderHubBody(hub);
     }catch(_){if(body)body.innerHTML='<div class="sj-v26-empty">Stok Gudang/Gerai belum dapat dimuat. Data tidak diubah.</div>'}
     return true;
+  }
+
+  async function openProductDetail(productId=''){
+    const hub=ensureHub();if(!hub)return false;hub.style.display='flex';
+    if(!lastRows.length){
+      const body=hub.querySelector?.('[data-wh-body]');if(body)body.innerHTML='<div class="sj-v26-empty">Memuat detail barang jadi…</div>';
+      try{const products=finishedProductsForStock(runtime),balances=await readBalances(runtime);lastBalances=balances;lastRows=buildFinishedGoodsRows(products,balances)}catch(_){return false}
+    }
+    if(!lastRows.some(x=>String(x.id)===String(productId)))return false;
+    hubState={tab:'warehouse',query:'',detailId:String(productId)};renderHubBody(hub);return true;
   }
 
   function enhance(){
@@ -210,7 +237,7 @@ export function installFinishedGoodsWarehouseRefinement(runtime=globalThis){
     const button=document.createElement('button');button.type='button';button.className='sjvc02-activity sj-v26-warehouse-entry';button.dataset.sjFinishedWarehouse='true';button.innerHTML=`<span class="ico">${renderIcon('warehouse',{size:21})}</span><b>Stok Barang Jadi</b><span>Gudang &amp; Gerai</span>`;button.addEventListener('click',openHub);activities.insertBefore?.(button,activities.firstChild);return true;
   }
 
-  const api=Object.freeze({installed:true,openHub,openReceive,openTransfer,openWarehouseOpname,openTransferForProduct,openAdvancedPurchase,openOwnerReconciliation,openMovements,openOutletStock,openExceptionDraft,enhance});
+  const api=Object.freeze({installed:true,openHub,openProductDetail,openReceive,openTransfer,openWarehouseOpname,openTransferForProduct,openAdvancedPurchase,openOwnerReconciliation,openMovements,openOutletStock,openExceptionDraft,enhance});
   try{Object.defineProperty(runtime,'__SJ_V26_FINISHED_WAREHOUSE',{value:api,writable:false,configurable:false})}catch(_){}
   return api;
 }

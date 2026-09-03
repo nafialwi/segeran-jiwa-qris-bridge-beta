@@ -31,11 +31,12 @@ test('REF_02 bottom navigation uses dedicated locked active SVG and locked outli
   assert.doesNotMatch(buttons.tab4.icon.innerHTML,/data-sj-icon-variant="solid"/,'active state must not synthetically fill an outline');
 });
 
-test('REF_01 settings responsibility icons use the stronger filled authority shown by the reference pack',()=>{
+test('REF_01 settings responsibility icons use locked B01-B05 production authority',()=>{
   const html=renderSettingsMarkup({name:'Owner Utama',roleLabel:'Owner / Pemilik'});
   const settingsIcons=[...html.matchAll(/sjr01-setting-icon[^>]*>(<svg[\s\S]*?<\/svg>)/g)].map(m=>m[1]);
   assert.equal(settingsIcons.length,17);
-  assert.ok(settingsIcons.every(svg=>/data-sj-icon-variant="solid"/.test(svg)));
+  assert.ok(settingsIcons.every(svg=>/data-sj-icon-authority="B01-B05"/.test(svg)));
+  assert.ok(settingsIcons.every(svg=>!/data-sj-icon-variant="solid"/.test(svg)), 'Settings must not revive the local synthetic-filled icon family');
 });
 
 test('REF_03 stock child header is forced into back-title-help row and stock KPI symbols use semantic icons',()=>{

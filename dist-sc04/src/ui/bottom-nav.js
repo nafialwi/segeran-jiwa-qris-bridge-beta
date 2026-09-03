@@ -46,6 +46,7 @@ export function enhanceBottomNav(document,activeRoute){
     button.dataset.ref01Route=item.route;
     button.dataset.ref01Nav='true';
     button.classList?.toggle?.('ref01-active',item.active);
+    button.classList?.toggle?.('active',item.active);
     if(item.active) activeButton=button;
     const icon=button.querySelector?.('.nav-icon');
     if(icon) icon.innerHTML=item.active?activeIcon(item.icon,item.label):renderIcon(item.icon,{size:21,label:item.label});

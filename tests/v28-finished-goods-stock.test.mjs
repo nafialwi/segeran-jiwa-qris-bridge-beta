@@ -23,12 +23,17 @@ test('damage/loss/expiry becomes draft requiring Owner reconciliation and never 
   }
 });
 
-test('finished-goods UI includes stock-tracked products even if recipe metadata exists and delegates writes to existing Inventory V2 authority',()=>{
+test('finished-goods UI includes stock-tracked products even if recipe metadata exists and delegates through V3 to existing Inventory V2 authority',()=>{
   const src=fs.readFileSync('src/ui/finished-goods-warehouse-refinement.js','utf8');
   assert.ok(src.includes('export function finishedProductsForStock'));
   assert.ok(!/finishedProductsForStock[\s\S]{0,400}recipeForProduct/.test(src),'recipe metadata must not hide a normal finished-good stock row');
-  assert.ok(src.includes("SJInventoryV2?.open?.('transfer')"));
-  assert.ok(src.includes("SJInventoryV2?.open?.('opname')"));
+  assert.ok(src.includes('__SJ_V32_INVENTORY_WORKSPACE'));
+  assert.ok(src.includes("openAction?.('transfer','product'"));
+  assert.ok(src.includes("openAction?.('opname','product'"));
+  const inv=fs.readFileSync('src/ui/inventory-workspace-v32.js','utf8');
+  assert.ok(inv.includes('function invokeLegacyWriter'));
+  assert.ok(inv.includes('legacyOpen(tab)'));
+  assert.ok(inv.includes('dataset.sjV32WriterHost'));
   assert.ok(src.includes('openExceptionDraft'));
   assert.ok(src.includes('WhatsApp'));
 });

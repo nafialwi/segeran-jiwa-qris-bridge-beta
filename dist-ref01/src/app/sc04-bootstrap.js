@@ -74,6 +74,33 @@ export function installSc04Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_R
 
   const session=manager??createDefaultManager(runtime,commands);
   let ready=Promise.resolve({restored:false,reason:'NOT_STARTED'});
+  const recoverableReconnectReasons=new Set(['OFFLINE_REVALIDATION_REQUIRED','REVALIDATION_UNAVAILABLE','RESTORE_BOOTSTRAP_ERROR']);
+  let reconnectInFlight=false,reconnectBound=false;
+  const disarmReconnect=()=>{
+    if(!reconnectBound)return;
+    try{runtime?.removeEventListener?.('online',onReconnectOnline)}catch(_){}
+    reconnectBound=false;
+  };
+  const handleReconnectResult=result=>{
+    if(result?.restored===true){disarmReconnect();return result}
+    if(!recoverableReconnectReasons.has(String(result?.reason||'')))disarmReconnect();
+    return result;
+  };
+  const onReconnectOnline=()=>{
+    if(reconnectInFlight)return;
+    reconnectInFlight=true;
+    Promise.resolve(session.restore())
+      .then(handleReconnectResult)
+      .catch(()=>{})
+      .finally(()=>{reconnectInFlight=false});
+  };
+  const armReconnect=result=>{
+    if(!recoverableReconnectReasons.has(String(result?.reason||'')))return result;
+    if(!reconnectBound&&typeof runtime?.addEventListener==='function'){
+      runtime.addEventListener('online',onReconnectOnline);reconnectBound=true;
+    }
+    return result;
+  };
 
   commands.installMethod(authOwner,'login',async(...args)=>{
     try{await ready}catch(_){}
@@ -100,7 +127,8 @@ export function installSc04Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_R
   ready=Promise.resolve()
     .then(()=>session.prepareAuth())
     .then(()=>autoRestore?session.restore():({restored:false,reason:'AUTO_RESTORE_DISABLED'}))
-    .catch(error=>({restored:false,reason:'RESTORE_BOOTSTRAP_ERROR',errorCode:String(error?.code||error?.message||error)}));
+    .catch(error=>({restored:false,reason:'RESTORE_BOOTSTRAP_ERROR',errorCode:String(error?.code||error?.message||error)}))
+    .then(armReconnect);
 
   const api=Object.freeze({phase:'SC-04',session,ready,sc03});
   Object.defineProperty(runtime,'__SJ_SC04_RUNTIME',{value:api,writable:false,configurable:false,enumerable:false});

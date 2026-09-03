@@ -6,3 +6,6 @@ export { createMediaLifecycle, validateImageFile, profilePhotoPath } from './med
 export { parseShiftKey, shiftPresentation, createStaleShiftAdapter } from './shift-refinement.js';
 
 export * from './screen-contracts.js';
+
+export { FINANCE_V33_TABS, renderFinanceWorkspaceV33, createFinanceWorkspaceControllerV33, installFinanceWorkspaceV33 } from './finance-v33-workspace.js';
+export { renderQrisCashOutPanelV33, createQrisCashOutUiControllerV33, installQrisCashOutUiV33 } from './qris-cash-out-ui.js';

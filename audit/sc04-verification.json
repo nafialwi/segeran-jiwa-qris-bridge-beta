@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-01T17:35:51.559Z",
+  "generatedAt": "2026-09-03T11:22:56.134Z",
   "phase": "SC-04",
   "baselineSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
   "compatibilityDistSha256": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
@@ -24,6 +24,16 @@
     "completeLogin": 1,
     "logout": 1
   },
-  "directMutationFiles": [],
+  "directMutationFiles": [
+    "src/data/writers/finance-writer.js",
+    "src/data/writers/purchase-reconciliation-writer.js",
+    "src/data/writers/qris-cash-out-coordinator.js"
+  ],
+  "approvedMutationFiles": [
+    "src/data/writers/finance-writer.js",
+    "src/data/writers/qris-cash-out-coordinator.js",
+    "src/data/writers/purchase-reconciliation-writer.js"
+  ],
+  "mutationPolicyViolations": [],
   "violations": []
 }
