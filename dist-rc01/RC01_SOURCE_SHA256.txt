@@ -1,6 +1,6 @@
-022cfb9600389609228b389ba336e6f0de4565c00e8371bafb505e9321a55fa0  ./.ref01-build-fingerprint
+1e1e91eed91a3827c04afc76e5bab66d4f65bfe7230c1cd221b26fb9991a1394  ./.ref01-build-fingerprint
 a801206ce182c22a5fe6a97628baa621efffcf0d1ba67ecdfdcdbd14ebf45503  ./RC01_RELEASE.json
-296feef99052aa35409c93513239c72ae1ad728f2082116cd53b97284d1b7c57  ./index.html
+986329e5cba5faf56bd54deebbec99bbd5f876b93e4bc62749140b0068b2fb4a  ./index.html
 c341d6864ce4a225932fa9be665518fe06488e87ac4b6ccb150f4c4d45f94f7e  ./src/app/app-state.js
 0656c0e00ccfa22ea39b0ae6035c9c89602f04f8ca635406c14d810ce70e2b8f  ./src/app/bootstrap.js
 1b3719ee95152ec56dcb0b19153fa86e9485eeee2fdc566e2e286068d60985e9  ./src/app/index.js
@@ -73,6 +73,7 @@ a6befdb62a0306f49a54a526898ed7549b3211953512ff2e94310d5ac79554a4  ./src/assets/i
 1a694fc3036010809aed3325a18f344117e3f080ecf05d48dec1464f8b8f9b69  ./src/assets/icons/locked/outline/system/store-identity.svg
 19c09a25be1095e0f05efeb73c2ed5254cc57413bc175562449cf6301ca60a49  ./src/assets/icons/locked/outline/system/users.svg
 302a479e3a4735a9a6fe19b52254ed8999578ba4919d29386d7b08e0ff581c93  ./src/assets/icons/locked/outline/system/warehouse.svg
+ebc385587a8a5c77d03fededd1bdb75b478dc2522e01c6b872d6d3f9f16a1ba2  ./src/compat/rc01-firebase-pending-write-trace.js
 832334a2d7499fc95df0997c92a38070c8378c1e9339673093715d0392ce1066  ./src/compat/rc01-qris-deferred-settlement-compat.js
 7da40dfe73e36de2df70c1e1efd75efcfaf60fda53325a60a509435368ee7221  ./src/compat/rc01-qris-event-sync-shield.js
 d5af98d5a441120391123f12154ad4d0653941972352b5d574f6e6f2aaf265c0  ./src/compat/ref01-production-sales-compat.js

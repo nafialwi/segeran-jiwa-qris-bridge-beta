@@ -10,6 +10,8 @@ const OUT=join(ROOT,'dist-ref01');
 const LOCK=join(ROOT,'.ref01-build.lock');
 const STAMP=join(OUT,'.ref01-build-fingerprint');
 const S10A1_EARLY_ENTRY='<script src="./src/compat/rc01-qris-event-sync-shield.js" data-sj-rc01-s10a1-event-shield="true"></script>';
+const S10B_EARLY_ENTRY='<script src="./src/compat/rc01-firebase-pending-write-trace.js" data-sj-rc01-s10b-pending-write-trace="true"></script>';
+const P3_MARKER='const SJProductionArchitectureP3={';
 const CLASSIC_ENTRY='<script src="./src/compat/ref01-production-sales-compat.js" data-sj-ref01-production-sales-compat="true"></script>';
 const QRIS_BETA_MARKER='if(window.SJQrisSignalBeta)return;';
 const S10A_CLASSIC_ENTRY='<script src="./src/compat/rc01-qris-deferred-settlement-compat.js" data-sj-rc01-s10a-qris="true"></script>';
@@ -19,6 +21,12 @@ function injectBeforeQrisBeta(legacy){
   const marker=legacy.indexOf(QRIS_BETA_MARKER);if(marker<0)throw new Error('REF01_QRIS_BETA_MARKER_MISSING');
   const scriptStart=legacy.lastIndexOf('<script>',marker);if(scriptStart<0)throw new Error('REF01_QRIS_BETA_SCRIPT_START_MISSING');
   return legacy.slice(0,scriptStart)+S10A1_EARLY_ENTRY+'\n'+legacy.slice(scriptStart);
+}
+
+function injectBeforeP3(legacy){
+  const marker=legacy.indexOf(P3_MARKER);if(marker<0)throw new Error('REF01_P3_MARKER_MISSING');
+  const scriptStart=legacy.lastIndexOf('<script>',marker);if(scriptStart<0)throw new Error('REF01_P3_SCRIPT_START_MISSING');
+  return legacy.slice(0,scriptStart)+S10B_EARLY_ENTRY+'\n'+legacy.slice(scriptStart);
 }
 
 function sleep(ms){Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms)}
@@ -71,7 +79,8 @@ try{
     cpSync(SOURCE,join(staging,'src'),{recursive:true});
     const legacy=readFileSync(BASE,'utf8');
     if((legacy.match(/<\/body>/gi)||[]).length!==1)throw new Error('REF01_BUILD_BODY_ANCHOR_INVALID');
-    const early=injectBeforeQrisBeta(legacy);
+    const traced=injectBeforeP3(legacy);
+    const early=injectBeforeQrisBeta(traced);
     const candidate=early.replace(/<\/body>/i,`${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${ENTRY}\n</body>`);
     writeFileSync(join(staging,'index.html'),candidate);
     writeFileSync(join(staging,'.ref01-build-fingerprint'),`${fp}\n`);
