@@ -20,6 +20,11 @@ export function installQrisDeferredSettlementRuntime(runtime=globalThis,{p4=runt
     const snap=await resolvedDb.ref(qrisPath('pending')).once('value');
     return clone(snap?.val?.()||{});
   }
+  async function readSignal(providerTransactionId){
+    const id=text(providerTransactionId);if(!id)return null;
+    const snap=await resolvedDb.ref(qrisPath('signals',id)).once('value');
+    return clone(snap?.val?.()??null);
+  }
   async function readSignalRows(){
     const snap=await resolvedDb.ref(qrisPath('signals')).once('value');
     return clone(snap?.val?.()||{});
@@ -40,7 +45,7 @@ export function installQrisDeferredSettlementRuntime(runtime=globalThis,{p4=runt
 
   const api=Object.freeze({
     phase:'RC01-S10A',db:resolvedDb,writer:settlementWriter,policy:Object.freeze({...policy}),
-    readPending,readPendingRows,readSignalRows,findOwnedUnresolvedParked,findLateReviewSignals,
+    readPending,readPendingRows,readSignal,readSignalRows,findOwnedUnresolvedParked,findLateReviewSignals,
     roots:Object.freeze({pos:POS_ROOT,qris:QRIS_ROOT})
   });
   Object.defineProperty(runtime,'__SJ_QRIS_DEFERRED_SETTLEMENT_RUNTIME',{value:api,writable:false,configurable:false,enumerable:false});

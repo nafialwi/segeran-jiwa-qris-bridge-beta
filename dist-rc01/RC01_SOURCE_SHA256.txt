@@ -1,4 +1,4 @@
-197d8604c45b5af6d74c6977f26686cef5c6773658a9ef52d25ceba63c21c292  ./.ref01-build-fingerprint
+4e138b263899ff7e61db3ea6f303c182d20a3ae1a709d6b5daecb3162b179912  ./.ref01-build-fingerprint
 a801206ce182c22a5fe6a97628baa621efffcf0d1ba67ecdfdcdbd14ebf45503  ./RC01_RELEASE.json
 219149affb2844e67d9dfde5d2d98a0ef8776275def2d75f13a73724c346934c  ./index.html
 c341d6864ce4a225932fa9be665518fe06488e87ac4b6ccb150f4c4d45f94f7e  ./src/app/app-state.js
@@ -6,7 +6,7 @@ c341d6864ce4a225932fa9be665518fe06488e87ac4b6ccb150f4c4d45f94f7e  ./src/app/app-
 1b3719ee95152ec56dcb0b19153fa86e9485eeee2fdc566e2e286068d60985e9  ./src/app/index.js
 e6040e90fa6ca28c422db303f55a92cc06c240838282dbf7805c3e3da8ff17e2  ./src/app/p4-finance-bootstrap.js
 285ed8f1d82ff691927be7476789074202f4d3814dc84c5c15d24c9cfd10e2e6  ./src/app/p5-packaging-bootstrap.js
-b913fba232a2e6b4961a9d3acb71d1b27f233be6e5b6ab54aed25f7ae5db4e46  ./src/app/qris-deferred-settlement-bootstrap.js
+be8380798923df1ce45edbf2bd6c36e08eaa076843db6b13bdacbed117fbead9  ./src/app/qris-deferred-settlement-bootstrap.js
 4e5b2c87c288062749ea5b85492a5d0090fad0d20308f622fdc8b8ea0f4a1a07  ./src/app/ref01-bootstrap.js
 dc396ddc6f176238ad3bbc9ab1ee2e90d11a6f34bd6dc49c8670c9fe22cd2a89  ./src/app/route-contract.js
 62129ae83a0e96e6a766576d60cf142199c2bfa8155e3a3347e405db24dc0736  ./src/app/router.js
@@ -73,7 +73,7 @@ a6befdb62a0306f49a54a526898ed7549b3211953512ff2e94310d5ac79554a4  ./src/assets/i
 1a694fc3036010809aed3325a18f344117e3f080ecf05d48dec1464f8b8f9b69  ./src/assets/icons/locked/outline/system/store-identity.svg
 19c09a25be1095e0f05efeb73c2ed5254cc57413bc175562449cf6301ca60a49  ./src/assets/icons/locked/outline/system/users.svg
 302a479e3a4735a9a6fe19b52254ed8999578ba4919d29386d7b08e0ff581c93  ./src/assets/icons/locked/outline/system/warehouse.svg
-832334a2d7499fc95df0997c92a38070c8378c1e9339673093715d0392ce1066  ./src/compat/rc01-qris-deferred-settlement-compat.js
+62483acf69af6a857b265c02155b29be0c7f4538576833cf66f44383b4b1f91b  ./src/compat/rc01-qris-deferred-settlement-compat.js
 925f03e19db85327a1faf0b9c7473101ea045dcc85d2080e3afb6ba82b2848db  ./src/compat/rc01-qris-evaluation-convergence.js
 c2787bb2cc7878a1d7348a66c0b1682c3ebfa4470a90cccc9188953c4e122064  ./src/compat/rc01-qris-event-sync-shield.js
 132dfc7a823e4836a4e24c940f59f9c3fc5d2d051bc1c19b1a1085b5373d9710  ./src/compat/rc01-sync-authority.js

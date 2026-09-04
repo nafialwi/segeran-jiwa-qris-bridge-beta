@@ -7,7 +7,7 @@ if(window.SJRC01S10AQrisCompat)return;
 var VERSION='RC01-S10A';
 var SNAPSHOT_VERSION='S10A-1';
 var PARK_REASON='SERVE_NEXT_CUSTOMER';
-var runtime=null,installed=false,cacheReady=false,ownedParked=[],lateReview=[],lateQueue={},busyPark=false,busyRecover=false;
+var runtime=null,installed=false,cacheReady=false,ownedParked=[],lateReview=[],lateQueue={},lateInFlight={},lateDrainRunning=false,lateDrainTimer=null,busyPark=false,busyRecover=false;
 var baseOpenPayment=null,baseMatchSignal=null;
 function n(v){v=Number(v);return Number.isFinite(v)?v:0}
 function txt(v){return String(v==null?'':v).trim()}
@@ -171,22 +171,44 @@ function patchQrisSheet(){
   var back=page.querySelector('[data-pay-back]'),close=page.querySelector('[data-pay-close]');if(back){back.textContent='Parkir QRIS & Layani Berikutnya';back.onclick=parkCurrent}if(close)close.onclick=parkCurrent;
   var cancel=page.querySelector('#sj-qris-commercial-cancel');if(cancel&&!cancel.__s10a){cancel.__s10a=true;cancel.onclick=async function(){var id=statusActiveId(),fresh=id&&runtime?await runtime.readPending(id):null;if(!fresh)return;var warning='Batalkan pending QRIS '+money(fresh.amount)+'?\n\nIni tidak membatalkan pembayaran yang mungkin sudah dikirim pelanggan. Signal terlambat akan masuk Perlu Tindakan.';if(confirm(warning))beta().cancelWaiting(true)}}
 }
+function lateIds(value){return Array.from(new Set((Array.isArray(value)?value:[]).map(function(x){return txt(x)}).filter(Boolean))).sort()}
+function sameLateRequest(a,b){return !!(a&&b&&txt(a.status)===txt(b.status)&&JSON.stringify(lateIds(a.lateCandidatePendingIds))===JSON.stringify(lateIds(b.lateCandidatePendingIds)))}
+function sameDurableLate(signal,request){return !!(signal&&request&&txt(signal.status)===txt(request.status)&&signal.autoMatchBlocked===true&&txt(signal.resolutionState)==='REVIEW_REQUIRED'&&JSON.stringify(lateIds(signal.lateCandidatePendingIds))===JSON.stringify(lateIds(request.lateCandidatePendingIds)))}
+function scheduleLateDrain(delay){
+  if(lateDrainRunning||lateDrainTimer)return false;
+  lateDrainTimer=setTimeout(function(){lateDrainTimer=null;drainLateQueue()},Math.max(0,n(delay)));
+  return true;
+}
 function queueLate(conflict){
-  if(!conflict||!conflict.providerTransactionId)return;
-  try{if(window.SJRC01S10A1QrisEventShield&&typeof SJRC01S10A1QrisEventShield.markBlocked==='function')SJRC01S10A1QrisEventShield.markBlocked(conflict.providerTransactionId,n(conflict.amount))}catch(_){}
-  lateQueue[conflict.providerTransactionId]=conflict;
-  setTimeout(drainLateQueue,0);
+  if(!conflict||!conflict.providerTransactionId)return false;
+  var id=txt(conflict.providerTransactionId);if(!id)return false;
+  try{if(window.SJRC01S10A1QrisEventShield&&typeof SJRC01S10A1QrisEventShield.markBlocked==='function')SJRC01S10A1QrisEventShield.markBlocked(id,n(conflict.amount))}catch(_){}
+  if(sameLateRequest(lateQueue[id],conflict)||sameLateRequest(lateInFlight[id],conflict))return false;
+  lateQueue[id]=conflict;scheduleLateDrain(0);return true;
 }
 async function drainLateQueue(){
-  if(!runtime)return;
-  var keys=Object.keys(lateQueue);for(var i=0;i<keys.length;i++){
-    var id=keys[i],c=lateQueue[id];try{
-      await runtime.writer.quarantineLateSignal({providerTransactionId:id,status:c.status,lateCandidatePendingIds:c.lateCandidatePendingIds});delete lateQueue[id];
-      toast('Pembayaran QRIS terlambat '+money(c.amount||0)+' ditahan sebagai Perlu Tindakan. autoMatchBlocked=true','warning');
-    }catch(_){/* listener may still be writing UNMATCHED; keep queued and retry */}
+  if(!runtime||lateDrainRunning)return false;
+  lateDrainRunning=true;
+  try{
+    var keys=Object.keys(lateQueue);for(var i=0;i<keys.length;i++){
+      var id=keys[i],c=lateQueue[id];if(!c||lateInFlight[id])continue;
+      delete lateQueue[id];lateInFlight[id]=c;
+      try{
+        var existing=null;
+        try{if(typeof runtime.readSignal==='function')existing=await runtime.readSignal(id)}catch(_){existing=null}
+        if(!sameDurableLate(existing,c)){
+          await runtime.writer.quarantineLateSignal({providerTransactionId:id,status:c.status,lateCandidatePendingIds:c.lateCandidatePendingIds});
+          toast('Pembayaran QRIS terlambat '+money(c.amount||0)+' ditahan sebagai Perlu Tindakan. autoMatchBlocked=true','warning');
+        }
+      }catch(_){if(!lateQueue[id])lateQueue[id]=c}
+      finally{delete lateInFlight[id]}
+    }
+  }finally{
+    lateDrainRunning=false;
+    if(Object.keys(lateQueue).length)scheduleLateDrain(500);
+    setTimeout(refreshEvidence,50);
   }
-  if(keys.length)setTimeout(drainLateQueue,500);
-  setTimeout(refreshEvidence,50);
+  return true;
 }
 function patchMatcher(){
   var c=core();if(!c||typeof window.SJQrisSignalCore.matchSignal!=='function'||window.SJQrisSignalCore.matchSignal.__s10a)return;
