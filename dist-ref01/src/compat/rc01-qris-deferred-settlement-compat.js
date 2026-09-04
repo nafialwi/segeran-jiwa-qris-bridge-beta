@@ -7,7 +7,7 @@ if(window.SJRC01S10AQrisCompat)return;
 var VERSION='RC01-S10A';
 var SNAPSHOT_VERSION='S10A-1';
 var PARK_REASON='SERVE_NEXT_CUSTOMER';
-var runtime=null,installed=false,cacheReady=false,ownedParked=[],lateReview=[],lateQueue={},lateInFlight={},lateDrainRunning=false,lateDrainTimer=null,busyPark=false,busyRecover=false;
+var runtime=null,installed=false,cacheReady=false,ownedParked=[],lateReview=[],lateQueue={},lateInFlight={},lateAttempts={},lateHeld={},lateDrainRunning=false,lateDrainTimer=null,busyPark=false,busyRecover=false;
 var baseOpenPayment=null,baseMatchSignal=null;
 function n(v){v=Number(v);return Number.isFinite(v)?v:0}
 function txt(v){return String(v==null?'':v).trim()}
@@ -183,6 +183,7 @@ function queueLate(conflict){
   if(!conflict||!conflict.providerTransactionId)return false;
   var id=txt(conflict.providerTransactionId);if(!id)return false;
   try{if(window.SJRC01S10A1QrisEventShield&&typeof SJRC01S10A1QrisEventShield.markBlocked==='function')SJRC01S10A1QrisEventShield.markBlocked(id,n(conflict.amount))}catch(_){}
+  if(lateHeld[id])return false;
   if(sameLateRequest(lateQueue[id],conflict)||sameLateRequest(lateInFlight[id],conflict))return false;
   lateQueue[id]=conflict;scheduleLateDrain(0);return true;
 }
@@ -197,10 +198,26 @@ async function drainLateQueue(){
         var existing=null;
         try{if(typeof runtime.readSignal==='function')existing=await runtime.readSignal(id)}catch(_){existing=null}
         if(!sameDurableLate(existing,c)){
+          lateAttempts[id]=(lateAttempts[id]||0)+1;
           await runtime.writer.quarantineLateSignal({providerTransactionId:id,status:c.status,lateCandidatePendingIds:c.lateCandidatePendingIds});
+          delete lateAttempts[id];delete lateHeld[id];
           toast('Pembayaran QRIS terlambat '+money(c.amount||0)+' ditahan sebagai Perlu Tindakan. autoMatchBlocked=true','warning');
+        }else{delete lateAttempts[id];delete lateHeld[id]}
+      }catch(error){
+        var attempt=lateAttempts[id]||1;
+        if(attempt<2){if(!lateQueue[id])lateQueue[id]=c}
+        else{
+          lateHeld[id]={request:c,failedAt:Date.now(),attempts:attempt};
+          try{
+            if(typeof sjSaveError==='function'){
+              var rootCode=txt(error&&error.code)||'UNKNOWN',rootMessage=txt(error&&error.message)||txt(error)||'Unknown Firebase error';
+              var heldError=new Error('QRIS late quarantine held after '+attempt+' attempts for '+id+' ['+rootCode+'] '+rootMessage);
+              heldError.code='QRIS_LATE_QUARANTINE_FAILED_HELD';heldError.providerTransactionId=id;heldError.rootCode=rootCode;heldError.attempts=attempt;
+              sjSaveError('QRIS_LATE_QUARANTINE_FAILED_HELD',heldError);
+            }
+          }catch(_){}
         }
-      }catch(_){if(!lateQueue[id])lateQueue[id]=c}
+      }
       finally{delete lateInFlight[id]}
     }
   }finally{

@@ -87,7 +87,7 @@ function wrapWrites(){
     ['set','update','remove','transaction'].forEach(function(method){
       var current=proto[method];if(typeof current!=='function')return;
       if(current.__sjS10C===true){wrappedMethods[method]=true;return}
-      if(wrappedMethods[method]===true&&current.__sjp3===true)return;
+      if(wrappedMethods[method]===true&&(current.__sjp3===true||current.__sjS10A1===true))return;
       function wrapped(){var row=begin(method,this,arguments),result;try{result=current.apply(this,arguments)}catch(e){finish(row);throw e}return wrapResult(row,result)}
       wrapped.__sjS10C=true;wrapped.__sjS10CBase=current;proto[method]=wrapped;wrappedMethods[method]=true;
     });
