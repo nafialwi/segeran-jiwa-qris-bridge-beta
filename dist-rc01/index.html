@@ -4805,6 +4805,9 @@ SJHarden.init();
 SJReliability.init();
 try{SJOperationalReady.applyVersion()}catch(e){}
 try{SJCashFlowCorrection.rebind();SJCashFlowCorrection.applyVersion()}catch(e){}
+</script>
+<script src="./src/compat/rc01-sync-authority.js" data-sj-rc01-s10c-sync-authority="true"></script>
+<script>
 try{SJMobileUX.install();SJMobileUX.applyVersion()}catch(e){sjSaveError('SJMUX_INSTALL',e)}
 try{SJMobileProfessionalP1.install();SJMobileProfessionalP1.applyVersion()}catch(e){sjSaveError('SJUX_P1_INSTALL',e)}
 try{SJOwnerProfessionalP2.install();SJOwnerProfessionalP2.applyVersion()}catch(e){sjSaveError('SJ_P2_INSTALL',e)}

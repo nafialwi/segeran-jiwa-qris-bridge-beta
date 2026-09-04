@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "violations": [],
+  "baselineSha": "877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f",
+  "syncSourceSha": "09d2daf036c4bdd4f082ea3ac110eb439a7cf356f3abc3ed4a0e9d9e236cbe6b",
+  "refRuntimeSha": "d173ccb697564a71e9ffe35072b5f2d6eda86d97722f7d26cee846fb26a2726a",
+  "rcRuntimeSha": "d173ccb697564a71e9ffe35072b5f2d6eda86d97722f7d26cee846fb26a2726a"
+}

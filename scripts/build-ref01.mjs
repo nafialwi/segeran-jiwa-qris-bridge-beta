@@ -11,6 +11,8 @@ const LOCK=join(ROOT,'.ref01-build.lock');
 const STAMP=join(OUT,'.ref01-build-fingerprint');
 const S10A1_EARLY_ENTRY='<script src="./src/compat/rc01-qris-event-sync-shield.js" data-sj-rc01-s10a1-event-shield="true"></script>';
 const CLASSIC_ENTRY='<script src="./src/compat/ref01-production-sales-compat.js" data-sj-ref01-production-sales-compat="true"></script>';
+const S10C_SYNC_ENTRY='<script src="./src/compat/rc01-sync-authority.js" data-sj-rc01-s10c-sync-authority="true"></script>';
+const S10C_INSTALL_MARKER='try{SJMobileUX.install();';
 const QRIS_BETA_MARKER='if(window.SJQrisSignalBeta)return;';
 const S10A_CLASSIC_ENTRY='<script src="./src/compat/rc01-qris-deferred-settlement-compat.js" data-sj-rc01-s10a-qris="true"></script>';
 const ENTRY='<script type="module" src="./src/ref01-entry.js" data-sj-ref01-entry="true"></script>';
@@ -19,6 +21,13 @@ function injectBeforeQrisBeta(legacy){
   const marker=legacy.indexOf(QRIS_BETA_MARKER);if(marker<0)throw new Error('REF01_QRIS_BETA_MARKER_MISSING');
   const scriptStart=legacy.lastIndexOf('<script>',marker);if(scriptStart<0)throw new Error('REF01_QRIS_BETA_SCRIPT_START_MISSING');
   return legacy.slice(0,scriptStart)+S10A1_EARLY_ENTRY+'\n'+legacy.slice(scriptStart);
+}
+
+function injectS10CSyncAuthority(legacy){
+  const marker=legacy.indexOf(S10C_INSTALL_MARKER);if(marker<0)throw new Error('RC01_S10C_INSTALL_MARKER_MISSING');
+  const scriptStart=legacy.lastIndexOf('<script>',marker),scriptEnd=legacy.indexOf('</script>',marker);
+  if(scriptStart<0||scriptEnd<0)throw new Error('RC01_S10C_SCRIPT_BOUNDARY_INVALID');
+  return legacy.slice(0,marker)+'</script>\n'+S10C_SYNC_ENTRY+'\n<script>\n'+legacy.slice(marker);
 }
 
 function sleep(ms){Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms)}
@@ -45,7 +54,7 @@ function sourceFiles(dir){
 }
 function fingerprint(){
   const hash=createHash('sha256');
-  hash.update('REF01-BUILD-V2\0');
+  hash.update('REF01-BUILD-V3-S10C\0');
   hash.update(readFileSync(BASE));
   for(const file of sourceFiles(SOURCE)){
     hash.update(relative(ROOT,file));hash.update('\0');hash.update(readFileSync(file));hash.update('\0');
@@ -72,7 +81,8 @@ try{
     const legacy=readFileSync(BASE,'utf8');
     if((legacy.match(/<\/body>/gi)||[]).length!==1)throw new Error('REF01_BUILD_BODY_ANCHOR_INVALID');
     const early=injectBeforeQrisBeta(legacy);
-    const candidate=early.replace(/<\/body>/i,`${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${ENTRY}\n</body>`);
+    const withSync=injectS10CSyncAuthority(early);
+    const candidate=withSync.replace(/<\/body>/i,`${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${ENTRY}\n</body>`);
     writeFileSync(join(staging,'index.html'),candidate);
     writeFileSync(join(staging,'.ref01-build-fingerprint'),`${fp}\n`);
     rmSync(OUT,{recursive:true,force:true});
