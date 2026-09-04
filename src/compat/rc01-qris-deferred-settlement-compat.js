@@ -7,7 +7,8 @@ if(window.SJRC01S10AQrisCompat)return;
 var VERSION='RC01-S10A';
 var SNAPSHOT_VERSION='S10A-1';
 var PARK_REASON='SERVE_NEXT_CUSTOMER';
-var runtime=null,installed=false,cacheReady=false,ownedParked=[],lateReview=[],lateQueue={},lateInFlight={},lateAttempts={},lateHeld={},lateDrainRunning=false,lateDrainTimer=null,busyPark=false,busyRecover=false;
+var runtime=null,installed=false,cacheReady=false,ownedParked=[],lateReview=[],lateQueue={},lateInFlight={},lateAttempts={},lateHeld={},lateDrainRunning=false,lateDrainTimer=null,busyPark=false,busyRecover=false,busyCommercialCancel=false;
+var COMMERCIAL_CANCEL_TIMEOUT_MS=8000;
 var baseOpenPayment=null,baseMatchSignal=null;
 function n(v){v=Number(v);return Number.isFinite(v)?v:0}
 function txt(v){return String(v==null?'':v).trim()}
@@ -162,6 +163,30 @@ function renderSurface(){
   var cancel=root.querySelector('[data-s10a-cancel]');if(cancel)cancel.onclick=function(){trueCancelParked(row)};
   var open=root.querySelector('[data-s10a-open]');if(open)open.onclick=function(){try{showView(1);if(window.SJCommercialFinalV5961)SJCommercialFinalV5961.openPayment('QRIS')}catch(_){}};
 }
+function releaseCommercialPayment(){
+  safeClosePayment();
+  try{if(window.SJFinalRefinementVC01A2&&typeof SJFinalRefinementVC01A2.leaveTransactionFlow==='function')SJFinalRefinementVC01A2.leaveTransactionFlow()}catch(_){}
+  goSales();
+}
+function cancelWithTimeout(b){
+  return Promise.race([
+    Promise.resolve().then(function(){return b.cancelWaiting(true)}),
+    new Promise(function(_,reject){setTimeout(function(){var e=new Error('Pembatalan QRIS melewati batas waktu. Status tetap ditahan; cek kembali sebelum mencoba lagi.');e.code='QRIS_S10C_R6_CANCEL_TIMEOUT';reject(e)},COMMERCIAL_CANCEL_TIMEOUT_MS)})
+  ]);
+}
+async function cancelCommercialPending(cancel){
+  if(busyCommercialCancel)return false;
+  var id=statusActiveId(),fresh=id&&runtime?await runtime.readPending(id):null;if(!fresh)return false;
+  if(fresh.providerTransactionId){toast('Pembayaran QRIS sudah terdeteksi. Pending tidak boleh ditutup sebagai pembatalan.','warning');return false}
+  var warning='Batalkan pending QRIS '+money(fresh.amount)+'?\n\nIni tidak membatalkan pembayaran yang mungkin sudah dikirim pelanggan. Signal terlambat akan masuk Perlu Tindakan.';if(!confirm(warning))return false;
+  var b=beta();if(!b||typeof b.cancelWaiting!=='function'){toast('QRIS_S10A_CANCEL_AUTHORITY_REQUIRED','error');return false}
+  var label=cancel&&cancel.textContent||'Batalkan QRIS';busyCommercialCancel=true;if(cancel){cancel.disabled=true;cancel.textContent='Membatalkan…'}
+  try{
+    var ok=await cancelWithTimeout(b);if(!ok)throw new Error('Pending sudah menerima signal dan tidak boleh dibatalkan.');
+    releaseCommercialPayment();setTimeout(refreshEvidence,50);return true;
+  }catch(error){toast(error&&error.message||'Pending QRIS tidak dapat dibatalkan.','error');return false}
+  finally{busyCommercialCancel=false;if(cancel&&qrisOpen()){cancel.disabled=false;cancel.textContent=label}}
+}
 function patchQrisSheet(){
   if(!qrisOpen())return;var modal=document.querySelector('#modal-bayar .modal'),page=modal&&modal.querySelector('.sj61-pay');if(!page)return;
   var active=statusActiveId(),row=ownedParked.find(function(x){return txt(x.pendingId)===active});
@@ -169,7 +194,7 @@ function patchQrisSheet(){
     var actions=page.querySelector('#sj-qris-commercial-actions');if(actions&&!page.querySelector('[data-s10a-park]')){var park=document.createElement('button');park.type='button';park.setAttribute('data-s10a-park','1');park.className='sj-qris-secondary';park.style.cssText='background:#087545;color:#fff;border-color:#087545';park.textContent='Parkir QRIS & Layani Berikutnya';actions.insertBefore(park,actions.firstChild);park.onclick=parkCurrent}
   }
   var back=page.querySelector('[data-pay-back]'),close=page.querySelector('[data-pay-close]');if(back){back.textContent='Parkir QRIS & Layani Berikutnya';back.onclick=parkCurrent}if(close)close.onclick=parkCurrent;
-  var cancel=page.querySelector('#sj-qris-commercial-cancel');if(cancel&&!cancel.__s10a){cancel.__s10a=true;cancel.onclick=async function(){var id=statusActiveId(),fresh=id&&runtime?await runtime.readPending(id):null;if(!fresh)return;var warning='Batalkan pending QRIS '+money(fresh.amount)+'?\n\nIni tidak membatalkan pembayaran yang mungkin sudah dikirim pelanggan. Signal terlambat akan masuk Perlu Tindakan.';if(confirm(warning))beta().cancelWaiting(true)}}
+  var cancel=page.querySelector('#sj-qris-commercial-cancel');if(cancel&&!cancel.__s10a){cancel.__s10a=true;cancel.onclick=function(){return cancelCommercialPending(cancel)}}
 }
 function lateIds(value){return Array.from(new Set((Array.isArray(value)?value:[]).map(function(x){return txt(x)}).filter(Boolean))).sort()}
 function sameLateRequest(a,b){return !!(a&&b&&txt(a.status)===txt(b.status)&&JSON.stringify(lateIds(a.lateCandidatePendingIds))===JSON.stringify(lateIds(b.lateCandidatePendingIds)))}
