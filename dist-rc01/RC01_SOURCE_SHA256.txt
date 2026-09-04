@@ -1,4 +1,4 @@
-14c8405da632274e2daac4845d7670aa448823525348307b89da78d27175a9ee  ./.ref01-build-fingerprint
+8bf83740bce2a87b37ee46518cd3bd93a47e84969b39ac2a3bc4492b01c36a0e  ./.ref01-build-fingerprint
 a801206ce182c22a5fe6a97628baa621efffcf0d1ba67ecdfdcdbd14ebf45503  ./RC01_RELEASE.json
 d173ccb697564a71e9ffe35072b5f2d6eda86d97722f7d26cee846fb26a2726a  ./index.html
 c341d6864ce4a225932fa9be665518fe06488e87ac4b6ccb150f4c4d45f94f7e  ./src/app/app-state.js
@@ -74,8 +74,8 @@ a6befdb62a0306f49a54a526898ed7549b3211953512ff2e94310d5ac79554a4  ./src/assets/i
 19c09a25be1095e0f05efeb73c2ed5254cc57413bc175562449cf6301ca60a49  ./src/assets/icons/locked/outline/system/users.svg
 302a479e3a4735a9a6fe19b52254ed8999578ba4919d29386d7b08e0ff581c93  ./src/assets/icons/locked/outline/system/warehouse.svg
 832334a2d7499fc95df0997c92a38070c8378c1e9339673093715d0392ce1066  ./src/compat/rc01-qris-deferred-settlement-compat.js
-7da40dfe73e36de2df70c1e1efd75efcfaf60fda53325a60a509435368ee7221  ./src/compat/rc01-qris-event-sync-shield.js
-09d2daf036c4bdd4f082ea3ac110eb439a7cf356f3abc3ed4a0e9d9e236cbe6b  ./src/compat/rc01-sync-authority.js
+c2787bb2cc7878a1d7348a66c0b1682c3ebfa4470a90cccc9188953c4e122064  ./src/compat/rc01-qris-event-sync-shield.js
+132dfc7a823e4836a4e24c940f59f9c3fc5d2d051bc1c19b1a1085b5373d9710  ./src/compat/rc01-sync-authority.js
 d5af98d5a441120391123f12154ad4d0653941972352b5d574f6e6f2aaf265c0  ./src/compat/ref01-production-sales-compat.js
 b54c946714cd4741da4c3f36f4cb027c802307e4f31fbf9d576623782e4b2e46  ./src/core/connectivity.js
 a73a490b20c40fed8739c8da1ddaf70d93ef279e4357d8676351468be8fadabd  ./src/core/error-journal.js

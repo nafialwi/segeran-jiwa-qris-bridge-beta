@@ -22,8 +22,10 @@ function harness({signals={},denyEvents=false}={}){
       if(denyEvents&&this.path.startsWith(`${QRIS_ROOT}/events/`)){
         const error=new Error('PERMISSION_DENIED');error.code='PERMISSION_DENIED';return Promise.reject(error);
       }
-      const value=typeof updateFn==='function'?updateFn(null):null;
-      return Promise.resolve({committed:true,snapshot:snap(value)});
+      const prefix=`${QRIS_ROOT}/signals/`;
+      const current=this.path.startsWith(prefix)?JSON.parse(JSON.stringify(signals[this.path.slice(prefix.length)]??null)):null;
+      const value=typeof updateFn==='function'?updateFn(current):null;
+      return Promise.resolve({committed:value!==undefined,snapshot:snap(value)});
     }
   }
   const db={ref:path=>new Ref(path)};
@@ -99,7 +101,15 @@ test('S10A.2 allows explicitly marked authoritative quarantine updater through b
 
 test('S10A.2 leaves normal signal transaction path unchanged',async()=>{
   const {db,txCalls}=harness({signals:{N1:{providerTransactionId:'N1',status:'UNMATCHED',amount:7000}}});
-  const result=await db.ref(`${QRIS_ROOT}/signals/N1`).transaction(cur=>({...cur,status:'UNMATCHED'}));
+  const result=await db.ref(`${QRIS_ROOT}/signals/N1`).transaction(cur=>({...cur,status:'MATCHED',matchedTransactionId:'PEND-1'}));
   assert.equal(result.committed,true);
   assert.deepEqual(txCalls,[`${QRIS_ROOT}/signals/N1`]);
+});
+
+
+test('S10A.2 suppresses idempotent normal signal match-state transaction before it can retrigger the signal listener',async()=>{
+  const {db,txCalls}=harness({signals:{N1:{providerTransactionId:'N1',status:'UNMATCHED',amount:7000}}});
+  const result=await db.ref(`${QRIS_ROOT}/signals/N1`).transaction(cur=>{cur.status='UNMATCHED';return cur});
+  assert.equal(result.committed,false,'same-state signal bookkeeping must be a synthetic no-op');
+  assert.deepEqual(txCalls,[`${QRIS_ROOT}/signals/N1`],'transaction may execute, but updater must return undefined so Firebase does not commit/retrigger listeners');
 });

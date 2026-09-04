@@ -9,14 +9,14 @@ const SOURCE=new URL('../src/compat/rc01-sync-authority.js',import.meta.url);
 function deferred(){let resolve,reject;const promise=new Promise((res,rej)=>{resolve=res;reject=rej});return{promise,resolve,reject}}
 
 function harness(){
-  const calls=[],errors=[],timers=[];
+  const calls=[],errors=[],timers=[],txControl={current:null};
   class Ref{
     constructor(path=''){this.path=String(path||'').replace(/^\/+|\/+$/g,'')}
     toString(){return `https://example.firebaseio.com/${this.path}`}
     set(value){calls.push(['set',this.path,value]);return Promise.resolve({method:'set',value})}
     update(value){calls.push(['update',this.path,value]);return Promise.resolve({method:'update',value})}
     remove(){calls.push(['remove',this.path]);return Promise.resolve('removed')}
-    transaction(fn){calls.push(['transaction',this.path,fn]);return Promise.resolve({committed:true,snapshot:{val:()=>fn(null)}})}
+    transaction(fn){calls.push(['transaction',this.path,fn]);if(txControl.current)return txControl.current.promise;return Promise.resolve({committed:true,snapshot:{val:()=>fn(null)}})}
     once(){return Promise.resolve({val:()=>({})})}
   }
   const db={ref:path=>new Ref(path)};
@@ -38,7 +38,7 @@ function harness(){
   context.window=context;context.globalThis=context;
   vm.createContext(context);
   vm.runInContext(readFileSync(SOURCE,'utf8'),context,{filename:'rc01-sync-authority.js'});
-  return{context,db,Ref,calls,errors,timers,p3,api:context.SJRC01S10CSyncAuthority};
+  return{context,db,Ref,calls,errors,timers,txControl,p3,api:context.SJRC01S10CSyncAuthority};
 }
 
 test('S10C registry tracks set/update/remove/transaction and preserves promise outcomes',async()=>{
@@ -116,4 +116,21 @@ test('S10C diagnostics snapshot exposes method/path/age/classification without m
   const p=h.db.ref(`${ROOT}/global/transactions/T4`).transaction(()=>({x:1}));
   const snap=h.api.snapshot(Date.now()+20);assert.equal(snap.active.length,1);assert.equal(snap.active[0].method,'transaction');assert.equal(snap.active[0].classification,'CRITICAL');assert.ok(snap.active[0].ageMs>=0);
   d.resolve({committed:true});await p;
+});
+
+
+test('S10C does not double-trace when legacy P3 wraps an already traced Firebase transaction method',async()=>{
+  const h=harness(),d=deferred();
+  h.txControl.current=d;
+  const traced=h.Ref.prototype.transaction;
+  function p3Wrapped(){return traced.apply(this,arguments)}
+  p3Wrapped.__sjp3=true;
+  h.Ref.prototype.transaction=p3Wrapped;
+  h.api.retryInstall();
+  const pending=h.db.ref(`${ROOT}/global/transactions/P3-INTEROP`).transaction(()=>({ok:true}));
+  const snap=h.api.snapshot();
+  assert.equal(snap.criticalPending,1,'one underlying write must create exactly one S10C registry row');
+  assert.equal(snap.active.length,1);
+  d.resolve({committed:true});await pending;
+  assert.equal(h.api.snapshot().active.length,0);
 });

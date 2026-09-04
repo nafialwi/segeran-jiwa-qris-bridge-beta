@@ -38,6 +38,16 @@ function providerFromSignalRef(ref){
   }catch(_){return''}
 }
 function isAuthoritativeQuarantineUpdater(updateFn){return !!(updateFn&&updateFn.__sjS10AQuarantine===true)}
+
+function guardIdempotentSignalUpdater(updateFn){
+  if(typeof updateFn!=='function')return updateFn;
+  return function(cur){
+    var before=null;try{before=JSON.stringify(cur)}catch(_){}
+    var next=updateFn(cur);if(next===undefined)return;
+    if(before!==null){try{if(JSON.stringify(next)===before)return}catch(_){}}
+    return next;
+  };
+}
 async function durableLate(providerId){
   if(isBlocked(providerId))return true;
   try{
@@ -67,7 +77,8 @@ function patchEventTransactions(){
         if(isAuthoritativeQuarantineUpdater(args[0]))return baseTransaction.apply(this,args);
         return Promise.resolve().then(async function(){
           if(await durableLate(signalProviderId))return syntheticTransaction();
-          return baseTransaction.apply(ref,args);
+          var guardedArgs=Array.prototype.slice.call(args);guardedArgs[0]=guardIdempotentSignalUpdater(guardedArgs[0]);
+          return baseTransaction.apply(ref,guardedArgs);
         });
       }
       return baseTransaction.apply(this,arguments);

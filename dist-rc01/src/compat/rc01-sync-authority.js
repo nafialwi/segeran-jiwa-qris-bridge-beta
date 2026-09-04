@@ -10,6 +10,7 @@ var STUCK_MS=15000;
 var nextId=1;
 var active=new Map();
 var wrappedProto=null;
+var wrappedMethods={};
 var migrations={};
 var diagnosticsPatched=false;
 var p3Bridged=false;
@@ -84,9 +85,11 @@ function wrapWrites(){
     var database=g.firebase.database();if(!database||typeof database.ref!=='function')return false;
     var proto=Object.getPrototypeOf(database.ref(ROOT));if(!proto)return false;wrappedProto=proto;
     ['set','update','remove','transaction'].forEach(function(method){
-      var current=proto[method];if(typeof current!=='function'||current.__sjS10C===true)return;
+      var current=proto[method];if(typeof current!=='function')return;
+      if(current.__sjS10C===true){wrappedMethods[method]=true;return}
+      if(wrappedMethods[method]===true&&current.__sjp3===true)return;
       function wrapped(){var row=begin(method,this,arguments),result;try{result=current.apply(this,arguments)}catch(e){finish(row);throw e}return wrapResult(row,result)}
-      wrapped.__sjS10C=true;wrapped.__sjS10CBase=current;proto[method]=wrapped;
+      wrapped.__sjS10C=true;wrapped.__sjS10CBase=current;proto[method]=wrapped;wrappedMethods[method]=true;
     });
     return true;
   }catch(_){return false}
