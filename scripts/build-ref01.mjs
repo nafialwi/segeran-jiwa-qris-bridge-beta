@@ -10,6 +10,7 @@ const OUT=join(ROOT,'dist-ref01');
 const LOCK=join(ROOT,'.ref01-build.lock');
 const STAMP=join(OUT,'.ref01-build-fingerprint');
 const S10A1_EARLY_ENTRY='<script src="./src/compat/rc01-qris-event-sync-shield.js" data-sj-rc01-s10a1-event-shield="true"></script>';
+const S10C_R2_EARLY_ENTRY='<script src="./src/compat/rc01-qris-evaluation-convergence.js" data-sj-rc01-s10c-r2-qris-convergence="true"></script>';
 const CLASSIC_ENTRY='<script src="./src/compat/ref01-production-sales-compat.js" data-sj-ref01-production-sales-compat="true"></script>';
 const S10C_SYNC_ENTRY='<script src="./src/compat/rc01-sync-authority.js" data-sj-rc01-s10c-sync-authority="true"></script>';
 const S10C_INSTALL_MARKER='try{SJMobileUX.install();';
@@ -20,7 +21,19 @@ const ENTRY='<script type="module" src="./src/ref01-entry.js" data-sj-ref01-entr
 function injectBeforeQrisBeta(legacy){
   const marker=legacy.indexOf(QRIS_BETA_MARKER);if(marker<0)throw new Error('REF01_QRIS_BETA_MARKER_MISSING');
   const scriptStart=legacy.lastIndexOf('<script>',marker);if(scriptStart<0)throw new Error('REF01_QRIS_BETA_SCRIPT_START_MISSING');
-  return legacy.slice(0,scriptStart)+S10A1_EARLY_ENTRY+'\n'+legacy.slice(scriptStart);
+  return legacy.slice(0,scriptStart)+S10C_R2_EARLY_ENTRY+'\n'+S10A1_EARLY_ENTRY+'\n'+legacy.slice(scriptStart);
+}
+
+function patchQrisEvaluationConvergence(legacy){
+  const originalAll="function evaluateAllSignals(){eligibleSignals().forEach(function(s){setTimeout(function(){evaluateSignal(s)},100)})}";
+  const patchedAll="function evaluateAllSignals(){var gate=window.SJRC01S10CR2QrisConvergence;eligibleSignals().forEach(function(s){var id=String(s&&((s._key||s.providerTransactionId)||''));if(gate&&typeof gate.schedule==='function'&&id){gate.schedule(id,function(){return evaluateSignal(s)},100);return}setTimeout(function(){evaluateSignal(s)},100)})}";
+  const ambiguous="try{await qrisRef('signals/'+id).transaction(function(cur){if(!cur||cur.matchedTransactionId||String(cur.status)==='CONFIRMED'||!Core.eligibleSignalStatus(cur.status))return;cur.status='AMBIGUOUS';return cur})}catch(e){sjSaveError('QRIS_MATCH_STATE',e)}";
+  const ambiguousPatched="if(!(window.SJRC01S10CR2QrisConvergence&&window.SJRC01S10CR2QrisConvergence.shouldSkipSignalState(s,'AMBIGUOUS'))){"+ambiguous+"}";
+  const unmatched="try{await qrisRef('signals/'+id).transaction(function(cur){if(!cur||cur.matchedTransactionId||String(cur.status)==='CONFIRMED'||!Core.eligibleSignalStatus(cur.status))return;cur.status='UNMATCHED';return cur})}catch(e){sjSaveError('QRIS_MATCH_STATE',e)}";
+  const unmatchedPatched="if(!(window.SJRC01S10CR2QrisConvergence&&window.SJRC01S10CR2QrisConvergence.shouldSkipSignalState(s,'UNMATCHED'))){"+unmatched+"}";
+  if(!legacy.includes(originalAll))throw new Error('RC01_S10C_R2_EVALUATE_ALL_ANCHOR_MISSING');
+  if(!legacy.includes(ambiguous)||!legacy.includes(unmatched))throw new Error('RC01_S10C_R2_MATCH_STATE_ANCHOR_MISSING');
+  return legacy.replace(originalAll,patchedAll).replace(ambiguous,ambiguousPatched).replace(unmatched,unmatchedPatched);
 }
 
 function injectS10CSyncAuthority(legacy){
@@ -54,7 +67,7 @@ function sourceFiles(dir){
 }
 function fingerprint(){
   const hash=createHash('sha256');
-  hash.update('REF01-BUILD-V3-S10C\0');
+  hash.update('REF01-BUILD-V3-S10C-R2\0');
   hash.update(readFileSync(BASE));
   for(const file of sourceFiles(SOURCE)){
     hash.update(relative(ROOT,file));hash.update('\0');hash.update(readFileSync(file));hash.update('\0');
@@ -80,7 +93,8 @@ try{
     cpSync(SOURCE,join(staging,'src'),{recursive:true});
     const legacy=readFileSync(BASE,'utf8');
     if((legacy.match(/<\/body>/gi)||[]).length!==1)throw new Error('REF01_BUILD_BODY_ANCHOR_INVALID');
-    const early=injectBeforeQrisBeta(legacy);
+    const converged=patchQrisEvaluationConvergence(legacy);
+    const early=injectBeforeQrisBeta(converged);
     const withSync=injectS10CSyncAuthority(early);
     const candidate=withSync.replace(/<\/body>/i,`${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${ENTRY}\n</body>`);
     writeFileSync(join(staging,'index.html'),candidate);

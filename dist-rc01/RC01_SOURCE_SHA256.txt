@@ -1,6 +1,6 @@
-8bf83740bce2a87b37ee46518cd3bd93a47e84969b39ac2a3bc4492b01c36a0e  ./.ref01-build-fingerprint
+197d8604c45b5af6d74c6977f26686cef5c6773658a9ef52d25ceba63c21c292  ./.ref01-build-fingerprint
 a801206ce182c22a5fe6a97628baa621efffcf0d1ba67ecdfdcdbd14ebf45503  ./RC01_RELEASE.json
-d173ccb697564a71e9ffe35072b5f2d6eda86d97722f7d26cee846fb26a2726a  ./index.html
+219149affb2844e67d9dfde5d2d98a0ef8776275def2d75f13a73724c346934c  ./index.html
 c341d6864ce4a225932fa9be665518fe06488e87ac4b6ccb150f4c4d45f94f7e  ./src/app/app-state.js
 0656c0e00ccfa22ea39b0ae6035c9c89602f04f8ca635406c14d810ce70e2b8f  ./src/app/bootstrap.js
 1b3719ee95152ec56dcb0b19153fa86e9485eeee2fdc566e2e286068d60985e9  ./src/app/index.js
@@ -74,6 +74,7 @@ a6befdb62a0306f49a54a526898ed7549b3211953512ff2e94310d5ac79554a4  ./src/assets/i
 19c09a25be1095e0f05efeb73c2ed5254cc57413bc175562449cf6301ca60a49  ./src/assets/icons/locked/outline/system/users.svg
 302a479e3a4735a9a6fe19b52254ed8999578ba4919d29386d7b08e0ff581c93  ./src/assets/icons/locked/outline/system/warehouse.svg
 832334a2d7499fc95df0997c92a38070c8378c1e9339673093715d0392ce1066  ./src/compat/rc01-qris-deferred-settlement-compat.js
+925f03e19db85327a1faf0b9c7473101ea045dcc85d2080e3afb6ba82b2848db  ./src/compat/rc01-qris-evaluation-convergence.js
 c2787bb2cc7878a1d7348a66c0b1682c3ebfa4470a90cccc9188953c4e122064  ./src/compat/rc01-qris-event-sync-shield.js
 132dfc7a823e4836a4e24c940f59f9c3fc5d2d051bc1c19b1a1085b5373d9710  ./src/compat/rc01-sync-authority.js
 d5af98d5a441120391123f12154ad4d0653941972352b5d574f6e6f2aaf265c0  ./src/compat/ref01-production-sales-compat.js

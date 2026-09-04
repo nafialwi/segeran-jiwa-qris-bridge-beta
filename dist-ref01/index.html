@@ -6222,6 +6222,7 @@ setInterval(function(){try{if(currentLoginId&&!started)start();else if(!currentL
 });
 
 </script>
+<script src="./src/compat/rc01-qris-evaluation-convergence.js" data-sj-rc01-s10c-r2-qris-convergence="true"></script>
 <script src="./src/compat/rc01-qris-event-sync-shield.js" data-sj-rc01-s10a1-event-shield="true"></script>
 <script>
 (function(){
@@ -6503,7 +6504,7 @@ async function manualFallback(){
 
 function candidatePendingRows(){return Core.filterPendingForUser(arrObj(pendingRows),currentUserRole,currentLoginId)}
 function eligibleSignals(){return arrObj(signals).filter(function(s){return Core.eligibleSignalStatus(s.status)})}
-function evaluateAllSignals(){eligibleSignals().forEach(function(s){setTimeout(function(){evaluateSignal(s)},100)})}
+function evaluateAllSignals(){var gate=window.SJRC01S10CR2QrisConvergence;eligibleSignals().forEach(function(s){var id=String(s&&((s._key||s.providerTransactionId)||''));if(gate&&typeof gate.schedule==='function'&&id){gate.schedule(id,function(){return evaluateSignal(s)},100);return}setTimeout(function(){evaluateSignal(s)},100)})}
 async function resolveAmbiguous(providerId,pendingId){
   providerId=String(providerId||'');pendingId=String(pendingId||'');
   if(!Core.safeProviderId(providerId))return alert('ID provider QRIS tidak valid.');
@@ -6550,12 +6551,12 @@ async function evaluateSignal(s){
     return;
   }
   if(globalMatch.status==='AMBIGUOUS'){
-    try{await qrisRef('signals/'+id).transaction(function(cur){if(!cur||cur.matchedTransactionId||String(cur.status)==='CONFIRMED'||!Core.eligibleSignalStatus(cur.status))return;cur.status='AMBIGUOUS';return cur})}catch(e){sjSaveError('QRIS_MATCH_STATE',e)}
+    if(!(window.SJRC01S10CR2QrisConvergence&&window.SJRC01S10CR2QrisConvergence.shouldSkipSignalState(s,'AMBIGUOUS'))){try{await qrisRef('signals/'+id).transaction(function(cur){if(!cur||cur.matchedTransactionId||String(cur.status)==='CONFIRMED'||!Core.eligibleSignalStatus(cur.status))return;cur.status='AMBIGUOUS';return cur})}catch(e){sjSaveError('QRIS_MATCH_STATE',e)}}
     ensureQrisEvent(id,'QRIS_AMBIGUOUS',{amount:s.amount,signalStatus:'AMBIGUOUS'});if(Core.ownAmbiguousCandidates(globalMatch,rows,currentLoginId).length)toastOnce('amb-'+id,'QRIS '+fmtAmount(s.amount)+' masuk, tetapi ada beberapa transaksi bernominal sama. Pilih pending yang benar.','warning');
     return;
   }
   if(currentUserRole==='manajemen'){
-    try{await qrisRef('signals/'+id).transaction(function(cur){if(!cur||cur.matchedTransactionId||String(cur.status)==='CONFIRMED'||!Core.eligibleSignalStatus(cur.status))return;cur.status='UNMATCHED';return cur})}catch(e){sjSaveError('QRIS_MATCH_STATE',e)}
+    if(!(window.SJRC01S10CR2QrisConvergence&&window.SJRC01S10CR2QrisConvergence.shouldSkipSignalState(s,'UNMATCHED'))){try{await qrisRef('signals/'+id).transaction(function(cur){if(!cur||cur.matchedTransactionId||String(cur.status)==='CONFIRMED'||!Core.eligibleSignalStatus(cur.status))return;cur.status='UNMATCHED';return cur})}catch(e){sjSaveError('QRIS_MATCH_STATE',e)}}
     ensureQrisEvent(id,'QRIS_UNMATCHED',{amount:s.amount,signalStatus:'UNMATCHED'});toastOnce('un-'+id,'QRIS '+fmtAmount(s.amount)+' masuk dan belum cocok dengan transaksi pending.','warning');
   }
 }
