@@ -1,0 +1,285 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "toko_segeranjiwa_v58": {
+      ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'",
+      ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'",
+      "global": {
+        "settings": {
+          ".read": true,
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'"
+        },
+        "security": {
+          ".read": true,
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'"
+        },
+        "authUsers": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'",
+          "$uid": {
+            ".read": "auth != null && ($uid === auth.uid || (auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'))",
+            ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'"
+          }
+        },
+        "users": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'",
+          "$username": {
+            ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && (root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val() === $username || root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen')",
+            ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'"
+          }
+        },
+        "menu": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'"
+        },
+        "kategori": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'"
+        },
+        "customers": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          "$id": {
+            ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && (root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen' || newData.exists())",
+            ".validate": "newData.hasChildren(['id','name']) && newData.child('name').isString() && newData.child('name').val().length > 0"
+          },
+          ".indexOn": [
+            "name",
+            "active"
+          ]
+        },
+        "employees": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'",
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'",
+          ".indexOn": [
+            "name",
+            "active"
+          ]
+        },
+        "inventory": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          "$productId": {
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          }
+        },
+        "lockedMonths": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'"
+        },
+        "uiSettings": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'"
+        },
+        "schema": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'"
+        },
+        "systemMeta": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'"
+        },
+        "_diagnostics": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'",
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'"
+        },
+        "auditLogs": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'",
+          "$id": {
+            ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && (!data.exists() || root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen')",
+            ".validate": "newData.hasChildren(['id','action','ts'])"
+          },
+          ".indexOn": [
+            "ts",
+            "action",
+            "userId",
+            "shift"
+          ]
+        },
+        "deviceSessions": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          "$device": {
+            ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && (root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen' || newData.child('userId').val() === root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val() || data.child('userId').val() === root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val())"
+          },
+          ".indexOn": [
+            "lastSeenTs",
+            "userId",
+            "online"
+          ]
+        },
+        "hutang": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          "$id": {
+            ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && (root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen' || newData.exists())",
+            ".validate": "newData.hasChildren(['id','nama','status']) && (!newData.child('remaining').exists() || (newData.child('remaining').isNumber() && newData.child('remaining').val() >= 0)) && (!newData.child('paid').exists() || (newData.child('paid').isNumber() && newData.child('paid').val() >= 0))"
+          },
+          ".indexOn": [
+            "ts",
+            "status",
+            "customerId",
+            "nama"
+          ]
+        },
+        "kasbonKaryawan": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'",
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'",
+          ".indexOn": [
+            "ts",
+            "status",
+            "employeeId",
+            "nama"
+          ]
+        },
+        "notifications": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          "$id": {
+            ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && (root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen' || newData.exists())"
+          },
+          ".indexOn": [
+            "ts",
+            "type",
+            "audience"
+          ]
+        },
+        "personNameIndex": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          "$key": {
+            ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && (root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen' || newData.exists())"
+          }
+        },
+        "refunds": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'",
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'",
+          ".indexOn": [
+            "ts",
+            "txId"
+          ]
+        },
+        "restockRequests": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          "$id": {
+            ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && (root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen' || (newData.exists() && ((data.exists() && data.child('requestedById').val() === root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val()) || (!data.exists() && newData.child('requestedById').val() === root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val()))))"
+          },
+          ".indexOn": [
+            "ts",
+            "status",
+            "requestedById",
+            "productId"
+          ]
+        },
+        "stockLedger": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          "$id": {
+            ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && (!data.exists() || root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen')",
+            ".validate": "newData.hasChildren(['id','productId','delta','type','ts']) && newData.child('delta').isNumber()"
+          },
+          ".indexOn": [
+            "ts",
+            "productId",
+            "type",
+            "refId"
+          ]
+        },
+        "transactionReservations": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          ".indexOn": [
+            "ts",
+            "lastActivityTs",
+            "status",
+            "shift"
+          ]
+        },
+        "inventoryV2": {
+          ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true",
+          "ingredients": {
+            ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'"
+          },
+          "recipes": {
+            ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'"
+          },
+          "productWarehouse": {
+            ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen'"
+          },
+          "balances": {
+            "ingredients": {
+              "$ingredientId": {
+                ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && (root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'transaksi' || root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen') && newData.exists() && newData.child('outlet').isNumber() && newData.child('outlet').val() >= 0 && newData.child('warehouse').isNumber() && data.child('warehouse').isNumber() && newData.child('warehouse').val() === data.child('warehouse').val() && newData.child('lastOp/id').isString() && newData.child('lastOp/cashierId').val() === root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val() && newData.child('lastOp/ts').isNumber() && ((newData.child('lastOp/action').val() === 'RESERVE' && data.child('lastOp/id').val() !== newData.child('lastOp/id').val() && root.child('toko_segeranjiwa_v58/global/inventoryV2/reservations').child(newData.child('lastOp/id').val()).child('cashierId').val() === root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val() && root.child('toko_segeranjiwa_v58/global/inventoryV2/reservations').child(newData.child('lastOp/id').val()).child('status').val() === 'PREPARING' && root.child('toko_segeranjiwa_v58/global/inventoryV2/reservations').child(newData.child('lastOp/id').val()).child('consumption').child($ingredientId).isNumber() && data.child('outlet').val() - newData.child('outlet').val() === root.child('toko_segeranjiwa_v58/global/inventoryV2/reservations').child(newData.child('lastOp/id').val()).child('consumption').child($ingredientId).val()) || (newData.child('lastOp/action').val() === 'ROLLBACK' && data.child('lastOp/id').val() === newData.child('lastOp/id').val() && data.child('lastOp/action').val() === 'RESERVE' && root.child('toko_segeranjiwa_v58/global/inventoryV2/reservations').child(newData.child('lastOp/id').val()).child('cashierId').val() === root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val() && (root.child('toko_segeranjiwa_v58/global/inventoryV2/reservations').child(newData.child('lastOp/id').val()).child('status').val() === 'PREPARING' || root.child('toko_segeranjiwa_v58/global/inventoryV2/reservations').child(newData.child('lastOp/id').val()).child('status').val() === 'RESERVED') && root.child('toko_segeranjiwa_v58/global/inventoryV2/reservations').child(newData.child('lastOp/id').val()).child('consumption').child($ingredientId).isNumber() && newData.child('outlet').val() - data.child('outlet').val() === root.child('toko_segeranjiwa_v58/global/inventoryV2/reservations').child(newData.child('lastOp/id').val()).child('consumption').child($ingredientId).val()))"
+              }
+            }
+          },
+          "reservations": {
+            "$reservationId": {
+              ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && (root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'transaksi' || root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen') && newData.exists() && newData.child('id').val() === $reservationId && newData.child('cashierId').val() === root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val() && ((!data.exists() && newData.child('status').val() === 'PREPARING' && newData.child('consumption').exists()) || (data.exists() && data.child('cashierId').val() === root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val() && newData.child('cashierId').val() === data.child('cashierId').val() && newData.child('id').val() === data.child('id').val() && newData.child('shift').val() === data.child('shift').val() && newData.child('consumption').val() === data.child('consumption').val() && ((data.child('status').val() === 'PREPARING' && newData.child('status').val() === 'RESERVED') || ((data.child('status').val() === 'PREPARING' || data.child('status').val() === 'RESERVED') && newData.child('status').val() === 'ROLLED_BACK') || (data.child('status').val() === 'RESERVED' && newData.child('status').val() === 'COMMITTED' && newData.child('txId').isString()) || (data.child('status').val() === 'RESERVED' && newData.child('status').val() === 'COMMIT_UNCERTAIN' && newData.child('txId').isString()))))"
+            }
+          },
+          "movements": {
+            "$movementId": {
+              ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && (root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'transaksi' || root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen') && !data.exists() && newData.exists() && newData.child('id').val() === $movementId && newData.child('type').val() === 'SALE_RECIPE' && newData.child('location').val() === 'outlet' && newData.child('delta').isNumber() && newData.child('delta').val() < 0 && newData.child('userId').val() === root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val() && newData.child('reservationId').isString() && root.child('toko_segeranjiwa_v58/global/inventoryV2/reservations').child(newData.child('reservationId').val()).child('cashierId').val() === root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val() && root.child('toko_segeranjiwa_v58/global/inventoryV2/reservations').child(newData.child('reservationId').val()).child('status').val() === 'RESERVED' && root.child('toko_segeranjiwa_v58/global/inventoryV2/reservations').child(newData.child('reservationId').val()).child('consumption').child(newData.child('itemId').val()).isNumber() && (0 - newData.child('delta').val()) === root.child('toko_segeranjiwa_v58/global/inventoryV2/reservations').child(newData.child('reservationId').val()).child('consumption').child(newData.child('itemId').val()).val()"
+            },
+            ".indexOn": [
+              "ts",
+              "type",
+              "itemId",
+              "reservationId"
+            ]
+          }
+        }
+      },
+      "$shift": {
+        ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && $shift.matches(/^\\d{4}-\\d{2}-\\d{2}-S[123]$/)",
+        ".write": "auth != null && $shift.matches(/^\\d{4}-\\d{2}-\\d{2}-S[123]$/) && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && (root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'manajemen' || (auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() === true && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() === 'transaksi' && data.child('locked').val() !== true && (((data.child('sessionControl/status').val() === 'ACTIVE' || data.child('sessionControl/status').val() === 'CLOSING') && data.child('sessionControl/currentCashierId').val() === root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val()) || ((!data.child('sessionControl').exists() || data.child('sessionControl/status').val() === null || data.child('sessionControl/status').val() === 'NOT_STARTED') && newData.child('sessionControl/status').val() === 'ACTIVE' && newData.child('sessionControl/currentCashierId').val() === root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val()) || (!data.exists() && newData.child('shiftStatus').val() === 'NOT_STARTED' && newData.child('locked').val() === false))))"
+      }
+    },
+    "segeranjiwa_qris_beta_v1": {
+      ".read": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() == true",
+      ".write": false,
+      "signals": {
+        ".indexOn": [
+          "firstSeenAt",
+          "lastSeenAt",
+          "status",
+          "amount",
+          "matchedTransactionId"
+        ],
+        "$signalId": {
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() == true && $signalId.matches(/^[A-Za-z0-9_-]{1,120}$/) && ((!newData.exists() && data.exists() && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() == 'manajemen' && data.child('matchedTransactionId').val() == null && (data.child('status').val() == 'DETECTED' || data.child('status').val() == 'UNMATCHED' || data.child('status').val() == 'AMBIGUOUS') && data.child('resolutionState').val() == 'DISMISSED' && data.child('resolvedAt').isNumber()) || (newData.exists() && ((!data.exists() && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() == 'manajemen' && newData.child('status').val() == 'DETECTED' && newData.child('matchedTransactionId').val() == null && newData.child('matchedAt').val() == null && newData.child('confirmedAt').val() == null && newData.child('confirmedBy').val() == null) || (data.exists() && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() == 'manajemen' && newData.child('status').val() == data.child('status').val() && newData.child('matchedTransactionId').val() == data.child('matchedTransactionId').val() && newData.child('matchedAt').val() == data.child('matchedAt').val() && newData.child('confirmedAt').val() == data.child('confirmedAt').val() && newData.child('confirmedBy').val() == data.child('confirmedBy').val() && newData.child('lastSeenAt').isNumber() && newData.child('lastSeenAt').val() >= data.child('lastSeenAt').val()) || (data.exists() && data.child('matchedTransactionId').val() == null && newData.child('matchedTransactionId').val() == null && (data.child('status').val() == 'DETECTED' || data.child('status').val() == 'UNMATCHED' || data.child('status').val() == 'AMBIGUOUS') && (newData.child('status').val() == 'UNMATCHED' || newData.child('status').val() == 'AMBIGUOUS') && newData.child('matchedAt').val() == null && newData.child('lastSeenAt').val() == data.child('lastSeenAt').val() && newData.child('confirmedAt').val() == data.child('confirmedAt').val() && newData.child('confirmedBy').val() == data.child('confirmedBy').val()) || (data.exists() && data.child('matchedTransactionId').val() == null && newData.child('matchedTransactionId').isString() && (data.child('status').val() == 'DETECTED' || data.child('status').val() == 'UNMATCHED' || data.child('status').val() == 'AMBIGUOUS') && newData.child('status').val() == 'MATCHED' && newData.child('matchedAt').isNumber() && root.child('segeranjiwa_qris_beta_v1').child('pending').child(newData.child('matchedTransactionId').val()).child('cashierId').val() == root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val() && root.child('segeranjiwa_qris_beta_v1').child('pending').child(newData.child('matchedTransactionId').val()).child('providerTransactionId').val() == $signalId && root.child('segeranjiwa_qris_beta_v1').child('pending').child(newData.child('matchedTransactionId').val()).child('status').val() == 'MATCHED' && root.child('segeranjiwa_qris_beta_v1').child('pending').child(newData.child('matchedTransactionId').val()).child('amount').val() == data.child('amount').val() && newData.child('lastSeenAt').val() == data.child('lastSeenAt').val() && newData.child('confirmedAt').val() == data.child('confirmedAt').val() && newData.child('confirmedBy').val() == data.child('confirmedBy').val()) || (data.exists() && data.child('status').val() == 'MATCHED' && newData.child('status').val() == 'CONFIRMED' && data.child('matchedTransactionId').isString() && newData.child('matchedTransactionId').val() == data.child('matchedTransactionId').val() && newData.child('matchedAt').val() == data.child('matchedAt').val() && newData.child('lastSeenAt').val() == data.child('lastSeenAt').val() && newData.child('confirmedAt').isNumber() && newData.child('confirmedBy').val() == auth.uid && root.child('segeranjiwa_qris_beta_v1').child('pending').child(data.child('matchedTransactionId').val()).child('cashierId').val() == root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val() && root.child('segeranjiwa_qris_beta_v1').child('pending').child(data.child('matchedTransactionId').val()).child('providerTransactionId').val() == $signalId && (root.child('segeranjiwa_qris_beta_v1').child('pending').child(data.child('matchedTransactionId').val()).child('status').val() == 'FINALIZING' || root.child('segeranjiwa_qris_beta_v1').child('pending').child(data.child('matchedTransactionId').val()).child('status').val() == 'FINALIZED')))))",
+          ".validate": "newData.exists() && newData.hasChildren(['provider','amount','firstSeenAt','lastSeenAt','sourceDeviceId','status']) && newData.child('provider').val() == 'GOFOOD_MERCHANT' && newData.child('amount').isNumber() && newData.child('amount').val() > 0 && newData.child('firstSeenAt').isNumber() && newData.child('firstSeenAt').val() > 0 && newData.child('lastSeenAt').isNumber() && newData.child('lastSeenAt').val() >= newData.child('firstSeenAt').val() && newData.child('sourceDeviceId').isString() && newData.child('sourceDeviceId').val().length > 0 && newData.child('sourceDeviceId').val().length <= 160 && newData.child('status').isString() && (newData.child('status').val() == 'DETECTED' || newData.child('status').val() == 'UNMATCHED' || newData.child('status').val() == 'AMBIGUOUS' || newData.child('status').val() == 'MATCHED' || newData.child('status').val() == 'CONFIRMED') && ((newData.child('status').val() == 'DETECTED' || newData.child('status').val() == 'UNMATCHED' || newData.child('status').val() == 'AMBIGUOUS') ? (newData.child('matchedTransactionId').val() == null && newData.child('matchedAt').val() == null && newData.child('confirmedAt').val() == null && newData.child('confirmedBy').val() == null) : (newData.child('matchedTransactionId').isString() && newData.child('matchedTransactionId').val().matches(/^[A-Za-z0-9_-]{1,180}$/) && newData.child('matchedAt').isNumber())) && (newData.child('status').val() == 'CONFIRMED' ? (newData.child('confirmedAt').isNumber() && newData.child('confirmedBy').isString()) : (newData.child('confirmedAt').val() == null && newData.child('confirmedBy').val() == null)) && (!data.exists() || (newData.child('provider').val() == data.child('provider').val() && newData.child('amount').val() == data.child('amount').val() && newData.child('firstSeenAt').val() == data.child('firstSeenAt').val() && newData.child('sourceDeviceId').val() == data.child('sourceDeviceId').val() && newData.child('lastSeenAt').val() >= data.child('lastSeenAt').val())) && ((newData.child('resolutionState').val() == null && newData.child('resolvedAt').val() == null && newData.child('resolvedBy').val() == null && newData.child('resolvedReason').val() == null) || (newData.child('resolutionState').val() == 'DISMISSED' && newData.child('resolvedAt').isNumber() && newData.child('resolvedBy').isString() && newData.child('resolvedReason').isString() && newData.child('resolvedReason').val().length > 0 && newData.child('resolvedReason').val().length <= 240)) && (!data.exists() || data.child('resolutionState').val() == null || (newData.child('resolutionState').val() == data.child('resolutionState').val() && newData.child('resolvedAt').val() == data.child('resolvedAt').val() && newData.child('resolvedBy').val() == data.child('resolvedBy').val() && newData.child('resolvedReason').val() == data.child('resolvedReason').val()))"
+        }
+      },
+      "pending": {
+        ".indexOn": [
+          "createdAt",
+          "expiresAt",
+          "status",
+          "cashierId",
+          "amount",
+          "providerTransactionId"
+        ],
+        "$pendingId": {
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() == true && newData.exists() && $pendingId.matches(/^[A-Za-z0-9_-]{1,180}$/) && ((!data.exists() && newData.child('cashierId').val() == root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val() && newData.child('status').val() == 'WAITING_QRIS' && newData.child('providerTransactionId').val() == null) || (data.exists() && data.child('cashierId').val() == root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val() && newData.child('cashierId').val() == root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val() && ((data.child('status').val() == 'WAITING_QRIS' && newData.child('status').val() == 'MATCHED' && data.child('providerTransactionId').val() == null && newData.child('providerTransactionId').isString() && newData.child('matchedAt').isNumber() && root.child('segeranjiwa_qris_beta_v1').child('signals').child(newData.child('providerTransactionId').val()).exists() && root.child('segeranjiwa_qris_beta_v1').child('signals').child(newData.child('providerTransactionId').val()).child('amount').val() == data.child('amount').val() && root.child('segeranjiwa_qris_beta_v1').child('signals').child(newData.child('providerTransactionId').val()).child('matchedTransactionId').val() == null && (root.child('segeranjiwa_qris_beta_v1').child('signals').child(newData.child('providerTransactionId').val()).child('status').val() == 'DETECTED' || root.child('segeranjiwa_qris_beta_v1').child('signals').child(newData.child('providerTransactionId').val()).child('status').val() == 'UNMATCHED' || root.child('segeranjiwa_qris_beta_v1').child('signals').child(newData.child('providerTransactionId').val()).child('status').val() == 'AMBIGUOUS')) || (data.child('status').val() == 'MATCHED' && newData.child('status').val() == 'WAITING_QRIS' && data.child('providerTransactionId').isString() && newData.child('providerTransactionId').val() == null && newData.child('matchedAt').val() == null && newData.child('finalizedTransactionId').val() == null && root.child('segeranjiwa_qris_beta_v1').child('signals').child(data.child('providerTransactionId').val()).child('matchedTransactionId').val() != $pendingId) || (data.child('status').val() == 'MATCHED' && newData.child('status').val() == 'FINALIZING' && newData.child('providerTransactionId').val() == data.child('providerTransactionId').val() && newData.child('matchedAt').val() == data.child('matchedAt').val() && newData.child('finalizingAt').isNumber() && newData.child('finalizingBy').val() == auth.uid && newData.child('finalizedTransactionId').val() == null) || (data.child('status').val() == 'FINALIZING' && newData.child('status').val() == 'MATCHED' && newData.child('providerTransactionId').val() == data.child('providerTransactionId').val() && newData.child('matchedAt').val() == data.child('matchedAt').val() && newData.child('finalizingAt').val() == null && newData.child('finalizingBy').val() == null && newData.child('finalizedTransactionId').val() == null) || (data.child('status').val() == 'FINALIZING' && newData.child('status').val() == 'FINALIZED' && newData.child('providerTransactionId').val() == data.child('providerTransactionId').val() && newData.child('matchedAt').val() == data.child('matchedAt').val() && newData.child('finalizedTransactionId').isString() && newData.child('finalizedAt').isNumber()) || (data.child('status').val() == 'WAITING_QRIS' && newData.child('status').val() == 'MANUAL_FALLBACK' && newData.child('providerTransactionId').val() == null && newData.child('manualFallbackAt').isNumber() && newData.child('finalizedTransactionId').val() == null) || (data.child('status').val() == 'MANUAL_FALLBACK' && newData.child('status').val() == 'MANUAL_FINALIZED' && newData.child('providerTransactionId').val() == null && newData.child('finalizedTransactionId').isString() && newData.child('finalizedAt').isNumber()) || ((data.child('status').val() == 'WAITING_QRIS' || data.child('status').val() == 'MANUAL_FALLBACK') && newData.child('status').val() == 'CANCELLED' && data.child('providerTransactionId').val() == null && newData.child('providerTransactionId').val() == null && newData.child('cancelledAt').isNumber() && newData.child('cancelledBy').val() == auth.uid) || ((data.child('status').val() == 'WAITING_QRIS' || data.child('status').val() == 'MANUAL_FALLBACK') && newData.child('status').val() == 'EXPIRED' && data.child('providerTransactionId').val() == null && newData.child('providerTransactionId').val() == null && newData.child('expiredAt').isNumber() && newData.child('expiredBy').val() == auth.uid))))",
+          ".validate": "newData.exists() && newData.hasChildren(['pendingId','amount','cashierId','cashierName','sessionId','activeDate','createdAt','expiresAt','cartFingerprint','status']) && newData.child('pendingId').val() == $pendingId && newData.child('amount').isNumber() && newData.child('amount').val() > 0 && newData.child('cashierId').isString() && newData.child('cashierId').val().length > 0 && newData.child('cashierName').isString() && newData.child('sessionId').isString() && newData.child('activeDate').isString() && newData.child('createdAt').isNumber() && newData.child('createdAt').val() > 0 && newData.child('expiresAt').isNumber() && newData.child('expiresAt').val() == newData.child('createdAt').val() + 1200000 && newData.child('cartFingerprint').isString() && newData.child('cartFingerprint').val().matches(/^[0-9a-f]{8}$/) && newData.child('status').isString() && (newData.child('status').val() == 'WAITING_QRIS' || newData.child('status').val() == 'MATCHED' || newData.child('status').val() == 'FINALIZING' || newData.child('status').val() == 'FINALIZED' || newData.child('status').val() == 'MANUAL_FALLBACK' || newData.child('status').val() == 'MANUAL_FINALIZED' || newData.child('status').val() == 'CANCELLED' || newData.child('status').val() == 'EXPIRED') && (newData.child('providerTransactionId').val() == null || (newData.child('providerTransactionId').isString() && newData.child('providerTransactionId').val().matches(/^[A-Za-z0-9_-]{1,120}$/))) && (newData.child('matchedAt').val() == null || newData.child('matchedAt').isNumber()) && (newData.child('finalizingAt').val() == null || newData.child('finalizingAt').isNumber()) && (newData.child('finalizingBy').val() == null || newData.child('finalizingBy').isString()) && (newData.child('manualFallbackAt').val() == null || newData.child('manualFallbackAt').isNumber()) && (newData.child('finalizedTransactionId').val() == null || newData.child('finalizedTransactionId').isString()) && (newData.child('finalizedAt').val() == null || newData.child('finalizedAt').isNumber()) && (newData.child('cancelledAt').val() == null || newData.child('cancelledAt').isNumber()) && (newData.child('cancelledBy').val() == null || newData.child('cancelledBy').isString()) && (newData.child('expiredAt').val() == null || newData.child('expiredAt').isNumber()) && (newData.child('expiredBy').val() == null || newData.child('expiredBy').isString()) && ((newData.child('status').val() == 'WAITING_QRIS' && newData.child('providerTransactionId').val() == null && newData.child('matchedAt').val() == null && newData.child('finalizedTransactionId').val() == null) || (newData.child('status').val() == 'MATCHED' && newData.child('providerTransactionId').isString() && newData.child('matchedAt').isNumber() && newData.child('finalizingAt').val() == null && newData.child('finalizingBy').val() == null && newData.child('finalizedTransactionId').val() == null) || (newData.child('status').val() == 'FINALIZING' && newData.child('providerTransactionId').isString() && newData.child('matchedAt').isNumber() && newData.child('finalizingAt').isNumber() && newData.child('finalizingBy').isString() && newData.child('finalizedTransactionId').val() == null) || (newData.child('status').val() == 'FINALIZED' && newData.child('providerTransactionId').isString() && newData.child('matchedAt').isNumber() && newData.child('finalizedTransactionId').isString() && newData.child('finalizedAt').isNumber()) || (newData.child('status').val() == 'MANUAL_FALLBACK' && newData.child('providerTransactionId').val() == null && newData.child('manualFallbackAt').isNumber() && newData.child('finalizedTransactionId').val() == null) || (newData.child('status').val() == 'MANUAL_FINALIZED' && newData.child('providerTransactionId').val() == null && newData.child('manualFallbackAt').isNumber() && newData.child('finalizedTransactionId').isString() && newData.child('finalizedAt').isNumber()) || (newData.child('status').val() == 'CANCELLED' && newData.child('providerTransactionId').val() == null && newData.child('cancelledAt').isNumber() && newData.child('cancelledBy').isString()) || (newData.child('status').val() == 'EXPIRED' && newData.child('providerTransactionId').val() == null && newData.child('expiredAt').isNumber() && newData.child('expiredBy').isString())) && (!data.exists() || (newData.child('pendingId').val() == data.child('pendingId').val() && newData.child('amount').val() == data.child('amount').val() && newData.child('cashierId').val() == data.child('cashierId').val() && newData.child('cashierName').val() == data.child('cashierName').val() && newData.child('sessionId').val() == data.child('sessionId').val() && newData.child('activeDate').val() == data.child('activeDate').val() && newData.child('createdAt').val() == data.child('createdAt').val() && newData.child('expiresAt').val() == data.child('expiresAt').val() && newData.child('cartFingerprint').val() == data.child('cartFingerprint').val()))"
+        }
+      },
+      "events": {
+        ".indexOn": [
+          "ts",
+          "type",
+          "providerTransactionId",
+          "amount"
+        ],
+        "$eventId": {
+          ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() == true && $eventId.matches(/^[A-Za-z0-9_-]{1,120}__(RECEIVED|UNMATCHED|AMBIGUOUS|MATCHED|CONFIRMED|DISMISSED)$/) && ((!newData.exists() && data.exists() && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() == 'manajemen' && root.child('segeranjiwa_qris_beta_v1/signals').child(data.child('providerTransactionId').val()).child('matchedTransactionId').val() == null && root.child('segeranjiwa_qris_beta_v1/signals').child(data.child('providerTransactionId').val()).child('resolutionState').val() == 'DISMISSED') || (!data.exists() && newData.exists() && ((newData.child('type').val() == 'QRIS_RECEIVED' && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() == 'manajemen' && root.child('segeranjiwa_qris_beta_v1/signals').child(newData.child('providerTransactionId').val()).exists()) || (newData.child('type').val() == 'QRIS_UNMATCHED' && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() == 'manajemen' && root.child('segeranjiwa_qris_beta_v1/signals').child(newData.child('providerTransactionId').val()).child('status').val() == 'UNMATCHED') || (newData.child('type').val() == 'QRIS_AMBIGUOUS' && root.child('segeranjiwa_qris_beta_v1/signals').child(newData.child('providerTransactionId').val()).child('status').val() == 'AMBIGUOUS') || (newData.child('type').val() == 'QRIS_MATCHED' && (root.child('segeranjiwa_qris_beta_v1/signals').child(newData.child('providerTransactionId').val()).child('status').val() == 'MATCHED' || root.child('segeranjiwa_qris_beta_v1/signals').child(newData.child('providerTransactionId').val()).child('status').val() == 'CONFIRMED') && newData.child('pendingId').val() == root.child('segeranjiwa_qris_beta_v1/signals').child(newData.child('providerTransactionId').val()).child('matchedTransactionId').val() && (root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() == 'manajemen' || root.child('segeranjiwa_qris_beta_v1/pending').child(newData.child('pendingId').val()).child('cashierId').val() == root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val())) || (newData.child('type').val() == 'QRIS_CONFIRMED' && root.child('segeranjiwa_qris_beta_v1/signals').child(newData.child('providerTransactionId').val()).child('status').val() == 'CONFIRMED' && newData.child('pendingId').val() == root.child('segeranjiwa_qris_beta_v1/signals').child(newData.child('providerTransactionId').val()).child('matchedTransactionId').val() && (root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() == 'manajemen' || root.child('segeranjiwa_qris_beta_v1/pending').child(newData.child('pendingId').val()).child('cashierId').val() == root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('username').val())) || (newData.child('type').val() == 'QRIS_DISMISSED' && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('role').val() == 'manajemen' && root.child('segeranjiwa_qris_beta_v1/signals').child(newData.child('providerTransactionId').val()).child('resolutionState').val() == 'DISMISSED'))))",
+          ".validate": "!newData.exists() || (newData.hasChildren(['eventId','providerTransactionId','type','amount','ts','signalStatus']) && newData.child('eventId').val() == $eventId && newData.child('providerTransactionId').isString() && newData.child('providerTransactionId').val().matches(/^[A-Za-z0-9_-]{1,120}$/) && newData.child('type').isString() && (newData.child('type').val() == 'QRIS_RECEIVED' || newData.child('type').val() == 'QRIS_UNMATCHED' || newData.child('type').val() == 'QRIS_AMBIGUOUS' || newData.child('type').val() == 'QRIS_MATCHED' || newData.child('type').val() == 'QRIS_CONFIRMED' || newData.child('type').val() == 'QRIS_DISMISSED') && newData.child('amount').isNumber() && newData.child('amount').val() > 0 && newData.child('ts').isNumber() && newData.child('ts').val() > 0 && newData.child('signalStatus').isString() && (newData.child('signalStatus').val() == 'DETECTED' || newData.child('signalStatus').val() == 'UNMATCHED' || newData.child('signalStatus').val() == 'AMBIGUOUS' || newData.child('signalStatus').val() == 'MATCHED' || newData.child('signalStatus').val() == 'CONFIRMED') && root.child('segeranjiwa_qris_beta_v1/signals').child(newData.child('providerTransactionId').val()).exists() && root.child('segeranjiwa_qris_beta_v1/signals').child(newData.child('providerTransactionId').val()).child('amount').val() == newData.child('amount').val() && (newData.child('pendingId').val() == null || newData.child('pendingId').isString()) && (newData.child('transactionId').val() == null || newData.child('transactionId').isString()) && (newData.child('cashierId').val() == null || newData.child('cashierId').isString()) && (newData.child('cashierName').val() == null || newData.child('cashierName').isString()) && (newData.child('actorUid').val() == null || newData.child('actorUid').isString()) && (newData.child('actorName').val() == null || newData.child('actorName').isString()) && (newData.child('reason').val() == null || (newData.child('reason').isString() && newData.child('reason').val().length <= 240)))"
+        }
+      },
+      "inboxState": {
+        "$uid": {
+          "$eventId": {
+            ".write": "auth != null && root.child('toko_segeranjiwa_v58/global/authUsers').child(auth.uid).child('active').val() == true && $uid == auth.uid",
+            ".validate": "!newData.exists() || ((newData.child('readAt').val() == null || newData.child('readAt').isNumber()) && (newData.child('archivedAt').val() == null || newData.child('archivedAt').isNumber()) && (newData.child('hiddenAt').val() == null || newData.child('hiddenAt').isNumber()) && (newData.child('resolvedAt').val() == null || newData.child('resolvedAt').isNumber()) && (newData.child('updatedAt').val() == null || newData.child('updatedAt').isNumber()) && (newData.child('resolvedReason').val() == null || (newData.child('resolvedReason').isString() && newData.child('resolvedReason').val().length <= 240)))"
+          }
+        }
+      }
+    }
+  }
+}
