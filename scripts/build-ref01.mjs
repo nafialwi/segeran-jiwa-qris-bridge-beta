@@ -13,6 +13,8 @@ const S10A1_EARLY_ENTRY='<script src="./src/compat/rc01-qris-event-sync-shield.j
 const S10C_R2_EARLY_ENTRY='<script src="./src/compat/rc01-qris-evaluation-convergence.js" data-sj-rc01-s10c-r2-qris-convergence="true"></script>';
 const CLASSIC_ENTRY='<script src="./src/compat/ref01-production-sales-compat.js" data-sj-ref01-production-sales-compat="true"></script>';
 const S10C_SYNC_ENTRY='<script src="./src/compat/rc01-sync-authority.js" data-sj-rc01-s10c-sync-authority="true"></script>';
+const R6C_NOTIFICATION_ENTRY='<script src="./src/compat/rc01-notification-permission-hygiene.js" data-sj-rc01-s10c-r6c-notification-hygiene="true"></script>';
+const R6C_NOTIFICATION_BOOTSTRAP_MARKER='SJX.init();';
 const S10C_INSTALL_MARKER='try{SJMobileUX.install();';
 const QRIS_BETA_MARKER='if(window.SJQrisSignalBeta)return;';
 const S10A_CLASSIC_ENTRY='<script src="./src/compat/rc01-qris-deferred-settlement-compat.js" data-sj-rc01-s10a-qris="true"></script>';
@@ -34,6 +36,13 @@ function patchQrisEvaluationConvergence(legacy){
   if(!legacy.includes(originalAll))throw new Error('RC01_S10C_R2_EVALUATE_ALL_ANCHOR_MISSING');
   if(!legacy.includes(ambiguous)||!legacy.includes(unmatched))throw new Error('RC01_S10C_R2_MATCH_STATE_ANCHOR_MISSING');
   return legacy.replace(originalAll,patchedAll).replace(ambiguous,ambiguousPatched).replace(unmatched,unmatchedPatched);
+}
+
+function injectR6CNotificationHygiene(legacy){
+  const marker=legacy.indexOf(R6C_NOTIFICATION_BOOTSTRAP_MARKER);if(marker<0)throw new Error('RC01_S10C_R6C_NOTIFICATION_BOOTSTRAP_MARKER_MISSING');
+  const scriptStart=legacy.lastIndexOf('<script>',marker),scriptEnd=legacy.indexOf('</script>',marker);
+  if(scriptStart<0||scriptEnd<0)throw new Error('RC01_S10C_R6C_NOTIFICATION_SCRIPT_BOUNDARY_INVALID');
+  return legacy.slice(0,marker)+'</script>\n'+R6C_NOTIFICATION_ENTRY+'\n<script>\n'+legacy.slice(marker);
 }
 
 function injectS10CSyncAuthority(legacy){
@@ -95,7 +104,8 @@ try{
     if((legacy.match(/<\/body>/gi)||[]).length!==1)throw new Error('REF01_BUILD_BODY_ANCHOR_INVALID');
     const converged=patchQrisEvaluationConvergence(legacy);
     const early=injectBeforeQrisBeta(converged);
-    const withSync=injectS10CSyncAuthority(early);
+    const notificationSafe=injectR6CNotificationHygiene(early);
+    const withSync=injectS10CSyncAuthority(notificationSafe);
     const candidate=withSync.replace(/<\/body>/i,`${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${ENTRY}\n</body>`);
     writeFileSync(join(staging,'index.html'),candidate);
     writeFileSync(join(staging,'.ref01-build-fingerprint'),`${fp}\n`);
