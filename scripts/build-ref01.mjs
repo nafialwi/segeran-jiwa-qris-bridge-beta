@@ -14,6 +14,7 @@ const S10C_R2_EARLY_ENTRY='<script src="./src/compat/rc01-qris-evaluation-conver
 const CLASSIC_ENTRY='<script src="./src/compat/ref01-production-sales-compat.js" data-sj-ref01-production-sales-compat="true"></script>';
 const S10C_SYNC_ENTRY='<script src="./src/compat/rc01-sync-authority.js" data-sj-rc01-s10c-sync-authority="true"></script>';
 const R6C_NOTIFICATION_ENTRY='<script src="./src/compat/rc01-notification-permission-hygiene.js" data-sj-rc01-s10c-r6c-notification-hygiene="true"></script>';
+const R6D_SALES_RECURSION_ENTRY='<script src="./src/compat/rc01-sales-render-recursion-hardening.js" data-sj-rc01-s10c-r6d-sales-recursion="true"></script>';
 const R6C_NOTIFICATION_BOOTSTRAP_MARKER='SJX.init();';
 const S10C_INSTALL_MARKER='try{SJMobileUX.install();';
 const QRIS_BETA_MARKER='if(window.SJQrisSignalBeta)return;';
@@ -106,7 +107,7 @@ try{
     const early=injectBeforeQrisBeta(converged);
     const notificationSafe=injectR6CNotificationHygiene(early);
     const withSync=injectS10CSyncAuthority(notificationSafe);
-    const candidate=withSync.replace(/<\/body>/i,`${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${ENTRY}\n</body>`);
+    const candidate=withSync.replace(/<\/body>/i,`${R6D_SALES_RECURSION_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${ENTRY}\n</body>`);
     writeFileSync(join(staging,'index.html'),candidate);
     writeFileSync(join(staging,'.ref01-build-fingerprint'),`${fp}\n`);
     rmSync(OUT,{recursive:true,force:true});
