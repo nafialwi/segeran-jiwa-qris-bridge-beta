@@ -45,8 +45,9 @@ function isDeviceHeartbeat(path,payload){
   var prefix=ROOT+'/global/deviceSessions/';
   if(!p.startsWith(prefix)||p.slice(prefix.length).indexOf('/')>=0||!plainObject(payload))return false;
   var keys=Object.keys(payload);if(!keys.length)return false;
-  var allowed={online:1,lastSeenAt:1,lastSeenTs:1,shift:1,sessionId:1,build:1,authUid:1};
+  var allowed={online:1,lastSeenAt:1,lastSeenTs:1,shift:1,sessionId:1,build:1,authUid:1,id:1,deviceName:1,userId:1,user:1,role:1,startedAt:1,startedTs:1,revoked:1};
   if(!keys.every(function(k){return !!allowed[k]}))return false;
+  if(Object.prototype.hasOwnProperty.call(payload,'revoked')&&payload.revoked!==false)return false;
   if(!keys.includes('lastSeenTs'))return false;
   return keys.includes('lastSeenAt')||keys.includes('online');
 }
