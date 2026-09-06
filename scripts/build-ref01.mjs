@@ -18,6 +18,7 @@ const R6D_SALES_RECURSION_ENTRY='<script src="./src/compat/rc01-sales-render-rec
 const R6C_NOTIFICATION_BOOTSTRAP_MARKER='SJX.init();';
 const S10C_INSTALL_MARKER='try{SJMobileUX.install();';
 const QRIS_BETA_MARKER='if(window.SJQrisSignalBeta)return;';
+const QRIS_MANUAL_ONLY_GUARD="if(window.SJQrisSignalBeta)return;window.SJQrisSignalBeta=Object.freeze({version:'QRIS-MANUAL-ONLY',disabled:true,status:function(){return{started:false,activePendingId:'',signals:0,pending:0}},ensureWaitingPending:async function(){throw new Error('QRIS_AUTOMATIC_BRIDGE_DISABLED_MANUAL_ONLY')},renderCommercialQrisState:function(){return false},cancelWaiting:async function(){return true}});window.SJRC01S10AQrisCompat=Object.freeze({version:'QRIS-MANUAL-ONLY',disabled:true,refreshEvidence:async function(){return false},getParked:function(){return[]},getLateReview:function(){return[]}});return;";
 const S10A_CLASSIC_ENTRY='<script src="./src/compat/rc01-qris-deferred-settlement-compat.js" data-sj-rc01-s10a-qris="true"></script>';
 const QRIS_MANUAL_ENTRY='<script src="./src/compat/rc01-qris-manual-bypass.js" data-sj-rc01-qris-manual="true"></script>';
 const ENTRY='<script type="module" src="./src/ref01-entry.js" data-sj-ref01-entry="true"></script>';
@@ -26,6 +27,11 @@ function injectBeforeQrisBeta(legacy){
   const marker=legacy.indexOf(QRIS_BETA_MARKER);if(marker<0)throw new Error('REF01_QRIS_BETA_MARKER_MISSING');
   const scriptStart=legacy.lastIndexOf('<script>',marker);if(scriptStart<0)throw new Error('REF01_QRIS_BETA_SCRIPT_START_MISSING');
   return legacy.slice(0,scriptStart)+S10C_R2_EARLY_ENTRY+'\n'+S10A1_EARLY_ENTRY+'\n'+legacy.slice(scriptStart);
+}
+
+function disableAutomaticQrisBridge(legacy){
+  if(!legacy.includes(QRIS_BETA_MARKER))throw new Error('QRIS_AUTOMATIC_BRIDGE_MARKER_MISSING');
+  return legacy.replace(QRIS_BETA_MARKER,QRIS_MANUAL_ONLY_GUARD);
 }
 
 function patchQrisEvaluationConvergence(legacy){
@@ -106,7 +112,8 @@ try{
     if((legacy.match(/<\/body>/gi)||[]).length!==1)throw new Error('REF01_BUILD_BODY_ANCHOR_INVALID');
     const converged=patchQrisEvaluationConvergence(legacy);
     const early=injectBeforeQrisBeta(converged);
-    const notificationSafe=injectR6CNotificationHygiene(early);
+    const manualOnly=disableAutomaticQrisBridge(early);
+    const notificationSafe=injectR6CNotificationHygiene(manualOnly);
     const withSync=injectS10CSyncAuthority(notificationSafe);
     const candidate=withSync.replace(/<\/body>/i,`${R6D_SALES_RECURSION_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n</body>`);
     writeFileSync(join(staging,'index.html'),candidate);
