@@ -27,9 +27,9 @@ test('P5 Batch-2 closing panel shows physical versus theoretical reconciliation 
 });
 
 test('P5 Batch-2 count collection rejects missing/negative values and requires reason on non-zero variance',()=>{
-  assert.throws(()=>collectCupCountValuesV34({c10:'',c16:1,c22p:1,c22d:1,c22o:1}),/CUP_COUNT_REQUIRED/);
-  assert.throws(()=>collectCupCountValuesV34({c10:-1,c16:1,c22p:1,c22d:1,c22o:1}),/CUP_COUNT_INVALID/);
-  const out=collectCupCountValuesV34({c10:1,c16:2,c22p:3,c22d:4,c22o:5});assert.equal(out.c22o,5);
+  assert.throws(()=>collectCupCountValuesV34({c10:'',c10p:1,c16:1,c22p:1,c22d:1,c22o:1}),/CUP_COUNT_REQUIRED/);
+  assert.throws(()=>collectCupCountValuesV34({c10:-1,c10p:1,c16:1,c22p:1,c22d:1,c22o:1}),/CUP_COUNT_INVALID/);
+  const out=collectCupCountValuesV34({c10:1,c10p:6,c16:2,c22p:3,c22d:4,c22o:5});assert.equal(out.c22o,5);assert.equal(out.c10p,6);
 });
 
 test('P5 Batch-2 augments existing START/CLOSE shift update payload without creating a second writer',()=>{

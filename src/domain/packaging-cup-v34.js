@@ -5,6 +5,7 @@ const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
 
 export const CUP_CATALOG_V34=Object.freeze([
   Object.freeze({code:'c10',name:'Cup 10 Oz',unit:'pcs',aliases:Object.freeze(['CUP 10 OZ','GELAS 10 OZ','CUP 10OZ','GELAS 10OZ'])}),
+  Object.freeze({code:'c10p',name:'Cup Paper 10 Oz',unit:'pcs',saleMapping:false,aliases:Object.freeze(['CUP PAPER 10 OZ','PAPER CUP 10 OZ','GELAS PAPER 10 OZ','CUP PAPER 10OZ','PAPER CUP 10OZ','GELAS PAPER 10OZ'])}),
   Object.freeze({code:'c16',name:'Cup 16 Oz',unit:'pcs',aliases:Object.freeze(['CUP 16 OZ','GELAS 16 OZ','CUP 16OZ','GELAS 16OZ'])}),
   Object.freeze({code:'c22p',name:'Cup 22 Oz Datar Polos',unit:'pcs',aliases:Object.freeze(['CUP 22 OZ DATAR POLOS','GELAS 22 OZ DATAR POLOS','CUP 22 DATAR POLOS','GELAS 22 DATAR POLOS','CUP 22 POLOS','GELAS 22 POLOS'])}),
   Object.freeze({code:'c22d',name:'Cup 22 Oz Datar',unit:'pcs',aliases:Object.freeze(['CUP 22 OZ DATAR','GELAS 22 OZ DATAR','CUP 22 DATAR','GELAS 22 DATAR'])}),

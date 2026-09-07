@@ -26,7 +26,8 @@ function categoryCode(menu,category){
   if(!values.length)return'';return values.every(x=>x===values[0])?values[0]:'';
 }
 function options(selected=''){
-  return `<option value="">Per produk / tanpa cup</option>${CUP_CATALOG_V34.map(x=>`<option value="${x.code}" ${selected===x.code?'selected':''}>${esc(x.name)}</option>`).join('')}`;
+  const mapped=CUP_CATALOG_V34.filter(x=>x.saleMapping!==false);
+  return `<option value="">Per produk / tanpa cup</option>${mapped.map(x=>`<option value="${x.code}" ${selected===x.code?'selected':''}>${esc(x.name)}</option>`).join('')}`;
 }
 
 export function renderCategoryCupMappingV34(categoryRows=[],menu=[],{readOnly=false}={}){
