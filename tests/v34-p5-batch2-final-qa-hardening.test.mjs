@@ -11,16 +11,16 @@ import { applyReadOnlyShiftActionStateV34, renderCupClosingPanelV34 } from '../s
 
 const config=Object.fromEntries(CUP_CATALOG_V34.map((x,i)=>[x.code,{warehouseQty:100+i*10,outletQty:20+i,wac:300+i*25}]));
 
-test('P5 Batch-2 Final QA validates five-cup initial setup and requires WAC when opening stock exists',()=>{
+test('LEGACY-CUP-01A Final QA validates six-cup initial setup and requires WAC when opening stock exists',()=>{
   const out=validateCupInitialSetupV34(config);
-  assert.equal(Object.keys(out).length,5);
+  assert.equal(Object.keys(out).length,6);
   assert.equal(out.c10.totalQty,120);
   assert.throws(()=>validateCupInitialSetupV34({...config,c16:{warehouseQty:1,outletQty:0,wac:0}}),/CUP_INITIAL_WAC_REQUIRED/);
 });
 
 test('P5 Batch-2 Final QA builds LOCAL-only registered cup rows with simulated Gudang Gerai and WAC',()=>{
   const rows=buildCupLocalSimulationRowsV34(config);
-  assert.equal(rows.length,5);
+  assert.equal(rows.length,6);
   assert.equal(rows.every(x=>x.registered&&x.simulated),true);
   assert.equal(rows[0].warehouseQty,100);
   assert.equal(rows[0].outletQty,20);
@@ -31,7 +31,7 @@ test('P5 Batch-2 Final QA builds LOCAL-only registered cup rows with simulated G
 test('P5 Batch-2 Final QA production setup plan reuses master + initial cost + Inventory V2 opname authorities',()=>{
   const missing=CUP_CATALOG_V34.map(x=>({code:x.code,name:x.name,registered:false,ingredientId:null,totalQty:0,costKnown:false}));
   const plan=planCupInitialSetupV34(missing,config);
-  assert.equal(plan.rows.length,5);
+  assert.equal(plan.rows.length,6);
   assert.equal(plan.rows.every(x=>x.createMaster&&x.setInitialCost&&x.warehouseOpname&&x.outletOpname),true);
   assert.equal(plan.usesPurchaseWriter,false,'initial stock must not masquerade as a purchase cash-flow event');
 });

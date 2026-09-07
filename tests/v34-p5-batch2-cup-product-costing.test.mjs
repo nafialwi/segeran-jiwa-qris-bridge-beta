@@ -6,6 +6,8 @@ import { renderCategoryCupMappingV34, installCupProductCostingV34 } from '../src
 test('P5 Batch-2 category mapping UI uses existing cp codes and is read-only in LOCAL QA',()=>{
   const html=renderCategoryCupMappingV34(['ES TEH','ES KEKINIAN'],[{id:'P1',c:'ES TEH',cp:'c22d'}],{readOnly:true});
   assert.match(html,/Mapping Cup per Kategori/);assert.match(html,/Cup 10 Oz/);assert.match(html,/Cup 22 Oz Datar Polos/);
+  assert.doesNotMatch(html,/Cup Paper 10 Oz/,'Cup Paper 10 Oz must stay outside sale mapping until explicitly mapped later');
+  assert.doesNotMatch(html,/value="c10p"/);
   assert.match(html,/data-v34-cup-category="ES TEH"/);assert.match(html,/READ ONLY/);assert.match(html,/disabled/);
 });
 

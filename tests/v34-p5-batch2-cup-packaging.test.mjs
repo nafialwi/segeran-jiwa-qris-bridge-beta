@@ -11,8 +11,10 @@ import {
   buildCupOutletOpnameDraftsV34
 } from '../src/domain/packaging-cup-v34.js';
 
-test('P5 Batch-2 defines exactly five Segeran Jiwa cup types using existing product cp codes',()=>{
-  assert.deepEqual(CUP_CATALOG_V34.map(x=>x.code),['c10','c16','c22p','c22d','c22o']);
+test('LEGACY-CUP-01A defines six stock-controlled cup types while Paper 10 Oz stays unmapped',()=>{
+  assert.deepEqual(CUP_CATALOG_V34.map(x=>x.code),['c10','c10p','c16','c22p','c22d','c22o']);
+  assert.equal(cupSpecByCodeV34('c10p').name,'Cup Paper 10 Oz');
+  assert.equal(cupSpecByCodeV34('c10p').saleMapping,false);
   assert.equal(cupSpecByCodeV34('c22p').name,'Cup 22 Oz Datar Polos');
   assert.equal(cupSpecByCodeV34('c22o').name,'Cup 22 Oz Oval');
   assert.ok(CUP_CATALOG_V34.every(x=>x.unit==='pcs'));
@@ -25,7 +27,7 @@ test('P5 Batch-2 maps registered Inventory V2 cup ingredients and keeps missing 
     costs:{ingredients:{I10:{wac:350,source:'PURCHASE'},I16:{wac:400,source:'PURCHASE'}}}
   };
   const rows=buildCupInventoryRowsV34(raw);
-  assert.equal(rows.length,5);
+  assert.equal(rows.length,6);
   assert.equal(rows.find(x=>x.code==='c10').registered,true);
   assert.equal(rows.find(x=>x.code==='c10').totalQty,100);
   assert.equal(rows.find(x=>x.code==='c10').wac,350);
@@ -40,7 +42,7 @@ test('P5 Batch-2 derives theoretical cup usage from immutable transaction item c
     {status:'DONE',cartData:[{id:'P3',q:3,cp:'c22o'}]}
   ];
   const out=theoreticalCupUsageV34(txs,[]);
-  assert.equal(out.c16,2);assert.equal(out.c22d,1);assert.equal(out.c22o,3);assert.equal(out.c10,0);
+  assert.equal(out.c16,2);assert.equal(out.c22d,1);assert.equal(out.c22o,3);assert.equal(out.c10,0);assert.equal(out.c10p,0);
 });
 
 test('P5 Batch-2 can fall back to current product cp only when transaction line lacks cp snapshot',()=>{

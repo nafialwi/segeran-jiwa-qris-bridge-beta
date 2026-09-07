@@ -23,7 +23,7 @@ function rowFor(cupRows,code){return (cupRows||[]).find(x=>x?.code===code)||CUP_
 
 export function renderCupOpeningPanelV34(cupRows=[],{readOnly=false,values={}}={}){
   const registered=(cupRows||[]).filter(x=>x?.registered).length,ready=registered===CUP_CATALOG_V34.length;
-  const note=!ready?`<div class="sj-v34-cup-note warn">Cup Control belum lengkap (${registered}/5 master). Siapkan master cup di Bahan &amp; Gudang.</div>`:'';
+  const note=!ready?`<div class="sj-v34-cup-note warn">Cup Control belum lengkap (${registered}/${CUP_CATALOG_V34.length} master). Siapkan master cup di Bahan &amp; Gudang.</div>`:'';
   const simulationNote=readOnly?'<div class="sj-v34-cup-note"><b>Simulasi input lokal</b> · angka boleh dicoba untuk QA, tetapi simpan/START tetap diblokir dan tidak menulis production.</div>':'';
   const fields=CUP_CATALOG_V34.map(spec=>{const row=rowFor(cupRows,spec.code);return `<label class="sj-v34-cup-count-row"><span><b>${esc(spec.name)}</b><small>Sistem Gerai: ${esc(num(row.outletQty))} pcs</small></span><input type="number" min="0" step="1" inputmode="numeric" required data-v34-cup-opening="${esc(spec.code)}" value="${esc(values?.[spec.code]??'')}"></label>`}).join('');
   return `<section class="sj-v34-cup-shift-panel" data-v34-cup-opening-panel><header><div><small>Kontrol Kemasan · manual fisik</small><h4>Hitung Cup Awal</h4><p>Hitung cup fisik sebelum transaksi dimulai. Angka sistem hanya referensi.</p></div>${readOnly?'<em>LOCAL QA · READ ONLY</em>':''}</header>${simulationNote}${note}<div class="sj-v34-cup-count-grid">${fields}</div></section>`;
@@ -83,7 +83,7 @@ export function installCupShiftControlV34(runtime=globalThis,{inventoryWorkspace
   const originals={renderWithDay:shift.renderWithDay?.bind(shift),startShift:shift.startShift?.bind(shift),openCloseModal:shift.openCloseModal?.bind(shift),submitClose:shift.submitClose?.bind(shift),verifiedShiftWrite:hardening.verifiedShiftWrite.bind(hardening)};
   let cupRows=[],pendingStart=null,pendingClose=null,closeContext=null;
   async function refreshCupRows(){const raw=await repository.readInventoryV2();cupRows=readOnly&&localSimulation.masterConfig?buildCupLocalSimulationRowsV34(localSimulation.masterConfig):buildCupInventoryRowsV34(raw||{});return{raw:raw||{},cupRows}}
-  const ready=()=>cupRows.filter(x=>x.registered).length===5;
+  const ready=()=>cupRows.filter(x=>x.registered).length===CUP_CATALOG_V34.length;
   async function enhanceOpening(){try{await refreshCupRows();const btn=document.getElementById?.('sjshift-start-btn'),panel=btn?.closest?.('.sjshift-panel');if(!panel)return false;if(!panel.querySelector?.('[data-v34-cup-opening-panel]'))btn.insertAdjacentHTML?.('beforebegin',renderCupOpeningPanelV34(cupRows,{readOnly,values:readOnly?localSimulation.openingCounts||{}:{}}));const cupPanel=panel.querySelector?.('[data-v34-cup-opening-panel]');if(readOnly&&cupPanel&&!cupPanel.__sjV34LocalOpeningBound){cupPanel.__sjV34LocalOpeningBound=true;cupPanel.addEventListener?.('input',()=>{try{const counts=collectCupCountValuesV34(collectInputs(document,'data-v34-cup-opening'));localSimulation.openingCounts={...counts};localSimulation.openingCapturedTs=Date.now()}catch(_){localSimulation.openingCounts=null}})}applyReadOnlyShiftActionStateV34(document,readOnly);return true}catch(_){return false}}
   async function computeClose(closingValues=null){
     const shiftKey=currentShiftKey(runtime),data=shift.currentData?.()||{},sid=String(shift.currentSessionId?.()||data.currentSessionId||''),session=data.sessions?.[sid]||{},realOpening=session?.cupControl?.opening||data?.cupControl?.opening||null,openingEvidence=readOnly&&localSimulation.openingCounts?{counts:localSimulation.openingCounts,capturedTs:localSimulation.openingCapturedTs||Date.now(),source:'LOCAL_SIMULATION'}:realOpening,opening=openingEvidence?.counts||{},openingKnown=Boolean(openingEvidence?.counts);
@@ -103,7 +103,7 @@ export function installCupShiftControlV34(runtime=globalThis,{inventoryWorkspace
   if(typeof shift.renderWithDay==='function')shift.renderWithDay=function(...args){const out=originals.renderWithDay(...args);Promise.resolve().then(enhanceOpening);return out};
   if(typeof shift.startShift==='function')shift.startShift=async function(...args){
     if(!cupRows.length)await refreshCupRows();if(ready()){
-      try{const counts=collectCupCountValuesV34(collectInputs(document,'data-v34-cup-opening'));pendingStart={opening:{version:'3.4',counts,capturedAt:new Date().toISOString(),capturedTs:Date.now(),source:'MANUAL_PHYSICAL_COUNT'}}}catch(e){runtime?.alert?.(e.code==='CUP_COUNT_REQUIRED'?'Hitung semua 5 jenis cup sebelum membuka shift.':'Jumlah cup awal tidak valid.');return false}
+      try{const counts=collectCupCountValuesV34(collectInputs(document,'data-v34-cup-opening'));pendingStart={opening:{version:'3.4',counts,capturedAt:new Date().toISOString(),capturedTs:Date.now(),source:'MANUAL_PHYSICAL_COUNT'}}}catch(e){runtime?.alert?.(e.code==='CUP_COUNT_REQUIRED'?`Hitung semua ${CUP_CATALOG_V34.length} jenis cup sebelum membuka shift.`:'Jumlah cup awal tidak valid.');return false}
     }
     return originals.startShift(...args);
   };
@@ -111,7 +111,7 @@ export function installCupShiftControlV34(runtime=globalThis,{inventoryWorkspace
   if(typeof shift.submitClose==='function')shift.submitClose=async function(...args){
     if(!cupRows.length)await refreshCupRows();if(ready()){
       const data=shift.currentData?.()||{},sid=String(shift.currentSessionId?.()||data.currentSessionId||''),opening=data.sessions?.[sid]?.cupControl?.opening?.counts||data?.cupControl?.opening?.counts;
-      if(opening){try{const closing=collectCupCountValuesV34(collectInputs(document,'data-v34-cup-closing')),ctx=await computeClose(closing),reasons=reasonInputs(document,ctx.reconciliation);pendingClose={closing:{version:'3.4',counts:closing,capturedAt:new Date().toISOString(),capturedTs:Date.now(),source:'MANUAL_PHYSICAL_COUNT'},reconciliation:{version:'3.4',...ctx.reconciliation,reasons,inventoryOpnameDrafts:ctx.opnameDrafts,capturedAt:new Date().toISOString()}}}catch(e){runtime?.alert?.(e.code==='CUP_VARIANCE_REASON_REQUIRED'?'Pilih alasan untuk setiap selisih cup.':e.code==='CUP_COUNT_REQUIRED'?'Hitung semua 5 jenis cup sebelum menutup shift.':'Jumlah cup akhir tidak valid.');return false}}
+      if(opening){try{const closing=collectCupCountValuesV34(collectInputs(document,'data-v34-cup-closing')),ctx=await computeClose(closing),reasons=reasonInputs(document,ctx.reconciliation);pendingClose={closing:{version:'3.4',counts:closing,capturedAt:new Date().toISOString(),capturedTs:Date.now(),source:'MANUAL_PHYSICAL_COUNT'},reconciliation:{version:'3.4',...ctx.reconciliation,reasons,inventoryOpnameDrafts:ctx.opnameDrafts,capturedAt:new Date().toISOString()}}}catch(e){runtime?.alert?.(e.code==='CUP_VARIANCE_REASON_REQUIRED'?'Pilih alasan untuk setiap selisih cup.':e.code==='CUP_COUNT_REQUIRED'?`Hitung semua ${CUP_CATALOG_V34.length} jenis cup sebelum menutup shift.`:'Jumlah cup akhir tidak valid.');return false}}
     }
     return originals.submitClose(...args);
   };
