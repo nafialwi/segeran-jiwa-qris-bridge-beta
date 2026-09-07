@@ -21,6 +21,7 @@ const QRIS_BETA_MARKER='if(window.SJQrisSignalBeta)return;';
 const QRIS_MANUAL_ONLY_GUARD="if(window.SJQrisSignalBeta)return;window.SJQrisSignalBeta=Object.freeze({version:'QRIS-MANUAL-ONLY',disabled:true,status:function(){return{started:false,activePendingId:'',signals:0,pending:0}},ensureWaitingPending:async function(){throw new Error('QRIS_AUTOMATIC_BRIDGE_DISABLED_MANUAL_ONLY')},renderCommercialQrisState:function(){return false},cancelWaiting:async function(){return true}});window.SJRC01S10AQrisCompat=Object.freeze({version:'QRIS-MANUAL-ONLY',disabled:true,refreshEvidence:async function(){return false},getParked:function(){return[]},getLateReview:function(){return[]}});return;";
 const S10A_CLASSIC_ENTRY='<script src="./src/compat/rc01-qris-deferred-settlement-compat.js" data-sj-rc01-s10a-qris="true"></script>';
 const QRIS_MANUAL_ENTRY='<script src="./src/compat/rc01-qris-manual-bypass.js" data-sj-rc01-qris-manual="true"></script>';
+const PRODUCT_CUP_UI_ENTRY='<script src="./src/compat/legacy-cup-01b-product-cup-ui.js" data-sj-legacy-cup-01b-product-ui="true"></script>';
 const ENTRY='<script type="module" src="./src/ref01-entry.js" data-sj-ref01-entry="true"></script>';
 
 function injectBeforeQrisBeta(legacy){
@@ -60,6 +61,13 @@ function injectS10CSyncAuthority(legacy){
   return legacy.slice(0,marker)+'</script>\n'+S10C_SYNC_ENTRY+'\n<script>\n'+legacy.slice(marker);
 }
 
+const PRODUCT_CUP_SELECT_OPTIONS='<option value="">Per produk / tanpa cup</option><option value="c10">Cup 10 Oz</option><option value="c10p">Cup Paper 10 Oz</option><option value="c16">Cup 16 Oz</option><option value="c22p">Cup 22 Oz Datar Polos</option><option value="c22d">Cup 22 Oz Datar</option><option value="c22o">Cup 22 Oz Oval</option>';
+function patchLegacyProductCupSelects(legacy){
+  let count=0;
+  const patched=legacy.replace(/(<select id="(?:new-cp|edit-m-cp)"[^>]*>)[\s\S]*?(<\/select>)/g,(full,start,end)=>{count++;return `${start}\n${PRODUCT_CUP_SELECT_OPTIONS}\n${end}`});
+  if(count!==2)throw new Error(`LEGACY_CUP_01B_PRODUCT_SELECT_ANCHOR_DRIFT:${count}`);
+  return patched;
+}
 function sleep(ms){Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms)}
 function acquireLock(){
   const deadline=Date.now()+30000;
@@ -115,7 +123,8 @@ try{
     const manualOnly=disableAutomaticQrisBridge(early);
     const notificationSafe=injectR6CNotificationHygiene(manualOnly);
     const withSync=injectS10CSyncAuthority(notificationSafe);
-    const candidate=withSync.replace(/<\/body>/i,`${R6D_SALES_RECURSION_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n</body>`);
+    const withProductCup=patchLegacyProductCupSelects(withSync);
+    const candidate=withProductCup.replace(/<\/body>/i,`${PRODUCT_CUP_UI_ENTRY}\n${R6D_SALES_RECURSION_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n</body>`);
     writeFileSync(join(staging,'index.html'),candidate);
     writeFileSync(join(staging,'.ref01-build-fingerprint'),`${fp}\n`);
     rmSync(OUT,{recursive:true,force:true});
