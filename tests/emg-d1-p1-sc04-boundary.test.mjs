@@ -23,11 +23,11 @@ test('EMG-D1 P1 emergency credential/mode state is memory-only and not browser s
   assert.match(source, /mode:\s*false/);
 });
 
-test('EMG-D1 P1 dashboard/cart caches use plain objects, preserving behavior without Map.set tokens', () => {
+test('EMG-D1 P1 R7 dashboard compat has no second cache authority and emergency cart stays plain-object', () => {
   const dashboard = read('src/compat/emg-d1-p1-dashboard-fast.js');
   const emergency = read('src/compat/emg-d1-p1-emergency.js');
-  assert.match(dashboard, /modelCache\s*=\s*Object\.create\(null\)/);
-  assert.match(dashboard, /inFlight\s*=\s*Object\.create\(null\)/);
+  assert.doesNotMatch(dashboard, /modelCache|prevCache|inFlight|REFRESH_TTL_MS|PREV_TTL_MS/);
+  assert.doesNotMatch(dashboard, /dashboard\.ownerModel\s*=|dashboard\.renderOwner\s*=/);
   assert.match(emergency, /cart:\s*Object\.create\(null\)/);
   assert.match(emergency, /const detach = \(el\)/);
 });

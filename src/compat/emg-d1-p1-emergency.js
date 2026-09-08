@@ -33,7 +33,6 @@
     const style = document.createElement('style');
     style.id = 'sj-emg-d1-style';
     style.textContent = `
-      #sj-emg-launch{position:fixed;right:14px;bottom:82px;z-index:19990;border:0;border-radius:999px;background:#7f1d1d;color:#fff;padding:10px 14px;font:700 12px/1.2 system-ui;box-shadow:0 8px 25px #0004}
       #sj-emg-overlay{position:fixed;inset:0;z-index:20000;background:#f5f7fb;color:#172033;font-family:system-ui,-apple-system,sans-serif;overflow:auto}
       .sj-emg-top{position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #dbe2ea;padding:12px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between}
       .sj-emg-title{font-weight:900}.sj-emg-sub{font-size:11px;color:#64748b}.sj-emg-wrap{max-width:760px;margin:auto;padding:12px 12px 90px}
@@ -272,9 +271,6 @@
 
   function installLauncher() {
     styles();
-    if (!document.getElementById('sj-emg-launch')) {
-      const b = document.createElement('button'); b.id = 'sj-emg-launch'; b.textContent = 'MODE DARURAT D1'; b.onclick = openEmergency; document.body.appendChild(b);
-    }
     const mgmt = document.getElementById('mst-menu-view');
     if (mgmt && !mgmt.querySelector('[data-sj-emg-d1-card]')) {
       const card = document.createElement('div'); card.setAttribute('data-sj-emg-d1-card', 'true'); card.className = 'sj-emg-card'; card.innerHTML = `<div class="sj-emg-row"><div class="sj-emg-grow"><b>Mode Darurat D1</b><div class="sj-emg-note">Standby backend jika Firebase quota/down. Tidak aktif otomatis.</div></div><button class="sj-emg-btn danger">BUKA</button></div>`; card.querySelector('button').onclick = openEmergency; mgmt.appendChild(card);
