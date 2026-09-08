@@ -1,6 +1,7 @@
 import { renderIcon } from './icons.js';
 import { salesAnalytics, chartBucketsForScope, chartBucketModeForScope } from '../domain/report-v28-analytics.js';
 import { filterReportModel, reportScopePeriod, reportDateKey } from '../domain/report-v29-scope.js';
+import { ensureR7ReadCoordinator } from '../app/r7-read-coordinator.js';
 
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
@@ -22,26 +23,95 @@ function stateFilters(state){
   return{shift:state.shift};
 }
 
+function periodDate(ts){
+  if(!Number.isFinite(Number(ts)))return'';
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(Number(ts)))}catch(_){return''}
+}
+function reportDescriptor(state){
+  const period=reportScopePeriod({scope:state.scope,anchorDate:state.anchorDate,from:state.customFrom,to:state.customTo});
+  const from=String(period?.explicit?.from||periodDate(period.start)||state.anchorDate||state.customFrom||''),to=String(period?.explicit?.to||periodDate(period.end)||from),shift=String(state.shift||'ALL').toUpperCase();
+  return{key:`report:${state.scope}:${state.anchorDate}:${shift}:${from}:${to}`,scope:state.scope,anchorDate:state.anchorDate,shift,from,to,period,label:from===to?from:`${from} – ${to}`};
+}
+function modelMatchesDescriptor(model,desc){
+  if(!model||!desc?.period)return false;
+  const period=model?.period||{},start=Number(period.start),end=Number(period.end),expectedStart=Number(desc.period.start),expectedEnd=Number(desc.period.end);
+  if([start,end,expectedStart,expectedEnd].every(Number.isFinite))return start===expectedStart&&end===expectedEnd;
+  const periodFrom=periodDate(period.start),periodTo=periodDate(period.end);
+  if(periodFrom&&periodTo)return periodFrom===desc.from&&periodTo===desc.to;
+  const dates=[];
+  for(const key of ['transactions','shifts','expenses','debtPayments','movements'])for(const row of Array.isArray(model?.[key])?model[key]:[]){const date=reportDateKey(row);if(date)dates.push(date)}
+  return dates.length>0&&dates.every(date=>date>=desc.from&&date<=desc.to);
+}
+function reportStatusMarkup(text,warn=false){return `<div class="sj-r7-read-status${warn?' warn':''}" data-sj-r7-report-status="true">${esc(text)}</div>`}
+function unknownReportMarkup(state,desc,message,warn=false){
+  return `<main class="sjr06-report sjv28-report sjv29-report sj-rep0 sj-r7-report-shell" data-v29-report-scope="${esc(state.scope)}"><header class="sjr06-report-head"><div><h1>Laporan Penjualan</h1><p>${esc(desc.label)} · canonical read-only</p></div></header>${scopeControlsHTML(state,{period:desc.period,transactions:[],expenses:[],shifts:[]})}${reportStatusMarkup(message||`Mengambil data ${desc.label}…`,warn)}<section class="sjv28-kpis"><div class="primary"><small>Penjualan Bersih</small><strong>—</strong><span>Belum tersedia</span></div><div><small>Transaksi</small><strong>—</strong><span>Belum tersedia</span></div><div><small>Rata-rata Transaksi</small><strong>—</strong><span>Belum tersedia</span></div><div><small>Item Terjual</small><strong>—</strong><span>Belum tersedia</span></div></section><section class="sjv28-card"><div class="sjv28-empty">Struktur laporan tetap tersedia sambil data diperbarui.</div></section></main>`;
+}
+
 export function createCanonicalReportController({runtime=globalThis,report=runtime?.SJReportFoundationV010}={}){
-  const anchor=activeDate(runtime),shift=activeShift(runtime);
+  const anchor=activeDate(runtime),shift=activeShift(runtime),coordinator=ensureR7ReadCoordinator(runtime),tasks=Object.create(null);
   const state={scope:'day',anchorDate:anchor,shift:'ALL',day:'ALL',week:'ALL',metric:'revenue',topSort:'qty',customFrom:addDays(anchor,-29),customTo:anchor};
-  function filteredModel(){return filterReportModel(report?.state?.model||{},stateFilters(state))}
+  const descriptor=()=>reportDescriptor(state);
+  const currentModel=desc=>{
+    const direct=report?.state?.model;if(modelMatchesDescriptor(direct,desc))return direct;
+    const cached=coordinator.peek(desc.key)?.value;return modelMatchesDescriptor(cached,desc)?cached:null;
+  };
+  function filteredModel(){const desc=descriptor();return filterReportModel(currentModel(desc)||{},stateFilters(state))}
   function setFilter(key,value){if(['shift','day','week','metric','topSort'].includes(key))state[key]=String(value||'ALL');return filteredModel()}
-  async function applyScope(scope,{anchorDate:nextAnchor,from,to}={}){
+  function prepareScope(scope,{anchorDate:nextAnchor,from,to}={}){
     scope=String(scope||'day').toLowerCase();state.scope=['shift','day','week','month','custom'].includes(scope)?scope:'day';
     if(nextAnchor)state.anchorDate=String(nextAnchor);
     state.day='ALL';state.week='ALL';
     if(state.scope==='shift'){state.shift=state.shift==='ALL'?activeShift(runtime):state.shift}
     else if(state.scope!=='custom')state.shift='ALL';
-    if(state.scope==='custom'){
-      if(from)state.customFrom=String(from);if(to)state.customTo=String(to);
-    }
+    if(state.scope==='custom'){if(from)state.customFrom=String(from);if(to)state.customTo=String(to)}
     const period=reportScopePeriod({scope:state.scope,anchorDate:state.anchorDate,from:state.customFrom,to:state.customTo});
-    report?.selectPeriod?.({preset:'custom',explicit:{...period.explicit}});
-    await report?.open?.();return period;
+    report?.selectPeriod?.({preset:'custom',explicit:{...period.explicit}});return period;
   }
-  function rerender(){return report?.open?.()}
-  return Object.freeze({state,filteredModel,setFilter,applyScope,rerender,filters:()=>Object.freeze({...stateFilters(state)})});
+  function cachedMarkup(desc=descriptor(),message='Data terakhir ditampilkan • sedang memperbarui…',warn=false){
+    const rootModel=currentModel(desc);if(!rootModel)return unknownReportMarkup(state,desc,message,warn);
+    const summary=scopedSummary(rootModel.summary||{},filterReportModel(rootModel,stateFilters(state)),report?.Core);
+    return `${reportStatusMarkup(message,warn)}${renderV29OwnerReport(summary,filterReportModel(rootModel,stateFilters(state)),{state,core:report?.Core,compat:runtime?.SJRef01ProductionSalesCompat||null})}`;
+  }
+  function paintPending(desc=descriptor(),message){
+    const root=runtime?.document?.getElementById?.('lap-menu-view');if(!root)return false;
+    const hasCache=!!currentModel(desc);root.innerHTML=cachedMarkup(desc,message||(hasCache?'Data terakhir ditampilkan • sedang memperbarui…':`Mengambil data ${desc.label}…`));
+    const container=runtime?.document?.getElementById?.('lap-container-view');if(container)container.style.display='none';if(root.style)root.style.display='block';return true;
+  }
+  function rerenderLocal(status=''){
+    const desc=descriptor(),root=runtime?.document?.getElementById?.('lap-menu-view'),model=currentModel(desc);if(!root||!model)return paintPending(desc,status||undefined),model;
+    const filtered=filterReportModel(model,stateFilters(state)),core=report?.Core,summary=scopedSummary(model.summary||{},filtered,core);
+    root.innerHTML=`${status?reportStatusMarkup(status,/Belum dapat|gagal|error/i.test(status)):''}${renderV29OwnerReport(summary,filtered,{state,core,compat:runtime?.SJRef01ProductionSalesCompat||null})}`;
+    const container=runtime?.document?.getElementById?.('lap-container-view');if(container)container.style.display='none';if(root.style)root.style.display='block';return filtered;
+  }
+  async function executeRemote(desc,token,startedAt){
+    let attempts=0,lastResult=null;
+    while(attempts<3){
+      const menu=runtime?.SJRefinementPass3V5960?.renderReportsMenu;
+      lastResult=typeof menu==='function'?await menu.call(runtime.SJRefinementPass3V5960):await report?.open?.();
+      if(!coordinator.isCurrent(desc.key,token)||descriptor().key!==desc.key){coordinator.fail(desc.key,token,'STALE_REQUEST',{startedAt,endedAt:Date.now()});return lastResult}
+      const model=report?.state?.model;
+      if(String(lastResult||'').toLowerCase()==='error'){
+        coordinator.fail(desc.key,token,'REPORT_REFRESH_FAILED',{startedAt,endedAt:Date.now()});
+        rerenderLocal('Belum dapat memperbarui • menampilkan data terakhir');return lastResult;
+      }
+      if(modelMatchesDescriptor(model,desc)){
+        coordinator.finish(desc.key,token,model,{startedAt,endedAt:Date.now()});rerenderLocal();return lastResult;
+      }
+      attempts++;
+    }
+    coordinator.fail(desc.key,token,'REPORT_SCOPE_MISMATCH',{startedAt,endedAt:Date.now()});rerenderLocal('Belum dapat memperbarui • menampilkan data terakhir');return lastResult;
+  }
+  function openRemote(){
+    const desc=descriptor();paintPending(desc);
+    if(tasks[desc.key])return tasks[desc.key];
+    const token=coordinator.begin(desc.key),startedAt=Date.now();
+    let raw;try{raw=executeRemote(desc,token,startedAt)}catch(error){raw=Promise.reject(error)}
+    const task=Promise.resolve(raw).catch(error=>{coordinator.fail(desc.key,token,error,{startedAt,endedAt:Date.now()});if(descriptor().key===desc.key)rerenderLocal(`Belum dapat memperbarui • ${error?.message||'gagal membaca data'}`);return null}).finally(()=>{if(tasks[desc.key]===task)delete tasks[desc.key]});
+    tasks[desc.key]=task;return task;
+  }
+  async function applyScope(scope,options={}){const period=prepareScope(scope,options);await openRemote();return period}
+  function rerender(){return rerenderLocal()}
+  return Object.freeze({state,filteredModel,setFilter,prepareScope,openRemote,applyScope,rerenderLocal,rerender,filters:()=>Object.freeze({...stateFilters(state)}),descriptor,currentModel,pendingMarkup:(message,warn=false)=>cachedMarkup(descriptor(),message||(currentModel(descriptor())?'Data terakhir ditampilkan • sedang memperbarui…':`Mengambil data ${descriptor().label}…`),warn),modelMatches:model=>modelMatchesDescriptor(model,descriptor())});
 }
 
 function paymentMixHTML(rows=[]){
@@ -118,15 +188,15 @@ export function renderV28CashierShift(baseHtml='',fullModel={},context={}){
 function bindReportInteractions(runtime,report,controller){
   const root=runtime?.document?.getElementById?.('lap-menu-view');if(!root||root.dataset?.v29ReportBound==='true')return false;root.dataset.v29ReportBound='true';
   root.addEventListener?.('click',async event=>{
-    const metric=event.target?.closest?.('[data-v29-metric]');if(metric){controller.setFilter('metric',metric.dataset.v29Metric||'revenue');await controller.rerender();return}
-    const top=event.target?.closest?.('[data-v29-top-sort]');if(top){controller.setFilter('topSort',top.dataset.v29TopSort||'qty');await controller.rerender();return}
+    const metric=event.target?.closest?.('[data-v29-metric]');if(metric){controller.setFilter('metric',metric.dataset.v29Metric||'revenue');controller.rerenderLocal();return}
+    const top=event.target?.closest?.('[data-v29-top-sort]');if(top){controller.setFilter('topSort',top.dataset.v29TopSort||'qty');controller.rerenderLocal();return}
     const scope=event.target?.closest?.('[data-v29-scope]');if(scope){await controller.applyScope(scope.dataset.v29Scope,{anchorDate:controller.state.anchorDate});return}
     const apply=event.target?.closest?.('[data-v29-custom-apply]');if(apply){const from=root.querySelector?.('[data-v29-custom="from"]')?.value,to=root.querySelector?.('[data-v29-custom="to"]')?.value;if(from&&to)await controller.applyScope('custom',{from,to});return}
     const quick=event.target?.closest?.('[data-v29-custom-quick]');if(quick){const to=controller.state.customTo||activeDate(runtime),days=quick.dataset.v29CustomQuick==='7d'?6:29,from=addDays(to,-days);await controller.applyScope('custom',{from,to});return}
     const tx=event.target?.closest?.('[data-v29-history-tx]');if(tx){runtime?.__SJ_V26_SALES_HISTORY?.openTransaction?.(tx.dataset.v29HistoryTx);return}
   });
   root.addEventListener?.('change',async event=>{
-    const filter=event.target?.dataset?.v29Filter;if(filter){controller.setFilter(filter,event.target.value||'ALL');await controller.rerender();return}
+    const filter=event.target?.dataset?.v29Filter;if(filter){controller.setFilter(filter,event.target.value||'ALL');controller.rerenderLocal();return}
     if(event.target?.dataset?.v29AnchorDate!==undefined){await controller.applyScope(controller.state.scope,{anchorDate:event.target.value});return}
     if(event.target?.dataset?.v29Month!==undefined&&event.target.value){await controller.applyScope('month',{anchorDate:`${event.target.value}-01`});return}
   });return true;
@@ -137,14 +207,24 @@ export function installReportRefinement(runtime=globalThis){
   const report=runtime?.SJReportFoundationV010,core=report?.Core,api={installed:false};
   if(core&&typeof core.renderOwnerSummary==='function'){
     const controller=createCanonicalReportController({runtime,report}),compat=runtime?.SJRef01ProductionSalesCompat||null;
-    api.originalOwner=core.renderOwnerSummary;core.renderOwnerSummary=summary=>{const model=controller.filteredModel(),scoped=scopedSummary(summary,model,core);return renderV29OwnerReport(scoped,model,{state:controller.state,core,compat})};
+    api.originalOwner=core.renderOwnerSummary;
+    api.originalRenderState=typeof core.renderState==='function'?core.renderState.bind(core):null;
+    core.renderOwnerSummary=summary=>{
+      if(!controller.modelMatches(report?.state?.model||null))return controller.pendingMarkup();
+      const model=controller.filteredModel(),scoped=scopedSummary(summary,model,core);return renderV29OwnerReport(scoped,model,{state:controller.state,core,compat});
+    };
+    if(api.originalRenderState)core.renderState=(kind,message)=>{
+      if(kind==='loading')return controller.pendingMarkup();
+      if(kind==='error'||kind==='offline')return controller.pendingMarkup('Belum dapat memperbarui • menampilkan data terakhir',true);
+      return api.originalRenderState(kind,message);
+    };
     if(typeof core.renderCashierShift==='function'){
       api.originalCashier=core.renderCashierShift;core.renderCashierShift=detail=>{
         const model=filterReportModel(report?.state?.model||{},{day:activeDate(runtime),shift:activeShift(runtime)});
         return renderV28CashierShift(api.originalCashier(detail),model,{compat,core});
       };
     }
-    try{Object.defineProperty(runtime,'__SJ_V29_REPORT_CONTROLLER',{value:controller,writable:false,configurable:false})}catch(_){}
+    try{Object.defineProperty(runtime,'__SJ_V29_REPORT_CONTROLLER',{value:controller,writable:false,configurable:false})}catch(_){runtime.__SJ_V29_REPORT_CONTROLLER=controller}
     bindReportInteractions(runtime,report,controller);api.controller=controller;api.installed=true;
   }
   Object.freeze(api);try{Object.defineProperty(runtime,'__SJ_REF01_REPORT_REFINEMENT',{value:api,writable:false,configurable:false})}catch(_){}return api;

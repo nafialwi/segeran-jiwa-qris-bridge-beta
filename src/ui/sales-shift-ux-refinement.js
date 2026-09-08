@@ -1,6 +1,7 @@
 import { POS_ROOT } from '../data/firebase-client.js';
 import { resolveProductCode, resolveScannedCandidates } from '../domain/product-code-resolver.js';
 import { historicalShiftRows, shiftContextLabel } from './shift-refinement.js';
+import { ensureR7ReadCoordinator } from '../app/r7-read-coordinator.js';
 
 export function activeProducts(runtime){
   const providers=[
@@ -106,18 +107,44 @@ async function readDateShifts(runtime,date){
 export function shiftRowsForDate(snapshot,date,options={}){return historicalShiftRows(snapshot,options).filter(row=>row.date===String(date||''))}
 function statusText(row){if(row.open&&row.overdue)return 'BELUM DITUTUP';if(row.open)return 'AKTIF';return 'DITUTUP'}
 
-export function installHistoricalShiftContext(runtime=globalThis,{shiftAdapter}={}){
+export function installHistoricalShiftContext(runtime=globalThis,{shiftAdapter,readShifts=readDateShifts}={}){
   const document=runtime?.document;if(!document)return Object.freeze({installed:false,enhance:()=>false});
-  let loading=false,selectedDate='';
+  const coordinator=ensureR7ReadCoordinator(runtime),cacheByDate=Object.create(null),tasksByDate=Object.create(null),localTokens=Object.create(null);
+  let selectedDate='',selectionToken=0;
   function closeSheet(){const sheet=document.getElementById?.('sj-ref-shift-history');if(sheet)sheet.style.display='none'}
   function ensureSheet(){let sheet=document.getElementById?.('sj-ref-shift-history');if(sheet)return sheet;sheet=document.createElement('div');sheet.id='sj-ref-shift-history';sheet.className='sj-ref-shift-history';sheet.innerHTML='<div class="sj-ref-shift-history-card"><div class="sj-ref-shift-history-head"><div><b>Tanggal & Shift</b><span>Pilih tanggal untuk melihat transaksi dan shift yang sudah ada</span></div><button type="button" data-history-close>×</button></div><label class="sj-ref-history-date"><span>Pilih tanggal</span><input type="date" data-history-date></label><button type="button" class="sj-ref-history-recap" data-history-recap>Lihat Rekap Semua Shift</button><div data-history-body></div></div>';sheet.querySelector('[data-history-close]')?.addEventListener('click',closeSheet);sheet.addEventListener('click',e=>{if(e.target===sheet)closeSheet()});sheet.querySelector('[data-history-date]')?.addEventListener('change',e=>renderDate(String(e.target?.value||'')));sheet.querySelector('[data-history-recap]')?.addEventListener('click',()=>{const date=selectedDate||currentDate(runtime);if(!date)return;shiftAdapter?.selectRecap?.(date);closeSheet();runtime?.showView?.(3)});document.body?.appendChild(sheet);return sheet}
+  function beginRead(key){if(coordinator?.begin)return coordinator.begin(key);localTokens[key]=Number(localTokens[key]||0)+1;return localTokens[key]}
+  function finishRead(key,token,value,startedAt){if(coordinator?.finish)coordinator.finish(key,token,value,{startedAt,endedAt:Date.now()})}
+  function failRead(key,token,error,startedAt){if(coordinator?.fail)coordinator.fail(key,token,error,{startedAt,endedAt:Date.now()})}
+  function cachedSnapshot(date){return coordinator?.peek?.(`shift-history:${date}`)?.value||cacheByDate[date]||null}
+  function loadingMarkup(date,status='Sedang memperbarui data…'){
+    return `<div class="sj-ref-current-shift"><span>Tanggal pilihan</span><b>${shiftContextLabel(date,'Semua Shift')}</b><small>${status}</small></div><div class="sj-ref-history-loading">Data shift tetap akan muncul di sini setelah pembaruan selesai.</div>`;
+  }
+  function paintSnapshot(body,date,snapshot,status=''){
+    const rows=shiftRowsForDate(snapshot||{},date,{now:new Date()}),role=runtime?.__SJ_SC03_RUNTIME?.guard?.currentRole?.(),owner=role==='owner',active=currentDate(runtime),activeShift=document.getElementById('shift-sel')?.value||'',currentKey=`${active}${activeShift}`;
+    body.innerHTML=`${status?`<div class="sj-r7-read-status">${status}</div>`:''}<div class="sj-ref-current-shift"><span>Tanggal pilihan</span><b>${shiftContextLabel(date,'Semua Shift')}</b><small>${rows.length?`${rows.length} shift tersimpan`:'Belum ada shift tersimpan'}</small></div>${rows.length?rows.map(row=>`<article class="sj-ref-history-row ${row.overdue?'overdue':''}" data-history-key="${row.key}"><div><b>${shiftContextLabel(row.date,`Shift ${row.code.slice(1)}`)}</b><span>${statusText(row)}${row.open?` · ${row.durationLabel}`:''}</span></div><button type="button" data-history-action="${row.overdue&&owner?'close':'open'}" ${row.key===currentKey&&!row.overdue?'disabled':''}>${row.overdue&&owner?'Buka Closing':row.key===currentKey?'Aktif':'Buka Shift'}</button></article>`).join(''):'<div class="sj-ref-history-empty">Tidak ada shift tersimpan pada tanggal ini. Rekap tetap dapat dibuka tanpa membuat shift baru.</div>'}`;
+    body.querySelectorAll?.('[data-history-key]')?.forEach?.(row=>row.querySelector?.('button')?.addEventListener?.('click',()=>{const key=row.dataset.historyKey,action=row.querySelector('button')?.dataset.historyAction;if(action==='close')shiftAdapter?.openClosing?.(key);else shiftAdapter?.select?.(key);closeSheet()}));
+    return rows;
+  }
   async function renderDate(date){
-    const sheet=ensureSheet(),body=sheet?.querySelector?.('[data-history-body]'),input=sheet?.querySelector?.('[data-history-date]');if(!sheet||!body||loading||!date)return;selectedDate=date;if(input&&input.value!==date)input.value=date;loading=true;body.innerHTML='<div class="sj-ref-history-loading">Memuat shift pada tanggal pilihan…</div>';
-    try{
-      const snapshot=await readDateShifts(runtime,date),rows=shiftRowsForDate(snapshot,date,{now:new Date()}),role=runtime?.__SJ_SC03_RUNTIME?.guard?.currentRole?.(),owner=role==='owner',active=currentDate(runtime),activeShift=document.getElementById('shift-sel')?.value||'',currentKey=`${active}${activeShift}`;
-      body.innerHTML=`<div class="sj-ref-current-shift"><span>Tanggal pilihan</span><b>${shiftContextLabel(date,'Semua Shift')}</b><small>${rows.length?`${rows.length} shift tersimpan`:'Belum ada shift tersimpan'}</small></div>${rows.length?rows.map(row=>`<article class="sj-ref-history-row ${row.overdue?'overdue':''}" data-history-key="${row.key}"><div><b>${shiftContextLabel(row.date,`Shift ${row.code.slice(1)}`)}</b><span>${statusText(row)}${row.open?` · ${row.durationLabel}`:''}</span></div><button type="button" data-history-action="${row.overdue&&owner?'close':'open'}" ${row.key===currentKey&&!row.overdue?'disabled':''}>${row.overdue&&owner?'Buka Closing':row.key===currentKey?'Aktif':'Buka Shift'}</button></article>`).join(''):'<div class="sj-ref-history-empty">Tidak ada shift tersimpan pada tanggal ini. Rekap tetap dapat dibuka tanpa membuat shift baru.</div>'}`;
-      body.querySelectorAll?.('[data-history-key]')?.forEach?.(row=>row.querySelector?.('button')?.addEventListener?.('click',()=>{const key=row.dataset.historyKey,action=row.querySelector('button')?.dataset.historyAction;if(action==='close')shiftAdapter?.openClosing?.(key);else shiftAdapter?.select?.(key);closeSheet()}));
-    }catch(error){body.innerHTML='<div class="sj-ref-history-empty">Data tanggal ini belum dapat dimuat. Tidak ada shift baru yang dibuat.</div>';audit(runtime,'SHIFT_HISTORY_READ_FAILED',String(error?.message||error))}finally{loading=false}
+    const sheet=ensureSheet(),body=sheet?.querySelector?.('[data-history-body]'),input=sheet?.querySelector?.('[data-history-date]');if(!sheet||!body||!date)return false;
+    selectedDate=String(date);const mySelection=++selectionToken;if(input&&input.value!==selectedDate)input.value=selectedDate;
+    const key=`shift-history:${selectedDate}`,cached=cachedSnapshot(selectedDate);
+    if(cached)paintSnapshot(body,selectedDate,cached,'Data terakhir ditampilkan • sedang memperbarui…');else body.innerHTML=loadingMarkup(selectedDate,`Mengambil data ${selectedDate}…`);
+    let task=tasksByDate[selectedDate];
+    if(!task){
+      const token=beginRead(key),startedAt=Date.now(),requestedDate=selectedDate;
+      task=Promise.resolve(readShifts(runtime,requestedDate)).then(snapshot=>{
+        const value=snapshot||{};cacheByDate[requestedDate]=value;finishRead(key,token,value,startedAt);return{ok:true,value};
+      }).catch(error=>{failRead(key,token,error,startedAt);audit(runtime,'SHIFT_HISTORY_READ_FAILED',String(error?.message||error));return{ok:false,error,value:cachedSnapshot(requestedDate)}}).finally(()=>{if(tasksByDate[requestedDate]===task)delete tasksByDate[requestedDate]});
+      tasksByDate[selectedDate]=task;
+    }
+    const result=await task;
+    if(mySelection!==selectionToken||selectedDate!==date)return result;
+    if(result?.ok)paintSnapshot(body,date,result.value,'Diperbarui');
+    else if(result?.value)paintSnapshot(body,date,result.value,'Belum dapat memperbarui • menampilkan data terakhir');
+    else body.innerHTML=loadingMarkup(date,'Data tanggal ini belum dapat dimuat. Tidak ada shift baru yang dibuat.');
+    return result;
   }
   async function openSheet(){const sheet=ensureSheet();if(!sheet)return;sheet.style.display='flex';await renderDate(currentDate(runtime))}
   function enhance(){
@@ -125,7 +152,7 @@ export function installHistoricalShiftContext(runtime=globalThis,{shiftAdapter}=
     const salesChip=document.querySelector?.('.sjvc01-status span,.sjui03a-status span');if(salesChip){salesChip.textContent=label;salesChip.setAttribute?.('role','button');salesChip.setAttribute?.('tabindex','0');salesChip.setAttribute?.('aria-label',`Pilih tanggal dan shift: ${label}`);if(salesChip.dataset?.sjHistoryBound!=='1'){salesChip.dataset.sjHistoryBound='1';salesChip.addEventListener('click',openSheet);salesChip.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSheet()}})}}
     let globalButton=document.getElementById?.('sj-ref-date-context');const controls=document.querySelector?.('.sjpro-header-controls');if(controls&&!globalButton){globalButton=document.createElement('button');globalButton.type='button';globalButton.id='sj-ref-date-context';globalButton.className='sj-ref-date-context';globalButton.addEventListener('click',openSheet);controls.insertBefore(globalButton,controls.firstChild)}if(globalButton)globalButton.textContent=new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'short',year:'numeric',timeZone:'Asia/Jakarta'}).format(new Date(`${date}T12:00:00`)).replace(/\./g,'');return true;
   }
-  return Object.freeze({installed:true,enhance,openSheet,closeSheet,renderDate});
+  return Object.freeze({installed:true,enhance,openSheet,closeSheet,renderDate,snapshot:()=>Object.freeze({selectedDate,selectionToken,cachedDates:Object.keys(cacheByDate)})});
 }
 
 export function installSalesShiftUxRefinement(runtime=globalThis,{shiftAdapter}={}){

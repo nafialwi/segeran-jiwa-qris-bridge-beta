@@ -149,7 +149,7 @@ test('P4 RC4 Owner dashboard adds restrained monthly finance summary and Keuanga
   assert.match(html,/>Keuangan</);assert.match(html,/>Tutup Bulan</);
 });
 
-test('P4 RC4 Owner dashboard installer enriches model from P4 finance read model and fails soft when HPP is unknown',async()=>{
+test('P4 RC4 Owner dashboard finance enrichment remains nonblocking and refreshes after P4 read model resolves',async()=>{
   const view5={classList:{contains(){return false}}};
   const runtime={
     document:{getElementById(id){if(id==='view5')return view5;if(id==='date-sel')return {value:'2026-09-03'};if(id==='shift-sel')return {value:'S1',selectedOptions:[{textContent:'Shift Pagi'}]};return null}},
@@ -160,6 +160,9 @@ test('P4 RC4 Owner dashboard installer enriches model from P4 finance read model
   };
   const {installOwnerDashboardHybrid}=await import('../src/ui/owner-dashboard-hybrid.js');
   installOwnerDashboardHybrid(runtime);
+  const first=await runtime.SJRefinementRoleDashboardV100.ownerModel();
+  assert.equal(first.finance.period,'2026-09');assert.equal(first.finance.unavailable,true,'Owner shell must not block on Finance');
+  await new Promise(resolve=>setImmediate(resolve));await new Promise(resolve=>setImmediate(resolve));
   const model=await runtime.SJRefinementRoleDashboardV100.ownerModel();
   assert.equal(model.finance.period,'2026-09');assert.equal(model.finance.netSales,857000);assert.equal(model.finance.hppKnown,false);assert.equal(model.finance.netProfit,null);
 });

@@ -1,4 +1,5 @@
 import { createOperationId } from '../core/idempotency.js';
+import { ensureR7ReadCoordinator } from '../app/r7-read-coordinator.js';
 
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
@@ -155,14 +156,28 @@ function runtimeMonth(runtime){
   return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);
 }
 
+
+function renderFinanceUnknownShellV33({period,tab='summary',readOnly=false,status='',error=''}={}){
+  const active=FINANCE_V33_TABS.some(x=>x.id===tab)?tab:'summary',label=monthLabel(period||'');
+  const notice=error?`<div class="sj-v33-fin-error">${esc(error)}</div>`:status?`<div class="sj-r7-read-status">${esc(status)}</div>`:'';
+  return `<main class="sj-v33-finance sj-v33-finance-loading-shell" data-v33-finance-period="${esc(period||'')}"><header class="sj-v33-fin-head"><div><small>Finance v3.4 · P5 Costing</small><h2>Keuangan</h2><p>${esc(label||period||'Periode dipilih')} · struktur tetap tersedia sambil data diperbarui.</p></div>${readOnly?'<span class="sj-v33-readonly">LOCAL QA · READ ONLY</span>':''}</header>${tabNav(active)}<div class="sj-v33-fin-scope"><label><span>Periode</span><input type="month" data-v33-fin-period value="${esc(period||'')}" aria-label="Periode keuangan"></label></div>${notice}<section class="sj-v33-fin-section"><div class="sj-v33-fin-metrics headline">${['Kas Tersedia','Modal Awal','Penjualan Bersih','HPP','Laba Bersih','Modal Akhir Terhitung'].map(x=>`<article class="sj-v33-fin-metric"><small>${x}</small><strong class="unknown">—</strong><span>Belum tersedia</span></article>`).join('')}</div><div class="sj-v33-fin-empty">Mengambil data ${esc(label||period||'periode')}…</div></section></main>`;
+}
+
 export function installFinanceWorkspaceV33(runtime=globalThis,{document=runtime?.document,p4=runtime?.__SJ_P4_FINANCE_RUNTIME,readRole=()=> 'owner',notify=()=>{}}={}){
   if(!document||!p4)return Object.freeze({installed:false,enhance(){return false},stop(){}});
-  const readOnly=runtime?.__SJ_LOCAL_QA_READ_ONLY===true,controller=createFinanceWorkspaceControllerV33({p4,readOnly});
+  const readOnly=runtime?.__SJ_LOCAL_QA_READ_ONLY===true,controller=createFinanceWorkspaceControllerV33({p4,readOnly}),coordinator=ensureR7ReadCoordinator(runtime);
+  const cacheByPeriod=Object.create(null),tasksByPeriod=Object.create(null);let reloadToken=0;
   let state={surface:'sales',tab:'summary',period:'',loaded:null,loading:false,error:'',purchaseAudit:{loading:false,error:'',data:null}},root=null,hostBound=false,originalOwnerRenderer=null;
   const reportHost=()=>document.getElementById?.('lap-menu-view')||null;
   const reportCore=runtime?.SJReportFoundationV010?.Core||null;
   const switcherMarkup=()=>`<button type="button" data-v33-report-surface="sales" class="${state.surface==='sales'?'active':''}">Penjualan</button><button type="button" data-v33-report-surface="finance" class="${state.surface==='finance'?'active':''}">Keuangan</button>`;
-  const financeMarkup=()=>state.error?`<div class="sj-v33-fin-error">${esc(state.error)}</div>`:state.loading&&!state.loaded?renderFinanceWorkspaceV33({loaded:null}):renderFinanceWorkspaceV33({loaded:state.loaded,tab:state.tab,readOnly,purchaseAudit:state.purchaseAudit});
+  const cachedPeriod=period=>{const coordinated=coordinator?.peek?.(`finance:${period}`)?.value;if(coordinated&&String(coordinated.period||'')===String(period))return coordinated;const local=cacheByPeriod[period];return local&&String(local.period||'')===String(period)?local:null};
+  const financeMarkup=()=>{
+    const matching=state.loaded&&String(state.loaded.period||'')===String(state.period)?state.loaded:null;
+    if(!matching){const status=state.error?'':`Mengambil data ${monthLabel(state.period)||state.period}…`;return renderFinanceUnknownShellV33({period:state.period,tab:state.tab,readOnly,status,error:state.error})}
+    const status=state.error?'Belum dapat memperbarui • menampilkan data terakhir':state.loading?'Data terakhir ditampilkan • sedang memperbarui…':'';
+    return `${status?`<div class="sj-r7-read-status ${state.error?'warn':''}">${esc(status)}${state.error?` · ${esc(state.error)}`:''}</div>`:''}${renderFinanceWorkspaceV33({loaded:matching,tab:state.tab,readOnly,purchaseAudit:state.purchaseAudit})}`;
+  };
   const paintSwitcher=()=>{const nav=document.getElementById?.('sj-v33-report-switcher');if(nav)nav.innerHTML=switcherMarkup()};
   const paint=()=>{root=document.getElementById?.('sj-v33-finance-workspace')||root;if(root)root.innerHTML=financeMarkup()};
   const applyCashFilters=()=>{const scope=document.getElementById?.('sj-v33-finance-workspace')||root;if(!scope?.querySelectorAll)return;const source=String(scope.querySelector?.('[data-v33-fin-source]')?.value||''),day=String(scope.querySelector?.('[data-v33-fin-day]')?.value||''),query=String(scope.querySelector?.('[data-v33-fin-search]')?.value||'').trim().toLowerCase();for(const row of scope.querySelectorAll('[data-v33-cash-row]')){const visible=(!source||row.dataset?.source===source)&&(!day||row.dataset?.date===day)&&(!query||String(row.dataset?.search||'').includes(query));row.hidden=!visible}for(const group of scope.querySelectorAll('[data-v33-cash-group]')){const visible=[...group.querySelectorAll?.('[data-v33-cash-row]')||[]].some(x=>!x.hidden);group.hidden=!visible}};
@@ -179,9 +194,22 @@ export function installFinanceWorkspaceV33(runtime=globalThis,{document=runtime?
     try{Object.defineProperty(decoratedOwnerSummary,'__sjV33FinanceReportDecorator',{value:true,enumerable:false})}catch(_){decoratedOwnerSummary.__sjV33FinanceReportDecorator=true}
     reportCore.renderOwnerSummary=decoratedOwnerSummary;return true;
   }
-  async function reload(){const period=state.period||runtimeMonth(runtime);state={...state,period,loading:true,error:'',purchaseAudit:{loading:false,error:'',data:null}};paint();try{const loaded=await controller.loadMonth(period);state={...state,loaded,loading:false};paint();return loaded}catch(error){state={...state,loading:false,error:error?.message||'Finance belum dapat dimuat.'};paint();return null}}
+  async function reload(){
+    const period=state.period||runtimeMonth(runtime),myReload=++reloadToken,cached=cachedPeriod(period);
+    state={...state,period,loaded:cached||null,loading:true,error:'',purchaseAudit:{loading:false,error:'',data:null}};paint();
+    let task=tasksByPeriod[period];
+    if(!task){
+      const key=`finance:${period}`,token=coordinator?.begin?.(key),startedAt=Date.now();let raw;
+      try{raw=controller.loadMonth(period)}catch(error){raw=Promise.reject(error)}
+      task=Promise.resolve(raw).then(loaded=>{cacheByPeriod[period]=loaded;coordinator?.finish?.(key,token,loaded,{startedAt,endedAt:Date.now()});return{ok:true,loaded}}).catch(error=>{coordinator?.fail?.(key,token,error,{startedAt,endedAt:Date.now()});return{ok:false,error}}).finally(()=>{if(tasksByPeriod[period]===task)delete tasksByPeriod[period]});
+      tasksByPeriod[period]=task;
+    }
+    const result=await task;if(myReload!==reloadToken||state.period!==period)return result?.ok?result.loaded:null;
+    if(result?.ok){state={...state,loaded:result.loaded,loading:false,error:''};paint();return result.loaded}
+    state={...state,loaded:cachedPeriod(period)||cached||null,loading:false,error:result?.error?.message||'Finance belum dapat dimuat.'};paint();return null;
+  }
   async function runAction(fn,success){try{await fn();notify(success,'success');await reload()}catch(error){notify(error?.message||'Aksi Finance gagal.','error')}}
-  function setSurface(next){const host=reportHost();if(!host)return false;state={...state,surface:next==='finance'?'finance':'sales'};host.dataset.sjV33ReportSurface=state.surface;paintSwitcher();if(state.surface==='finance'){const period=runtimeMonth(runtime);if(state.period!==period){state={...state,period,loaded:null,error:'',purchaseAudit:{loading:false,error:'',data:null}};reload()}else if(!state.loaded&&!state.loading)reload();else paint()}return true}
+  function setSurface(next){const host=reportHost();if(!host)return false;state={...state,surface:next==='finance'?'finance':'sales'};host.dataset.sjV33ReportSurface=state.surface;paintSwitcher();if(state.surface==='finance'){const period=runtimeMonth(runtime);if(state.period!==period){state={...state,period,loaded:cachedPeriod(period),error:'',purchaseAudit:{loading:false,error:'',data:null}};reload()}else if(!state.loaded&&!state.loading)reload();else paint()}return true}
   function setTab(next){const tab=FINANCE_V33_TABS.some(x=>x.id===next)?next:'summary';state={...state,tab};if(state.surface==='finance')paint();return true}
   function bindHost(host){if(hostBound)return;hostBound=true;
     host.addEventListener?.('click',async event=>{
@@ -193,7 +221,7 @@ export function installFinanceWorkspaceV33(runtime=globalThis,{document=runtime?
     });
     host.addEventListener?.('input',event=>{if(event.target?.matches?.('[data-v33-fin-search]'))applyCashFilters()});
     host.addEventListener?.('change',event=>{
-      if(event.target?.matches?.('[data-v33-fin-period]')){const period=String(event.target.value||'');if(/^\d{4}-\d{2}$/.test(period)){state={...state,period,loaded:null,error:'',purchaseAudit:{loading:false,error:'',data:null}};reload()}return}
+      if(event.target?.matches?.('[data-v33-fin-period]')){const period=String(event.target.value||'');if(/^\d{4}-\d{2}$/.test(period)){state={...state,period,loaded:cachedPeriod(period),error:'',purchaseAudit:{loading:false,error:'',data:null}};reload()}return}
       if(event.target?.matches?.('[data-v33-fin-source],[data-v33-fin-day]')){applyCashFilters();return}
       if(event.target?.matches?.('[data-v33-fin-expense-category]'))applyExpenseFilter();
     });
@@ -214,7 +242,7 @@ export function installFinanceWorkspaceV33(runtime=globalThis,{document=runtime?
     host.dataset.sjV33ReportSurface=state.surface;paintSwitcher();return root;
   }
   function removeOwnerShell(){const host=reportHost();document.getElementById?.('sj-v33-report-switcher')?.remove?.();document.getElementById?.('sj-v33-finance-workspace')?.remove?.();if(host?.dataset)delete host.dataset.sjV33ReportSurface;root=null}
-  function enhance(){const role=normalizeRole(readRole?.()),host=reportHost();if(role!=='owner'){removeOwnerShell();return false}if(!host||host.style?.display==='none')return false;if(!ensureShell())return false;if(state.surface==='finance'){const period=runtimeMonth(runtime);if(state.period!==period){state={...state,period,loaded:null,error:'',purchaseAudit:{loading:false,error:'',data:null}};reload()}else if(!state.loaded&&!state.loading)reload();else paint()}return true}
+  function enhance(){const role=normalizeRole(readRole?.()),host=reportHost();if(role!=='owner'){removeOwnerShell();return false}if(!host||host.style?.display==='none')return false;if(!ensureShell())return false;if(state.surface==='finance'){const period=runtimeMonth(runtime);if(state.period!==period){state={...state,period,loaded:cachedPeriod(period),error:'',purchaseAudit:{loading:false,error:'',data:null}};reload()}else if(!state.loaded&&!state.loading)reload();else paint()}return true}
   decorateCanonicalOwnerReport();
   return Object.freeze({installed:true,controller,enhance,reload,render:paint,setSurface,setTab,snapshot:()=>({...state}),stop(){hostBound=false;if(originalOwnerRenderer&&reportCore?.renderOwnerSummary?.__sjV33FinanceReportDecorator===true)reportCore.renderOwnerSummary=originalOwnerRenderer}});
 }
