@@ -22,6 +22,9 @@ const QRIS_MANUAL_ONLY_GUARD="if(window.SJQrisSignalBeta)return;window.SJQrisSig
 const S10A_CLASSIC_ENTRY='<script src="./src/compat/rc01-qris-deferred-settlement-compat.js" data-sj-rc01-s10a-qris="true"></script>';
 const QRIS_MANUAL_ENTRY='<script src="./src/compat/rc01-qris-manual-bypass.js" data-sj-rc01-qris-manual="true"></script>';
 const PRODUCT_CUP_UI_ENTRY='<script src="./src/compat/legacy-cup-01b-product-cup-ui.js" data-sj-legacy-cup-01b-product-ui="true"></script>';
+const DASHBOARD_FAST_P1_ENTRY='<script src="./src/compat/emg-d1-p1-dashboard-fast.js" data-sj-emg-d1-p1-dashboard-fast="true"></script>';
+const EMG_D1_P1_CONFIG_ENTRY='<script src="./src/compat/emg-d1-p1-config.js" data-sj-emg-d1-p1-config="true"></script>';
+const EMG_D1_P1_ENTRY='<script src="./src/compat/emg-d1-p1-emergency.js" data-sj-emg-d1-p1="true"></script>';
 const ENTRY='<script type="module" src="./src/ref01-entry.js" data-sj-ref01-entry="true"></script>';
 
 function injectBeforeQrisBeta(legacy){
@@ -124,7 +127,7 @@ try{
     const notificationSafe=injectR6CNotificationHygiene(manualOnly);
     const withSync=injectS10CSyncAuthority(notificationSafe);
     const withProductCup=patchLegacyProductCupSelects(withSync);
-    const candidate=withProductCup.replace(/<\/body>/i,`${PRODUCT_CUP_UI_ENTRY}\n${R6D_SALES_RECURSION_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n</body>`);
+    const candidate=withProductCup.replace(/<\/body>/i,`${PRODUCT_CUP_UI_ENTRY}\n${DASHBOARD_FAST_P1_ENTRY}\n${R6D_SALES_RECURSION_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n${EMG_D1_P1_CONFIG_ENTRY}\n${EMG_D1_P1_ENTRY}\n</body>`);
     writeFileSync(join(staging,'index.html'),candidate);
     writeFileSync(join(staging,'.ref01-build-fingerprint'),`${fp}\n`);
     rmSync(OUT,{recursive:true,force:true});
