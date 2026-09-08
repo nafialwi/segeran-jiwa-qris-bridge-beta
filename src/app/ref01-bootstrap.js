@@ -26,6 +26,9 @@ import { installInventoryWorkspaceV32 } from '../ui/inventory-workspace-v32.js';
 import { installFinanceWorkspaceV33 } from '../ui/finance-v33-workspace.js';
 import { installQrisCashOutUiV33 } from '../ui/qris-cash-out-ui.js';
 import { installP5PackagingV34 } from './p5-packaging-bootstrap.js';
+import { installR8DailyUxRefinement } from '../ui/r8-daily-ux-refinement.js';
+import { installR8InventorySafetyRefinement } from '../ui/r8-inventory-safety-refinement.js';
+import { installR8ShiftClosingIntegrity } from '../ui/r8-shift-closing-integrity.js';
 
 const OWNER='ref01-ui-runtime';
 
@@ -319,6 +322,9 @@ export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_
   const p5Packaging=installP5PackagingV34(runtime,{inventoryWorkspace});
   const financeWorkspace=p4?installFinanceWorkspaceV33(runtime,{document,p4,readRole:()=>currentRole(sc03),notify:(message,kind)=>notify(runtime,message,kind)}):null;
   const qrisCashOutUi=p4?installQrisCashOutUiV33(runtime,{document,p4,readRole:()=>currentRole(sc03),notify:(message,kind)=>notify(runtime,message,kind)}):null;
+  const r8DailyUx=installR8DailyUxRefinement(runtime,{readRole:()=>currentRole(sc03),readCupRows:()=>p5Packaging?.shiftControl?.cupRows?.()||[]});
+  const r8InventorySafety=installR8InventorySafetyRefinement(runtime,{inventoryWorkspace,financeWorkspace,notify:(message,kind)=>notify(runtime,message,kind)});
+  const r8ShiftClosing=installR8ShiftClosingIntegrity(runtime,{cupShiftControl:p5Packaging?.shiftControl});
   function ensureInventoryWorkspaceV32(){if(!inventoryWorkspace?.installed)inventoryWorkspace=installInventoryWorkspaceV32(runtime);return inventoryWorkspace}
   let salesGridPresentation=null;
   const backupActions=Object.freeze({
@@ -335,7 +341,7 @@ export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_
     const feature=sc03?.features?.get?.(key);if(feature?.open)return feature.open();return notify(runtime,'Fitur belum tersedia pada runtime ini.','warning');
   }
   function enhance(){
-    if(!document)return false;ensureInventoryWorkspaceV32();const route=currentRoute(sc03),role=currentRole(sc03);const effectiveLayout=reconcileLayoutPreferences(document,runtime,{role});salesGridPresentation?.apply?.(effectiveLayout.productColumns);applyV31SurfaceGrammar(document);enhanceBottomNav(document,route);applyV31UxPolish(document,runtime,{role});reconcileRoleNavigation(document,runtime,role);tagSemanticScreens(document);installConnectivityBanner(document,runtime);renderSettingsLanding(document,runtime,sc03,media,openFeature);enhanceProfileAvatars(document,runtime,media);enhanceImageRemove(document);enhanceScanner(document,sc03);enhanceTransferDraft(document);syncTransferDraft(document);addStaleShiftAction(document,shift);salesShiftUx?.enhance?.();productionSales?.sortProducts?.([]);manualSync?.enhance?.();notificationRefinement?.reconcileAuthority?.();notificationRefinement?.syncUnreadBadge?.();salesHistory?.enhance?.();finishedWarehouse?.enhance?.();p5Packaging?.enhance?.();financeWorkspace?.enhance?.();qrisCashOutUi?.enhance?.();decorateCriticalOperationalSurfaces(document,runtime);decorateStockReferenceSurface(document);reconcileTransactionSurfaces(document);document.documentElement&&(document.documentElement.dataset.sjRef01='true');return true;
+    if(!document)return false;ensureInventoryWorkspaceV32();const route=currentRoute(sc03),role=currentRole(sc03);const effectiveLayout=reconcileLayoutPreferences(document,runtime,{role});salesGridPresentation?.apply?.(effectiveLayout.productColumns);applyV31SurfaceGrammar(document);enhanceBottomNav(document,route);applyV31UxPolish(document,runtime,{role});reconcileRoleNavigation(document,runtime,role);tagSemanticScreens(document);installConnectivityBanner(document,runtime);renderSettingsLanding(document,runtime,sc03,media,openFeature);enhanceProfileAvatars(document,runtime,media);enhanceImageRemove(document);enhanceScanner(document,sc03);enhanceTransferDraft(document);syncTransferDraft(document);addStaleShiftAction(document,shift);salesShiftUx?.enhance?.();productionSales?.sortProducts?.([]);manualSync?.enhance?.();notificationRefinement?.reconcileAuthority?.();notificationRefinement?.syncUnreadBadge?.();salesHistory?.enhance?.();finishedWarehouse?.enhance?.();p5Packaging?.enhance?.();financeWorkspace?.enhance?.();qrisCashOutUi?.enhance?.();r8DailyUx?.enhance?.();r8InventorySafety?.enhance?.();r8ShiftClosing?.enhance?.();decorateCriticalOperationalSurfaces(document,runtime);decorateStockReferenceSurface(document);reconcileTransactionSurfaces(document);document.documentElement&&(document.documentElement.dataset.sjRef01='true');return true;
   }
   let enhanceScheduled=false;function scheduleEnhance(){if(enhanceScheduled)return;enhanceScheduled=true;const run=()=>{enhanceScheduled=false;try{enhance()}catch(_){}};if(typeof runtime?.requestAnimationFrame==='function')runtime.requestAnimationFrame(run);else setTimeout(run,0)}
   const presentationLifecycle=createPresentationLifecycle(runtime,{document,reconcile:()=>enhance()});presentationLifecycle.install();
@@ -353,7 +359,7 @@ export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_
     }catch(_){}
   }});
   const unsubscribeState=typeof sc03?.state?.subscribe==='function'?sc03.state.subscribe(snapshot=>presentationLifecycle.schedule(`state:${snapshot?.primary||'unknown'}`)):(()=>{});
-  const api=Object.freeze({phase:'REF-01',owner:OWNER,sc03,sc04,media,shift,legacyShiftClose,salesShiftUx,ownerDashboardHybrid,productionSales,manualSync,salesHistory,finishedWarehouse,inventoryWorkspace,p5Packaging,financeWorkspace,qrisCashOutUi,presentationLifecycle,salesGridPresentation,localQaLayout,operationalPresentation,settingsPresentation,backupActions,openFeature,enhance,scheduleEnhance,stop:()=>{unsubscribeState();localQaLayout.stop();salesGridPresentation?.stop?.();operationalPresentation.stop();settingsPresentation.stop();presentationLifecycle.stop()},snapshot:()=>Object.freeze({phase:'REF-01',owner:OWNER,familyCount:SCREEN_FAMILIES.length,families:SCREEN_FAMILIES,implicitCapabilities:IMPLICIT_CAPABILITIES,referenceCoverage:Object.keys(REFERENCE_MATRIX),route:currentRoute(sc03),presentation:presentationLifecycle.snapshot()})});
+  const api=Object.freeze({phase:'REF-01',owner:OWNER,sc03,sc04,media,shift,legacyShiftClose,salesShiftUx,ownerDashboardHybrid,productionSales,manualSync,salesHistory,finishedWarehouse,inventoryWorkspace,p5Packaging,financeWorkspace,qrisCashOutUi,r8DailyUx,r8InventorySafety,r8ShiftClosing,presentationLifecycle,salesGridPresentation,localQaLayout,operationalPresentation,settingsPresentation,backupActions,openFeature,enhance,scheduleEnhance,stop:()=>{unsubscribeState();localQaLayout.stop();salesGridPresentation?.stop?.();operationalPresentation.stop();settingsPresentation.stop();presentationLifecycle.stop()},snapshot:()=>Object.freeze({phase:'REF-01',owner:OWNER,familyCount:SCREEN_FAMILIES.length,families:SCREEN_FAMILIES,implicitCapabilities:IMPLICIT_CAPABILITIES,referenceCoverage:Object.keys(REFERENCE_MATRIX),route:currentRoute(sc03),presentation:presentationLifecycle.snapshot()})});
   Object.defineProperty(runtime,'__SJ_REF01_RUNTIME',{value:api,writable:false,configurable:false,enumerable:false});
   try{enhance()}catch(error){runtime?.console?.warn?.('[REF01] initial enhancement skipped',error)}
   return api;
