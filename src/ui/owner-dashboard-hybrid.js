@@ -1,4 +1,5 @@
 import { renderIcon } from './icons.js';
+import { ensureR7ReadCoordinator } from '../app/r7-read-coordinator.js';
 
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
@@ -72,8 +73,11 @@ export function createOwnerDashboardNavigator(runtime){
   const showReport=()=>{try{runtime?.showView?.(3);return true}catch(_){return false}};
   async function applyActiveScope(){
     const scope=currentScope(runtime),controller=runtime?.__SJ_V29_REPORT_CONTROLLER,shift=(String(scope.shiftValue||'').toUpperCase().match(/S[123]/)||[])[0]||'ALL';
+    if(controller&&scope.date&&typeof controller.prepareScope==='function'&&typeof controller.openRemote==='function'){
+      controller.prepareScope('day',{anchorDate:scope.date});controller.setFilter?.('shift',shift);showReport();await controller.openRemote();controller.rerenderLocal?.();return true;
+    }
     showReport();
-    if(controller&&scope.date){await controller.applyScope?.('day',{anchorDate:scope.date});controller.setFilter?.('shift',shift);await controller.rerender?.()}
+    if(controller&&scope.date){await controller.applyScope?.('day',{anchorDate:scope.date});controller.setFilter?.('shift',shift);controller.rerenderLocal?.()}
     return true;
   }
   return async function navigate(action){
@@ -97,20 +101,75 @@ export function installOwnerDashboardHybrid(runtime=globalThis){
   if(runtime?.__SJ_V31_OWNER_DASHBOARD_HYBRID)return runtime.__SJ_V31_OWNER_DASHBOARD_HYBRID;
   const role=runtime?.SJRefinementRoleDashboardV100,sjx=runtime?.SJX;
   if(!role||typeof role.ownerModel!=='function'||typeof role.ownerHTML!=='function')return Object.freeze({installed:false});
-  let lastDay=null;
+  const lastDayByDate = Object.create(null);
+  let dayCaptureSeq=0,lastDayCapture=null;
+  const financeCacheByPeriod = Object.create(null);
+  const financeTasks = Object.create(null);
+  const financeFreshMs=60*1000;
+  const coordinator=ensureR7ReadCoordinator(runtime);
   const originalDay=typeof sjx?.dayModel==='function'?sjx.dayModel.bind(sjx):null;
   if(originalDay&&!sjx.__sjV31HybridDayCache){
-    sjx.dayModel=async function(...args){const result=await originalDay(...args);lastDay=result;return result};
+    sjx.dayModel=async function(...args){
+      const requestedDate=String(currentScope(runtime).date||''),seq=++dayCaptureSeq;
+      const result=await originalDay(...args);
+      lastDayCapture={seq,date:requestedDate,value:result};
+      if(requestedDate)lastDayByDate[requestedDate]=result;
+      return result;
+    };
     try{Object.defineProperty(sjx,'__sjV31HybridDayCache',{value:true,enumerable:false})}catch(_){}
   }
+  const financeSummary=(period,loaded)=>{
+    if(!loaded||typeof loaded!=='object')return null;
+    const p=loaded?.model?.profit||{},c=loaded?.model?.ownerCapital||{},cash=loaded?.model?.cashPosition||{};
+    return {period,cashAvailable:cash.available,opening:c.opening,additional:c.additional,prive:c.prive,netSales:p.netSales,businessExpenses:p.businessExpenses,netProfit:p.netProfit,hppKnown:p.cogsKnown===true,calculatedEnding:c.calculatedEnding};
+  };
+  const financeRecord=period=>{
+    const coordinated=coordinator?.peek?.(`finance:${period}`);
+    if(coordinated?.value)return {loaded:coordinated.value,loadedAt:Number(coordinated.loadedAt)||0};
+    const local=financeCacheByPeriod[period];
+    return local||null;
+  };
+  const rerenderOwner=period=>{
+    const scope=currentScope(runtime);
+    if(String(scope.date||'').slice(0,7)!==period)return;
+    try{
+      const active=runtime?.document?.getElementById?.('view5')?.classList?.contains?.('active');
+      if(active&&typeof role.renderOwner==='function')Promise.resolve(role.renderOwner()).catch(()=>{});
+    }catch(_){}
+  };
+  const scheduleFinance=period=>{
+    const service=runtime?.__SJ_P4_FINANCE_RUNTIME?.finance;
+    if(typeof service?.loadMonth!=='function'||!period)return null;
+    const key=`finance:${period}`,existing=financeRecord(period),now=Date.now();
+    if(existing?.loaded&&now-Number(existing.loadedAt||0)<=financeFreshMs)return null;
+    const coordinated=coordinator?.peek?.(key);
+    if(coordinated?.loading||financeTasks[period])return financeTasks[period]||null;
+    const token=coordinator?.begin?.(key),startedAt=now;
+    const task=Promise.resolve().then(()=>service.loadMonth(period)).then(loaded=>{
+      financeCacheByPeriod[period]={loaded,loadedAt:Date.now()};
+      coordinator?.finish?.(key,token,loaded,{startedAt,endedAt:Date.now()});
+      rerenderOwner(period);
+      return loaded;
+    }).catch(error=>{
+      coordinator?.fail?.(key,token,error,{startedAt,endedAt:Date.now()});
+      return null;
+    }).finally(()=>{delete financeTasks[period]});
+    financeTasks[period]=task;
+    return task;
+  };
   const baseModel=role.ownerModel.bind(role);
   role.ownerModel=async function(){
-    const base=await baseModel(),day=lastDay||{};const scope=currentScope(runtime),rows=Array.isArray(day.shiftRows)?day.shiftRows:[];
+    const requestedScope=currentScope(runtime),captureBefore=dayCaptureSeq,base=await baseModel(),scope=currentScope(runtime);
+    const date=String(scope.date||requestedScope.date||base?.date||'');
+    const captured=lastDayCapture&&lastDayCapture.seq>captureBefore&&(lastDayCapture.date===date||!lastDayCapture.date)?lastDayCapture.value:null;
+    const day=lastDayByDate[date]||captured||{};
+    const rows=Array.isArray(day.shiftRows)?day.shiftRows:[];
     const selected=rows.find(row=>scope.shiftValue&&String(row?.key||'').endsWith(scope.shiftValue))||rows.find(row=>row?.diff==null&&row?.cashier&&row.cashier!=='-')||rows[0]||null;
-    const period=/^\d{4}-\d{2}/.test(scope.date)?scope.date.slice(0,7):new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);
-    let finance=null;const service=runtime?.__SJ_P4_FINANCE_RUNTIME?.finance;
-    if(typeof service?.loadMonth==='function'){try{const loaded=await service.loadMonth(period),p=loaded?.model?.profit||{},c=loaded?.model?.ownerCapital||{},cash=loaded?.model?.cashPosition||{};finance={period,cashAvailable:cash.available,opening:c.opening,additional:c.additional,prive:c.prive,netSales:p.netSales,businessExpenses:p.businessExpenses,netProfit:p.netProfit,hppKnown:p.cogsKnown===true,calculatedEnding:c.calculatedEnding}}catch(_){finance={period,unavailable:true}}}
-    return normalizeOwnerHybridModel(Object.assign({},base,{date:scope.date,shiftLabel:scope.shiftLabel,qty:num(day.qty),expense:num(day.expense),finance,selectedShift:selected?Object.assign({},selected,{label:scope.shiftLabel}):null}));
+    const period=/^\d{4}-\d{2}/.test(date)?date.slice(0,7):new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);
+    const record=financeRecord(period);
+    const finance=financeSummary(period,record?.loaded)||{period,unavailable:true};
+    scheduleFinance(period);
+    return normalizeOwnerHybridModel(Object.assign({},base,{date,shiftLabel:scope.shiftLabel,qty:num(day.qty),expense:num(day.expense),finance,selectedShift:selected?Object.assign({},selected,{label:scope.shiftLabel}):null}));
   };
   role.ownerHTML=m=>ownerHybridMarkup(m);
   try{

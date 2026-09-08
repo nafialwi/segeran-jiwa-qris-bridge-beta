@@ -97,7 +97,7 @@ test('P3 dashboard report deep-links apply active date and shift scope before na
   const mod=await importFresh('src/ui/owner-dashboard-hybrid.js');
   assert.equal(typeof mod.createOwnerDashboardNavigator,'function');
   const calls=[];
-  const controller={state:{scope:'day',anchorDate:'2026-09-01',shift:'ALL'},setFilter(k,v){calls.push(['filter',k,v]);this.state[k]=v},async applyScope(scope,opt){calls.push(['scope',scope,opt.anchorDate]);this.state.scope=scope;this.state.anchorDate=opt.anchorDate;this.state.shift='ALL'},async rerender(){calls.push(['rerender'])}};
+  const controller={state:{scope:'day',anchorDate:'2026-09-01',shift:'ALL'},setFilter(k,v){calls.push(['filter',k,v]);this.state[k]=v},prepareScope(scope,opt){calls.push(['scope',scope,opt.anchorDate]);this.state.scope=scope;this.state.anchorDate=opt.anchorDate;this.state.shift='ALL'},async openRemote(){calls.push(['remote'])},rerenderLocal(){calls.push(['rerender-local'])}};
   const runtime={
     document:{getElementById(id){if(id==='date-sel')return{value:'2026-09-02'};if(id==='shift-sel')return{value:'S2',selectedOptions:[{textContent:'Shift Siang'}]};return null},querySelector(){return null}},
     __SJ_V29_REPORT_CONTROLLER:controller,
@@ -105,7 +105,7 @@ test('P3 dashboard report deep-links apply active date and shift scope before na
   };
   const nav=mod.createOwnerDashboardNavigator(runtime);
   await nav('sales-report');
-  assert.deepEqual(calls.slice(0,4),[['view',3],['scope','day','2026-09-02'],['filter','shift','S2'],['rerender']]);
+  assert.deepEqual(calls,[['scope','day','2026-09-02'],['filter','shift','S2'],['view',3],['remote'],['rerender-local']]);
 });
 
 test('P3 inventory stock search preserves the input node and only refreshes the result list',()=>{
