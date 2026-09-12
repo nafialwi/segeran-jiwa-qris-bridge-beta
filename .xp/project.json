@@ -1,0 +1,14 @@
+{
+  "project_id": "segeran-jiwa-pos-legacy",
+  "name": "Segeran Jiwa Pos Legacy",
+  "profile_version": 1,
+  "source_adapter": "git",
+  "database_adapter": null,
+  "deployment_adapter": null,
+  "runtimes": [],
+  "metadata": {
+    "blueprint_baseline": "1.0",
+    "current_canonical_milestone": null,
+    "deployment_status": "UNVERIFIED_DISABLED"
+  }
+}
