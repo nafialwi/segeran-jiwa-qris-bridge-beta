@@ -163,6 +163,10 @@ function renderFinanceUnknownShellV33({period,tab='summary',readOnly=false,statu
   return `<main class="sj-v33-finance sj-v33-finance-loading-shell" data-v33-finance-period="${esc(period||'')}"><header class="sj-v33-fin-head"><div><small>Finance v3.4 · P5 Costing</small><h2>Keuangan</h2><p>${esc(label||period||'Periode dipilih')} · struktur tetap tersedia sambil data diperbarui.</p></div>${readOnly?'<span class="sj-v33-readonly">LOCAL QA · READ ONLY</span>':''}</header>${tabNav(active)}<div class="sj-v33-fin-scope"><label><span>Periode</span><input type="month" data-v33-fin-period value="${esc(period||'')}" aria-label="Periode keuangan"></label></div>${notice}<section class="sj-v33-fin-section"><div class="sj-v33-fin-metrics headline">${['Kas Tersedia','Modal Awal','Penjualan Bersih','HPP','Laba Bersih','Modal Akhir Terhitung'].map(x=>`<article class="sj-v33-fin-metric"><small>${x}</small><strong class="unknown">—</strong><span>Belum tersedia</span></article>`).join('')}</div><div class="sj-v33-fin-empty">Mengambil data ${esc(label||period||'periode')}…</div></section></main>`;
 }
 
+export function ownerReportSwitcherMarkupV33({surface='sales'}={}){
+  return `<button type="button" data-v33-report-surface="sales" class="${surface==='sales'?'active':''}">Penjualan</button><button type="button" data-v33-report-surface="finance" class="${surface==='finance'?'active':''}">Keuangan</button><button type="button" data-v33-report-route="3">Shift</button><button type="button" data-v33-report-route="4">Transaksi</button><button type="button" data-v33-report-route="5">Produk / Analisis</button>`;
+}
+
 export function installFinanceWorkspaceV33(runtime=globalThis,{document=runtime?.document,p4=runtime?.__SJ_P4_FINANCE_RUNTIME,readRole=()=> 'owner',notify=()=>{}}={}){
   if(!document||!p4)return Object.freeze({installed:false,enhance(){return false},stop(){}});
   const readOnly=runtime?.__SJ_LOCAL_QA_READ_ONLY===true,controller=createFinanceWorkspaceControllerV33({p4,readOnly}),coordinator=ensureR7ReadCoordinator(runtime);
@@ -170,7 +174,7 @@ export function installFinanceWorkspaceV33(runtime=globalThis,{document=runtime?
   let state={surface:'sales',tab:'summary',period:'',loaded:null,loading:false,error:'',purchaseAudit:{loading:false,error:'',data:null}},root=null,hostBound=false,originalOwnerRenderer=null;
   const reportHost=()=>document.getElementById?.('lap-menu-view')||null;
   const reportCore=runtime?.SJReportFoundationV010?.Core||null;
-  const switcherMarkup=()=>`<button type="button" data-v33-report-surface="sales" class="${state.surface==='sales'?'active':''}">Penjualan</button><button type="button" data-v33-report-surface="finance" class="${state.surface==='finance'?'active':''}">Keuangan</button>`;
+  const switcherMarkup=()=>ownerReportSwitcherMarkupV33({surface:state.surface});
   const cachedPeriod=period=>{const coordinated=coordinator?.peek?.(`finance:${period}`)?.value;if(coordinated&&String(coordinated.period||'')===String(period))return coordinated;const local=cacheByPeriod[period];return local&&String(local.period||'')===String(period)?local:null};
   const financeMarkup=()=>{
     const matching=state.loaded&&String(state.loaded.period||'')===String(state.period)?state.loaded:null;
@@ -213,6 +217,7 @@ export function installFinanceWorkspaceV33(runtime=globalThis,{document=runtime?
   function setTab(next){const tab=FINANCE_V33_TABS.some(x=>x.id===next)?next:'summary';state={...state,tab};if(state.surface==='finance')paint();return true}
   function bindHost(host){if(hostBound)return;hostBound=true;
     host.addEventListener?.('click',async event=>{
+      const route=event.target?.closest?.('[data-v33-report-route]');if(route){const id=Number(route.dataset.v33ReportRoute);if([3,4,5].includes(id)&&typeof runtime?.openLap==='function')runtime.openLap(id);return}
       const surface=event.target?.closest?.('[data-v33-report-surface]');if(surface){setSurface(surface.dataset.v33ReportSurface);return}
       const tab=event.target?.closest?.('[data-v33-fin-tab]');if(tab){state.tab=tab.dataset.v33FinTab||'summary';state.purchaseAudit={loading:false,error:'',data:null};paint();return}
       if(event.target?.closest?.('[data-v33-purchase-audit-close]')){state.purchaseAudit={loading:false,error:'',data:null};paint();return}

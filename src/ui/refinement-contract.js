@@ -44,7 +44,7 @@ export const IMPLICIT_CAPABILITIES=Object.freeze({
   storeImages:Object.freeze({actions:Object.freeze(['add','preview','replace','remove']),persistence:'existing-store-settings-writer'}),
   profilePhoto:Object.freeze({actions:Object.freeze(['add','preview','replace','remove']),persistence:'existing-storage-plus-firebase-auth-profile'}),
   barcode:Object.freeze({camera:true,manualFallback:true,manualSurface:'sales-search'}),
-  transferProof:Object.freeze({actions:Object.freeze(['add','preview','replace','remove']),persistence:'draft-only-until-existing-writer'}),
+  transferProof:Object.freeze({actions:Object.freeze([]),persistence:'unavailable-until-existing-writer'}),
   unknownHpp:Object.freeze({display:'Belum tersedia',zeroWhenUnknown:false}),
   staleShift:Object.freeze({showDate:true,showDuration:true,showOverdue:true,autoClose:false,closingAuthority:'existing-SJShift'}),
   badges:Object.freeze({source:'real-runtime-state',demoValues:false})

@@ -108,14 +108,16 @@ export function installOwnerDashboardHybrid(runtime=globalThis){
   const financeFreshMs=60*1000;
   const coordinator=ensureR7ReadCoordinator(runtime);
   const originalDay=typeof sjx?.dayModel==='function'?sjx.dayModel.bind(sjx):null;
+  let hybridDayModel=typeof sjx?.dayModel==='function'?sjx.dayModel:null;
   if(originalDay&&!sjx.__sjV31HybridDayCache){
-    sjx.dayModel=async function(...args){
+    hybridDayModel=async function(...args){
       const requestedDate=String(currentScope(runtime).date||''),seq=++dayCaptureSeq;
       const result=await originalDay(...args);
       lastDayCapture={seq,date:requestedDate,value:result};
       if(requestedDate)lastDayByDate[requestedDate]=result;
       return result;
     };
+    sjx.dayModel=hybridDayModel;
     try{Object.defineProperty(sjx,'__sjV31HybridDayCache',{value:true,enumerable:false})}catch(_){}
   }
   const financeSummary=(period,loaded)=>{
@@ -162,14 +164,20 @@ export function installOwnerDashboardHybrid(runtime=globalThis){
     const requestedScope=currentScope(runtime),captureBefore=dayCaptureSeq,base=await baseModel(),scope=currentScope(runtime);
     const date=String(scope.date||requestedScope.date||base?.date||'');
     const captured=lastDayCapture&&lastDayCapture.seq>captureBefore&&(lastDayCapture.date===date||!lastDayCapture.date)?lastDayCapture.value:null;
-    const day=lastDayByDate[date]||captured||{};
+    let day=lastDayByDate[date]||captured||{};
+    let hasDayAuthority=day&&typeof day==='object'&&['sales','txCount','qty','expense'].some(key=>Object.prototype.hasOwnProperty.call(day,key));
+    const currentDayModel=typeof sjx?.dayModel==='function'?sjx.dayModel:null;
+    const canonicalDayReplaced=Boolean(currentDayModel&&hybridDayModel&&currentDayModel!==hybridDayModel);
+    if((canonicalDayReplaced||!hasDayAuthority)&&currentDayModel){
+      try{const live=await currentDayModel.call(sjx);if(live&&typeof live==='object'){day=live;hasDayAuthority=['sales','txCount','qty','expense'].some(key=>Object.prototype.hasOwnProperty.call(day,key));if(date)lastDayByDate[date]=live}}catch(_){}
+    }
     const rows=Array.isArray(day.shiftRows)?day.shiftRows:[];
     const selected=rows.find(row=>scope.shiftValue&&String(row?.key||'').endsWith(scope.shiftValue))||rows.find(row=>row?.diff==null&&row?.cashier&&row.cashier!=='-')||rows[0]||null;
     const period=/^\d{4}-\d{2}/.test(date)?date.slice(0,7):new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);
     const record=financeRecord(period);
     const finance=financeSummary(period,record?.loaded)||{period,unavailable:true};
     scheduleFinance(period);
-    return normalizeOwnerHybridModel(Object.assign({},base,{date,shiftLabel:scope.shiftLabel,qty:num(day.qty),expense:num(day.expense),finance,selectedShift:selected?Object.assign({},selected,{label:scope.shiftLabel}):null}));
+    return normalizeOwnerHybridModel(Object.assign({},base,{date,shiftLabel:scope.shiftLabel,sales:hasDayAuthority?num(Object.prototype.hasOwnProperty.call(day,'netSales')?day.netSales:day.sales):base?.sales,txCount:hasDayAuthority?num(day.txCount):base?.txCount,qty:hasDayAuthority?num(day.qty):base?.qty,expense:hasDayAuthority?num(day.expense):base?.expense,finance,selectedShift:selected?Object.assign({},selected,{label:scope.shiftLabel}):null}));
   };
   role.ownerHTML=m=>ownerHybridMarkup(m);
   try{

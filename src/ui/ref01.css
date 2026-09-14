@@ -472,8 +472,8 @@ html[data-sj-v31="true"] .sj-v31-owner-daily-flow em{color:var(--sj-v31-green);f
 @media(max-width:560px){.sj-v33-fin-metrics.compact{grid-template-columns:repeat(2,minmax(0,1fr))}.sj-v33-fin-form{grid-template-columns:1fr}.sj-v33-fin-form .wide{grid-column:auto}.sj-v33-fin-head{align-items:flex-start}.sj-v33-fin-head p{max-width:230px}}
 
 /* P4 v3.3 Finance is a sibling surface of canonical Report Foundation, never a legacy lap2 replacement. */
-.sj-v33-report-switcher{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:0 0 12px;padding:4px;border:1px solid #dfe8e2;border-radius:14px;background:#f4f8f5}
-.sj-v33-report-switcher button{min-height:42px;border:0;border-radius:11px;background:transparent;color:#63756a;font-size:10.5px;font-weight:850}
+.sj-v33-report-switcher{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;margin:0 0 12px;padding:4px;border:1px solid #dfe8e2;border-radius:14px;background:#f4f8f5}.sj-v33-report-switcher::-webkit-scrollbar{display:none}
+.sj-v33-report-switcher button{flex:0 0 auto;min-width:88px;min-height:42px;border:0;border-radius:11px;background:transparent;color:#63756a;font-size:10.5px;font-weight:850;padding:0 11px}
 .sj-v33-report-switcher button.active{background:#fff;color:#08783f;box-shadow:0 3px 10px rgba(24,64,40,.08)}
 #lap-menu-view[data-sj-v33-report-surface="sales"]>#sj-v33-finance-workspace{display:none}
 #lap-menu-view[data-sj-v33-report-surface="finance"]>:not(#sj-v33-report-switcher):not(#sj-v33-finance-workspace){display:none}

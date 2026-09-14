@@ -52,7 +52,10 @@ export function decorateNotificationSurface(document){
       if(sub){sub.className='sjr06-notif-subtitle';sub.textContent='Informasi dan aktivitas penting toko';title.insertAdjacentElement?.('afterend',sub)}
     }
   }
-  const tabs=ensureTabs(document,modal)||modal.querySelector?.('.sjr06-notif-tabs');
+  const canonicalMenu=modal.querySelector?.('.sj62-notif-menu');
+  const obsoleteTabs=modal.querySelector?.('.sjr06-notif-tabs');
+  if(canonicalMenu&&obsoleteTabs)obsoleteTabs.parentNode?.removeChild?.(obsoleteTabs);
+  const tabs=canonicalMenu?null:(ensureTabs(document,modal)||modal.querySelector?.('.sjr06-notif-tabs'));
   const rows=decorateRows(modal);
   if(tabs&&tabs.dataset?.ref01Bound!=='true'){
     tabs.dataset.ref01Bound='true';
@@ -79,7 +82,7 @@ export function installNotificationRefinement(runtime=globalThis,{decorate=decor
     return api;
   }
   const syncUnreadBadge=()=>runtime?.SJRef01ProductionSalesCompat?.syncUnreadBadge?.();
-  let managedRender=null,managedBell=null,renderDelegate=null,bellFallback=null;
+  let managedRender=null,managedBell=null,managedOpen=null,renderDelegate=null,bellFallback=null,openDelegate=null;
   function bindRender(){
     if(target.renderNotifications===managedRender)return false;
     renderDelegate=typeof target.renderNotifications==='function'?target.renderNotifications.bind(target):null;
@@ -101,7 +104,18 @@ export function installNotificationRefinement(runtime=globalThis,{decorate=decor
     };
     target.updateBell=managedBell;return true;
   }
-  function reconcileAuthority(){bindRender();bindBell();try{syncUnreadBadge()}catch(_){}return true}
+  function bindOpen(){
+    if(typeof target.openNotifications!=='function'||target.openNotifications===managedOpen)return false;
+    openDelegate=target.openNotifications.bind(target);
+    managedOpen=function(...args){
+      const result=openDelegate?.(...args);
+      const schedule=typeof runtime?.setTimeout==='function'?runtime.setTimeout.bind(runtime):setTimeout;
+      schedule(()=>{try{syncUnreadBadge()}catch(_){}},120);
+      return result;
+    };
+    target.openNotifications=managedOpen;return true;
+  }
+  function reconcileAuthority(){bindRender();bindBell();bindOpen();try{syncUnreadBadge()}catch(_){}return true}
   reconcileAuthority();
   const api=Object.freeze({installed:true,decorate:()=>decorate(runtime?.document),syncUnreadBadge,reconcileAuthority});
   try{Object.defineProperty(runtime,'__SJ_REF01_NOTIFICATION_REFINEMENT',{value:api,writable:false,configurable:false})}catch(_){runtime.__SJ_REF01_NOTIFICATION_REFINEMENT=api}

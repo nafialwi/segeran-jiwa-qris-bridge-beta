@@ -173,7 +173,7 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
   const document=runtime?.document,inventory=runtime?.SJInventoryV2;
   if(!document||!inventory||typeof inventory.open!=='function')return Object.freeze({installed:false});
   const legacyOpen=inventory.open.bind(inventory),repository=createInventoryRepository({db:runtime?.firebase?.database?.()}),core=runtime?.SJInventoryCore||null,localSimulation=ensureCupLocalSimulationStoreV34(runtime);
-  let rows=[],cupRows=[],productRows=[],activities=[],state={tab:'summary',query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:'',actionQuery:'',actionType:'ALL'};
+  let rows=[],cupRows=[],productRows=[],activities=[],state={tab:'summary',query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:'',actionQuery:'',actionType:'ALL'},openLoadTask=null,openRequestSeq=0;
 
   function ensureHost(){
     let host=document.getElementById?.('sj-v32-inventory-workspace');if(host)return host;
@@ -323,14 +323,23 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
     if(action==='cost'){host.style.display='none';if(typeof runtime?.SJCostingV1?.openInitialCost==='function')runtime.SJCostingV1.openInitialCost();else containAdvancedLegacy('purchase')}
   }
 
+  function applyCupRows(inv){
+    cupRows=runtime?.__SJ_LOCAL_QA_READ_ONLY===true&&localSimulation.masterConfig?buildCupLocalSimulationRowsV34(localSimulation.masterConfig):buildCupInventoryRowsV34(inv||{});
+    return cupRows.slice();
+  }
+  async function refreshCupRows(){
+    const raw=await repository.readInventoryV2();
+    return applyCupRows(raw||{});
+  }
   async function load(){
-    const [raw,outlet]=await Promise.all([repository.readInventoryV2(),repository.readLegacyStock()]);const inv=raw||{};rows=buildIngredientInventoryRows(inv,{core});cupRows=runtime?.__SJ_LOCAL_QA_READ_ONLY===true&&localSimulation.masterConfig?buildCupLocalSimulationRowsV34(localSimulation.masterConfig):buildCupInventoryRowsV34(inv);activities=inventoryActivityTimeline(inv,120);
+    const [raw,outlet]=await Promise.all([repository.readInventoryV2(),repository.readLegacyStock()]);const inv=raw||{};rows=buildIngredientInventoryRows(inv,{core});applyCupRows(inv);activities=inventoryActivityTimeline(inv,120);
     const products=activeProducts(runtime).filter(p=>p?.trackStock===true);productRows=buildFinishedGoodsRows(products,{outlet:outlet||{},warehouse:inv.productWarehouse||{}}).map(normalizedProductRow);return{rows,cupRows,productRows,activities}
   }
   async function openWorkspace(tab='summary'){
     if(!ownerRole(roleOf(runtime)))return false;
-    const host=ensureHost();if(!host)return false;state={tab:['summary','stock','activity','more'].includes(tab)?tab:'summary',query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:'',actionQuery:'',actionType:'ALL'};host.style.display='flex';const content=host.querySelector?.('[data-v32-inventory-content]');if(content)content.innerHTML='<div class="sj-v32-inv-empty">Memuat Bahan & Gudang…</div>';
-    try{await load();render(host)}catch(_){if(content)content.innerHTML='<div class="sj-v32-inv-empty">Data inventory belum dapat dimuat. Tidak ada data yang diubah.</div>'}return true;
+    const requestSeq=++openRequestSeq,host=ensureHost();if(!host)return false;state={tab:['summary','stock','activity','more'].includes(tab)?tab:'summary',query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:'',actionQuery:'',actionType:'ALL'};host.style.display='flex';const content=host.querySelector?.('[data-v32-inventory-content]');if(content)content.innerHTML='<div class="sj-v32-inv-empty">Memuat Bahan & Gudang…</div>';
+    if(!openLoadTask)openLoadTask=load().finally(()=>{openLoadTask=null});
+    try{await openLoadTask;if(requestSeq===openRequestSeq)render(host)}catch(_){if(requestSeq===openRequestSeq&&content)content.innerHTML='<div class="sj-v32-inv-empty">Data inventory belum dapat dimuat. Tidak ada data yang diubah.</div>'}return true;
   }
   function wrappedOpen(tab){
     const value=String(tab||'summary'),route=routeLegacyInventoryTabV32(value);
@@ -340,7 +349,7 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
     return openWorkspace('summary');
   }
   inventory.open=wrappedOpen;
-  const api=Object.freeze({installed:true,open:openWorkspace,openItem,openAction,legacyOpen,render:()=>render(),reload:load,ensureCupMasters,applyInitialCupSetup,localCupSimulation:()=>localSimulation,rows:()=>rows.slice(),cupRows:()=>cupRows.slice(),productRows:()=>productRows.slice(),activities:()=>activities.slice()});
+  const api=Object.freeze({installed:true,open:openWorkspace,openItem,openAction,legacyOpen,render:()=>render(),reload:load,refreshCupRows,ensureCupMasters,applyInitialCupSetup,localCupSimulation:()=>localSimulation,rows:()=>rows.slice(),cupRows:()=>cupRows.slice(),productRows:()=>productRows.slice(),activities:()=>activities.slice()});
   try{Object.defineProperty(runtime,'__SJ_V32_INVENTORY_WORKSPACE',{value:api,writable:false,configurable:false})}catch(_){}
   return api;
 }

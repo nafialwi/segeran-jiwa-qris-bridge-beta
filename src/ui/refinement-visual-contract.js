@@ -103,8 +103,8 @@ export const REFERENCE_MATRIX=Object.freeze({
   REF_09:reference(
     ['transfer-kasbon','product-edit-detail','stock-adjustment','system-states'],
     ['transfer/kasbon sections','photo/barcode/stock form','stock mutation timeline','empty/loading/error/success/permission states'],
-    ['transfer proof draft lifecycle','existing product save','reasoned stock adjustment','recoverable state actions'],
-    ['existing payment writer','existing product writer','existing inventory writer','REF01 system state family']
+    ['transfer proof hidden until writer exists','existing product save','reasoned stock adjustment','recoverable state actions'],
+    ['transfer proof unavailable until writer exists','existing product writer','existing inventory writer','REF01 system state family']
   )
 });
 
@@ -181,8 +181,7 @@ export const REFERENCE_IMPLEMENTATION_EVIDENCE=Object.freeze({
   REF_09:evidence(
     ['src/app/ref01-bootstrap.js','src/ui/refinement-contract.js','src/ui/states.css'],
     [
-      {file:'src/app/ref01-bootstrap.js',token:'sj-ref-transfer-draft'},
-      {file:'src/ui/refinement-contract.js',token:"persistence:'draft-only-until-existing-writer'"},
+      {file:'src/ui/refinement-contract.js',token:"persistence:'unavailable-until-existing-writer'"},
       {file:'src/ui/states.css',token:'state'}
     ]
   )

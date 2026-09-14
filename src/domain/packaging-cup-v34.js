@@ -138,10 +138,20 @@ export function cupInboundFromMovementsV34(raw={},cupRows=[],shiftKey='',window=
 export function reconcileCupShiftV34({opening={},inbound={},closing={},theoretical={},reasons={}}={}){
   const rowsOut=CUP_CATALOG_V34.map(spec=>{
     const open=num(opening?.[spec.code]),incoming=num(inbound?.[spec.code]),close=num(closing?.[spec.code]),expected=num(theoretical?.[spec.code]);
-    const physicalUsed=open+incoming-close,variance=physicalUsed-expected;
-    return Object.freeze({code:spec.code,name:spec.name,unit:'pcs',opening:open,inbound:incoming,closing:close,physicalUsed,theoreticalUsed:expected,variance,reason:text(reasons?.[spec.code]||'')||null});
+    const physicalUsed=open+incoming-close,expectedClosing=open+incoming-expected,physicalClosing=close,variance=expectedClosing-physicalClosing;
+    return Object.freeze({code:spec.code,name:spec.name,unit:'pcs',opening:open,inbound:incoming,closing:close,expectedClosing,physicalClosing,physicalUsed,theoreticalUsed:expected,variance,reason:text(reasons?.[spec.code]||'')||null});
   });
-  return Object.freeze({rows:Object.freeze(rowsOut),totalVariance:rowsOut.reduce((sum,x)=>sum+Math.abs(x.variance),0)});
+  return Object.freeze({authority:'SHIFT_OPENING',openingKnown:true,rows:Object.freeze(rowsOut),totalVariance:rowsOut.reduce((sum,x)=>sum+Math.abs(x.variance),0)});
+}
+
+export function reconcileCupClosingAuthorityV34({openingKnown=true,opening={},inbound={},systemClosing={},closing={},theoretical={},reasons={}}={}){
+  if(openingKnown)return reconcileCupShiftV34({opening,inbound,closing,theoretical,reasons});
+  const rowsOut=CUP_CATALOG_V34.map(spec=>{
+    const rawPhysical=closing?.[spec.code],hasPhysical=rawPhysical!==null&&rawPhysical!==undefined&&String(rawPhysical).trim()!=='';
+    const expectedClosing=num(systemClosing?.[spec.code]),physicalClosing=hasPhysical?num(rawPhysical):null,variance=hasPhysical?expectedClosing-physicalClosing:null;
+    return Object.freeze({code:spec.code,name:spec.name,unit:'pcs',opening:null,inbound:null,closing:physicalClosing,expectedClosing,physicalClosing,physicalUsed:null,theoreticalUsed:num(theoretical?.[spec.code]),variance,reason:text(reasons?.[spec.code]||'')||null});
+  });
+  return Object.freeze({authority:'INVENTORY_FALLBACK',openingKnown:false,rows:Object.freeze(rowsOut),totalVariance:rowsOut.reduce((sum,x)=>sum+(x.variance==null?0:Math.abs(x.variance)),0)});
 }
 
 export function buildCupOutletOpnameDraftsV34(cupRows=[],closing={}){
@@ -163,10 +173,14 @@ export function decorateRecipeWithCupV34(recipe={},product={},cupRows=[]){
   const cup=(cupRows||[]).find(x=>x?.code===code&&x.registered&&x.ingredientId);
   if(!cup)return clone(recipe);
   const out=clone(recipe)||{};out.variants=out.variants&&typeof out.variants==='object'?out.variants:{};
-  for(const [variantId,variant] of Object.entries(out.variants)){
-    if(!variant||variant.active===false)continue;
-    const components=variant.components&&typeof variant.components==='object'?variant.components:{};
-    out.variants[variantId]={...variant,components:{...components,[cup.ingredientId]:1}};
+  if(!Object.keys(out.variants).length){
+    out.variants.__CUP_ONLY__={variantId:'__CUP_ONLY__',name:'Regular',price:0,active:true,components:{[cup.ingredientId]:1},syntheticCupOnly:true};
+  }else{
+    for(const [variantId,variant] of Object.entries(out.variants)){
+      if(!variant||variant.active===false)continue;
+      const components=variant.components&&typeof variant.components==='object'?variant.components:{};
+      out.variants[variantId]={...variant,components:{...components,[cup.ingredientId]:1}};
+    }
   }
   out._packagingV34={code,name:spec.name,ingredientId:cup.ingredientId,qtyPerSale:1,unit:'pcs'};
   return out;

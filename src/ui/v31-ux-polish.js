@@ -5,7 +5,7 @@ export function operationalGroupForLabel(label=''){
   const v=String(label||'').trim().toLowerCase();
   if(/stok barang jadi|bahan\s*&\s*gudang|restock/.test(v))return 'stock';
   if(/^shift$|catatan shift/.test(v))return 'shift';
-  if(/pengeluaran|refund|retur|kasbon/.test(v))return 'finance';
+  if(/pengeluaran|refund|retur|kasbon|hutang/.test(v))return 'finance';
   return 'other';
 }
 function activityLabel(card){return text(card?.querySelector?.('b')||card)}
@@ -22,13 +22,24 @@ function ensureMaterialsShortcut(document,runtime,role,activities){
   return true;
 }
 
+export function ensureCustomerDebtShortcut(document,runtime,role,activities){
+  if(!isOwnerOperationalRole(role)||!activities||activities.querySelector?.('[data-sj-v31-customer-debt]'))return false;
+  if(typeof document?.createElement!=='function')return false;
+  const button=document.createElement('button');button.type='button';button.className='sjvc02-activity sj-v31-customer-debt-entry';button.dataset.sjV31CustomerDebt='true';
+  button.innerHTML=`<span class="ico">${renderIcon('users',{size:21,label:'Hutang pelanggan'})}</span><b>Hutang Pelanggan</b><span>Kelola hutang pelanggan</span>`;
+  button.addEventListener?.('click',()=>{try{runtime?.openOpr?.(5)}catch(_){}});
+  activities.appendChild?.(button);
+  return true;
+}
+
 export function decorateV31OperationalControlCenter(document,runtime=globalThis,role=null){
   const page=document?.querySelector?.('.sjvc02-operations');const activities=page?.querySelector?.('.sjvc02-activities');
   if(!page||!activities)return Object.freeze({applied:false,groups:0,materials:false});
   const materials=ensureMaterialsShortcut(document,runtime,role,activities);
-  if(activities.dataset?.sjV31Grouped==='true')return Object.freeze({applied:true,groups:Number(activities.dataset.sjV31GroupCount||0),materials});
+  const debt=ensureCustomerDebtShortcut(document,runtime,role,activities);
+  if(activities.dataset?.sjV31Grouped==='true')return Object.freeze({applied:true,groups:Number(activities.dataset.sjV31GroupCount||0),materials,debt});
   const cards=Array.from(activities.children||[]).filter(node=>node?.classList?.contains?.('sjvc02-activity'));
-  if(!cards.length)return Object.freeze({applied:false,groups:0,materials});
+  if(!cards.length)return Object.freeze({applied:false,groups:0,materials,debt});
   const spec=[
     ['stock','Stok & Persediaan','Gudang, Gerai, bahan dan kebutuhan restock'],
     ['shift','Shift & Serah Terima','Sesi kasir dan catatan kondisi operasional'],
@@ -37,7 +48,7 @@ export function decorateV31OperationalControlCenter(document,runtime=globalThis,
   ];
   const buckets=new Map(spec.map(([key])=>[key,[]]));
   for(const card of cards)buckets.get(operationalGroupForLabel(activityLabel(card)))?.push(card);
-  const frag=document.createDocumentFragment?.();if(!frag)return Object.freeze({applied:false,groups:0,materials});
+  const frag=document.createDocumentFragment?.();if(!frag)return Object.freeze({applied:false,groups:0,materials,debt});
   let groups=0;
   for(const [key,title,note] of spec){
     const items=buckets.get(key)||[];if(!items.length)continue;
@@ -49,7 +60,7 @@ export function decorateV31OperationalControlCenter(document,runtime=globalThis,
   }
   activities.textContent='';activities.appendChild(frag);activities.dataset.sjV31Grouped='true';activities.dataset.sjV31GroupCount=String(groups);activities.classList?.add?.('sj-v31-op-groups');
   page.dataset.sjV31Operational='true';
-  return Object.freeze({applied:true,groups,materials});
+  return Object.freeze({applied:true,groups,materials,debt});
 }
 
 export function decorateV31Sales(document){

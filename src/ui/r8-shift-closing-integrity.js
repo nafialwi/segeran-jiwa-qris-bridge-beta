@@ -39,64 +39,10 @@ function money(value){try{return new Intl.NumberFormat('id-ID',{style:'currency'
 
 function activeShift(runtime){return String(runtimeValue(runtime,'typeof activeShift!=="undefined"?activeShift:""',''))}
 
-function tagSensitive(element){
-  if(!element||element.dataset?.r8BlindSensitive==='true')return;
-  element.dataset.r8BlindSensitive='true';element.dataset.r8BlindDisplay=element.style?.display||'';element.style.display='none';
-}
-function revealSensitive(modal){
-  for(const element of Array.from(modal?.querySelectorAll?.('[data-r8-blind-sensitive="true"]')||[]))element.style.display=element.dataset?.r8BlindDisplay||'';
-}
-function hideBlindSensitive(document,modal){
-  const sessionExpected=document?.getElementById?.('sjshift-close-session-exp');tagSensitive(sessionExpected?.closest?.('.sjshift-ownerline'));
-  tagSensitive(document?.getElementById?.('sjshift-close-worksheet'));
-  tagSensitive(document?.getElementById?.('sjshift-close-live-diff'));
-  for(const element of Array.from(modal?.querySelectorAll?.('.sj-v34-cup-close-row header span,.sj-v34-cup-recon,.sj-v34-cup-reason,.sj-v34-cup-opname-note')||[]))tagSensitive(element);
-}
-
-function cupPhysicalValues(modal){
-  const values={};for(const input of Array.from(modal?.querySelectorAll?.('[data-v34-cup-closing]')||[])){if(input.disabled)continue;values[String(input.dataset?.v34CupClosing||'')]=input.value??''}return values;
-}
-
-function ensureBlindControls(runtime,modal,state){
-  const document=runtime?.document,save=document?.getElementById?.('sjshift-close-save');if(!modal||!save)return null;
-  let controls=modal.querySelector?.('[data-r8-blind-controls]');if(!controls){
-    controls=document.createElement?.('section');if(!controls)return null;controls.dataset.r8BlindControls='true';controls.className='sjx-note';controls.style.margin='12px 0';controls.innerHTML='<b>Hitung fisik terlebih dahulu</b><div data-r8-blind-message style="margin:5px 0 9px">Hitung uang laci dan seluruh cup tanpa melihat angka sistem. Setelah selesai, kunci hasil hitungan untuk membandingkan selisih.</div><button type="button" class="sjx-primary" data-r8-blind-lock style="width:100%">KUNCI HITUNGAN FISIK</button>';
-    controls.querySelector?.('[data-r8-blind-lock]')?.addEventListener?.('click',async()=>{
-      const cash=document?.getElementById?.('sjshift-close-cash'),gate=physicalClosingGateR8({cashValue:cash?.value??'',cupValues:cupPhysicalValues(modal)});
-      if(!gate.ready){runtime?.alert?.(gate.code==='CASH_REQUIRED'?'Isi Kas Aktual setelah menghitung uang fisik.':'Hitung semua cup fisik sebelum melihat hasil sistem.');return}
-      const lockButton=controls.querySelector?.('[data-r8-blind-lock]');if(lockButton){lockButton.disabled=true;lockButton.textContent='MENGUNCI…'}
-      await new Promise(resolve=>(runtime?.setTimeout||setTimeout)(resolve,100));
-      state.locked=true;
-      if(cash){cash.disabled=true;cash.dataset.r8LockedPhysical='true'}
-      for(const input of Array.from(modal.querySelectorAll?.('[data-v34-cup-closing]')||[])){if(!input.disabled){input.disabled=true;input.dataset.r8LockedPhysical='true'}}
-      for(const input of Array.from(modal.querySelectorAll?.('.sjclose-denom input')||[]))input.disabled=true;
-      for(const button of Array.from(modal.querySelectorAll?.('.sjclose-denom button')||[]))button.disabled=true;
-      revealSensitive(modal);
-      if(save?.dataset?.sjV34ReadOnly!=='true'){save.disabled=false;save.removeAttribute?.('aria-disabled')}
-      const message=controls.querySelector?.('[data-r8-blind-message]');if(message)message.textContent='Hitungan fisik sudah dikunci. Sekarang bandingkan Kas Seharusnya, selisih cup, lalu isi alasan/catatan bila ada perbedaan.';
-      if(lockButton){lockButton.textContent='HITUNGAN FISIK TERKUNCI'}
-    });
-  }
-  if(controls.parentNode===save.parentNode)save.parentNode.insertBefore(controls,save);
-  return controls;
-}
-
-function applyBlindClose(runtime,state){
-  const document=runtime?.document,modal=document?.querySelector?.('#modal-sjshift-close .modal');if(!modal)return false;
-  const overlay=document?.getElementById?.('modal-sjshift-close');if(overlay?.style?.display==='none')return false;
-  const save=document?.getElementById?.('sjshift-close-save');ensureBlindControls(runtime,modal,state);
-  if(!state.locked){hideBlindSensitive(document,modal);if(save)save.disabled=true}
-  else{
-    revealSensitive(modal);
-    const cash=document?.getElementById?.('sjshift-close-cash');if(cash){cash.disabled=true;cash.dataset.r8LockedPhysical='true'}
-    for(const input of Array.from(modal.querySelectorAll?.('[data-v34-cup-closing]')||[])){input.disabled=true;input.dataset.r8LockedPhysical='true'}
-    for(const input of Array.from(modal.querySelectorAll?.('.sjclose-denom input')||[]))input.disabled=true;
-    for(const button of Array.from(modal.querySelectorAll?.('.sjclose-denom button')||[]))button.disabled=true;
-  }
-  if(!modal.__sjR8BlindObserver&&typeof runtime?.MutationObserver==='function'){
-    const observer=new runtime.MutationObserver(()=>{applyBlindClose(runtime,state)});observer.observe(modal,{childList:true,subtree:true});modal.__sjR8BlindObserver=observer;
-  }
-  return true;
+function requestCupClosingPresentation(runtime,cupShiftControl){
+  const modal=runtime?.document?.getElementById?.('modal-sjshift-close');
+  if(!modal||modal?.style?.display!=='flex')return false;
+  try{return cupShiftControl?.enhanceClosing?.()||false}catch(_){return false}
 }
 
 function decorateOpeningContinuity(runtime,rows,state){
@@ -111,16 +57,15 @@ function decorateOpeningContinuity(runtime,rows,state){
 export function installR8ShiftClosingIntegrity(runtime=globalThis,{cupShiftControl=null}={}){
   if(runtime?.[MARK])return runtime[MARK];
   const shift=runtime?.SJShift,document=runtime?.document;if(!shift||!document)return Object.freeze({installed:false,enhance(){return false}});
-  const originals={renderWithDay:shift.renderWithDay?.bind(shift),startShift:shift.startShift?.bind(shift),openCloseModal:shift.openCloseModal?.bind(shift),submitClose:shift.submitClose?.bind(shift)};
-  const state={rows:{},carry:null,close:{locked:false}};
+  const originals={renderWithDay:shift.renderWithDay?.bind(shift),startShift:shift.startShift?.bind(shift),openCloseModal:shift.openCloseModal?.bind(shift)};
+  const state={rows:{},carry:null};
   if(originals.renderWithDay)shift.renderWithDay=function(root,rows,...rest){state.rows=rows||{};const out=originals.renderWithDay(root,rows,...rest);Promise.resolve().then(()=>decorateOpeningContinuity(runtime,state.rows,state));return out};
   if(originals.startShift)shift.startShift=async function(...args){
     const carry=state.carry||previousShiftClosingCashR8(state.rows,activeShift(runtime));if(carry){const opening=parseMoney(document.getElementById?.('sjshift-opening-cash')?.value),note=document.getElementById?.('sjshift-opening-note')?.value||'',check=openingContinuityR8({carryForward:carry.cash,openingCash:opening,note});if(check.requiresNote){runtime?.alert?.(`Kas Awal berbeda ${money(Math.abs(check.difference))} dari penutupan shift sebelumnya. Isi Catatan Awal untuk menjelaskan setoran, pengambilan, atau perpindahan kas.`);return false}}
     return originals.startShift(...args);
   };
-  if(originals.openCloseModal)shift.openCloseModal=function(...args){state.close={locked:false};const out=originals.openCloseModal(...args);Promise.resolve().then(()=>applyBlindClose(runtime,state.close));for(const delay of [40,160,500]){(runtime?.setTimeout||setTimeout)(()=>applyBlindClose(runtime,state.close),delay)}return out};
-  if(originals.submitClose)shift.submitClose=async function(...args){const overlay=document.getElementById?.('modal-sjshift-close');if(overlay?.style?.display!=='none'&&state.close.locked!==true){runtime?.alert?.('Kunci hitungan fisik terlebih dahulu sebelum menutup shift.');return false}return originals.submitClose(...args)};
-  const api=Object.freeze({installed:true,enhance(){decorateOpeningContinuity(runtime,state.rows,state);applyBlindClose(runtime,state.close);return true},snapshot:()=>Object.freeze({installed:true,carry:state.carry?{...state.carry}:null,physicalLocked:state.close.locked===true,cupAuthority:cupShiftControl?.installed===true})});
+  if(originals.openCloseModal)shift.openCloseModal=function(...args){const out=originals.openCloseModal(...args);Promise.resolve().then(()=>requestCupClosingPresentation(runtime,cupShiftControl));for(const delay of [80,240]){(runtime?.setTimeout||setTimeout)(()=>requestCupClosingPresentation(runtime,cupShiftControl),delay)}return out};
+  const api=Object.freeze({installed:true,enhance(){decorateOpeningContinuity(runtime,state.rows,state);requestCupClosingPresentation(runtime,cupShiftControl);return true},snapshot:()=>Object.freeze({installed:true,carry:state.carry?{...state.carry}:null,cupAuthority:cupShiftControl?.installed===true,systemComparisonVisible:true})});
   try{Object.defineProperty(runtime,MARK,{value:api,writable:false,configurable:false,enumerable:false})}catch(_){}
   return api;
 }

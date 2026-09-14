@@ -44,27 +44,46 @@ export function reconcileTransactionSurfaces(document){
       receiptPresentation='success';
       receipt.classList?.add?.('sjr05-receipt-success');
       success.slice(1).forEach(node=>node.remove?.());
-      if(content?.style) content.style.display='none';
-      if(footer?.style) footer.style.display='none';
+      const actionGroups=Array.from(receipt.querySelectorAll?.('.sjvc011-success-actions')||[]);
+      actionGroups.slice(1).forEach(node=>node.remove?.());
+      if(content?.style){if(typeof content.style.setProperty==='function')content.style.setProperty('display','none','important');else content.style.display='none'}
+      if(footer?.style){if(typeof footer.style.setProperty==='function')footer.style.setProperty('display','none','important');else footer.style.display='none'}
     }else{
       receipt.classList?.remove?.('sjr05-receipt-success');
-      if(content?.style&&content.style.display==='none') content.style.display='';
-      if(footer?.style&&footer.style.display==='none') footer.style.display='';
+      if(content?.style&&content.style.display==='none'){if(typeof content.style.removeProperty==='function')content.style.removeProperty('display');else content.style.display=''}
+      if(footer?.style&&footer.style.display==='none'){if(typeof footer.style.removeProperty==='function')footer.style.removeProperty('display');else footer.style.display=''}
     }
   }
   body?.classList?.[receiptOpen?'add':'remove']?.('sjr05-receipt-open');
-  setFocusedNav(nav,receiptOpen);
 
   const tx=document.getElementById?.('modal-tx');
-  const transactionDetail=Boolean(tx);
+  const transactionDetail=inlineVisible(tx);
   if(tx){
     mark(tx,'sjr05-transaction-overlay','existing-receipt-and-transaction-authority');
     mark(tx.querySelector?.('.modal'),'sjr05-transaction-sheet');
   }
 
-  const reportDetail=document.querySelector?.('.sj-rep0[data-view="transaction-detail"]')??null;
+  const reportDetail=document.querySelector?.('.sj-rep0[data-view="transaction-detail"], [data-sj-v26-view="detail"]')??null;
   const reportTransactionDetail=Boolean(reportDetail);
   if(reportDetail) mark(reportDetail,'sjr05-report-transaction-detail','existing-report-transaction-detail-authority');
+  setFocusedNav(nav,receiptOpen||transactionDetail||reportTransactionDetail);
 
   return Object.freeze({receiptOpen,receiptPresentation,transactionDetail,reportTransactionDetail});
+}
+
+
+const TRANSACTION_SURFACE_MARK='__sjR9TransactionSurfaceAuthority';
+export function installTransactionSurfaceAuthority(runtime=globalThis,{reconcile=reason=>reconcileTransactionSurfaces(runtime?.document)}={}){
+  if(runtime?.__SJ_R9_TRANSACTION_SURFACE_AUTHORITY)return runtime.__SJ_R9_TRANSACTION_SURFACE_AUTHORITY;
+  const target=runtime?.SJFinalRefinementVC01A1,originals=[];
+  const wrap=(name,reason)=>{
+    const original=target?.[name];if(typeof original!=='function'||original?.[TRANSACTION_SURFACE_MARK])return false;
+    function wrapped(...args){const out=original.apply(this,args);try{reconcile(reason)}catch(_){}return out}
+    try{Object.defineProperty(wrapped,TRANSACTION_SURFACE_MARK,{value:true,enumerable:false})}catch(_){wrapped[TRANSACTION_SURFACE_MARK]=true}
+    target[name]=wrapped;originals.push([name,original,wrapped]);return true;
+  };
+  const installed=wrap('renderSuccess','receipt-success-rendered')|wrap('closeSuccess','receipt-success-closed');
+  const api=Object.freeze({installed:Boolean(installed),stop(){for(const [name,original,wrapped] of originals.splice(0))try{if(target?.[name]===wrapped)target[name]=original}catch(_){}}});
+  try{Object.defineProperty(runtime,'__SJ_R9_TRANSACTION_SURFACE_AUTHORITY',{value:api,writable:false,configurable:false,enumerable:false})}catch(_){}
+  return api;
 }

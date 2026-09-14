@@ -30,6 +30,15 @@ function options(selected=''){
   return `<option value="">Per produk / tanpa cup</option>${mapped.map(x=>`<option value="${x.code}" ${selected===x.code?'selected':''}>${esc(x.name)}</option>`).join('')}`;
 }
 
+
+export function cupSaleConsumptionV34(cart=[],cupRows=[]){
+  const byCode=new Map((cupRows||[]).filter(row=>row?.registered&&row?.ingredientId).map(row=>[text(row.code).toLowerCase(),text(row.ingredientId)]));
+  const out={};
+  for(const line of cart||[]){const code=text(line?.cp).toLowerCase(),ingredientId=byCode.get(code),qty=Math.max(0,Number(line?.q??line?.qty??line?.quantity)||0);if(!ingredientId||qty<=0)continue;out[ingredientId]=(out[ingredientId]||0)+qty}
+  for(const key of Object.keys(out))out[key]=Math.round(out[key]*1000000)/1000000;
+  return Object.freeze(out);
+}
+
 export function renderCategoryCupMappingV34(categoryRows=[],menu=[],{readOnly=false}={}){
   const rows=(categoryRows||[]).map(category=>{const selected=categoryCode(menu,category);return `<article class="sj-v34-cat-cup-row"><div><b>${esc(category)}</b><small>Terapkan ke produk aktif; produk tetap bisa dioverride lewat Edit Produk.</small></div><select data-v34-cup-category="${esc(category)}" ${readOnly?'disabled aria-disabled="true"':''}>${options(selected)}</select><button type="button" data-v34-cup-category-apply="${esc(category)}" ${readOnly?'disabled aria-disabled="true"':''}>${readOnly?'🔒 READ ONLY':'Terapkan Cup'}</button></article>`}).join('');
   return `<section class="sj-v34-category-cup" data-v34-category-cup><div class="sj-v34-category-cup-head"><div><h4>Mapping Cup per Kategori</h4><p>Memakai field produk existing <code>cp</code>; tidak membuat schema mapping kedua.</p></div>${readOnly?'<em>LOCAL QA · READ ONLY</em>':''}</div><div class="sj-v34-category-cup-list">${rows||'<p>Belum ada kategori.</p>'}</div></section>`;
@@ -46,6 +55,9 @@ export function installCupProductCostingV34(runtime=globalThis,{inventoryWorkspa
   let cachedCupRows=[];
   async function refresh(){try{const raw=await repository?.readInventoryV2?.();cachedCupRows=buildCupInventoryRowsV34(raw||{});return cachedCupRows}catch(_){return cachedCupRows}}
   const ready=refresh();
+  const saleUsage=cart=>{const workspaceRows=inventoryWorkspace?.cupRows?.()||[],cupRows=workspaceRows.some(x=>x?.registered)?workspaceRows:cachedCupRows;return cupSaleConsumptionV34(cart,cupRows)};
+  try{Object.defineProperty(runtime,'__SJ_V34_CUP_SALE_USAGE',{value:saleUsage,writable:false,configurable:false,enumerable:false})}catch(_){runtime.__SJ_V34_CUP_SALE_USAGE=saleUsage}
+  try{Object.defineProperty(runtime,'__SJ_V34_CUP_SALE_READY',{value:ready,writable:false,configurable:false,enumerable:false})}catch(_){runtime.__SJ_V34_CUP_SALE_READY=ready}
   if(!original?.[MARK]){
     function wrapped(productId,...args){
       const base=original.call(this,productId,...args),menu=menuRows(runtime),product=productFor(menu,productId),workspaceRows=inventoryWorkspace?.cupRows?.()||[],cupRows=workspaceRows.some(x=>x?.registered)?workspaceRows:cachedCupRows;

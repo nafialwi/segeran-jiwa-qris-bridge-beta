@@ -23,6 +23,7 @@ const S10A_CLASSIC_ENTRY='<script src="./src/compat/rc01-qris-deferred-settlemen
 const QRIS_MANUAL_ENTRY='<script src="./src/compat/rc01-qris-manual-bypass.js" data-sj-rc01-qris-manual="true"></script>';
 const BW02_ENTRY='<script src="./src/compat/p0-bw02-bandwidth-hardening.js" data-sj-p0-bw02-bandwidth="true"></script>';
 const PRODUCT_CUP_UI_ENTRY='<script src="./src/compat/legacy-cup-01b-product-cup-ui.js" data-sj-legacy-cup-01b-product-ui="true"></script>';
+const R9_CLOSING_ENTRY='<script src="./src/compat/r9-closing-reliability.js" data-sj-r9-closing-reliability="true"></script>';
 const DASHBOARD_FAST_P1_ENTRY='<script src="./src/compat/emg-d1-p1-dashboard-fast.js" data-sj-emg-d1-p1-dashboard-fast="true"></script>';
 const EMG_D1_P1_CONFIG_ENTRY='<script src="./src/compat/emg-d1-p1-config.js" data-sj-emg-d1-p1-config="true"></script>';
 const EMG_D1_P1_ENTRY='<script src="./src/compat/emg-d1-p1-emergency.js" data-sj-emg-d1-p1="true"></script>';
@@ -105,16 +106,16 @@ function patchBw02TransactionPayload(legacy){
 function patchBw02RecipeSaleIdentity(legacy){
   const start="function patchSale(){window.processTransaction=async function(){var has=(cart||[]).some(function(x){return x.inventoryMode==='RECIPE'});";
   const end="async function recoverVoidTransactions(){";
-  const replacement=`function patchSale(){window.processTransaction=async function(){var has=(cart||[]).some(function(x){return x.inventoryMode==='RECIPE'});if(!has)return BASE_PROCESS.apply(this,arguments);var btn=document.querySelector('#modal-bayar .btn-pay[onclick="processTransaction()"]'),snapshot=null,shift='',res=null;sjSetBusy(btn,true,'⏳ MEMPROSES...');try{if(window.SJReliability&&SJReliability.revalidateCart)await SJReliability.revalidateCart();snapshot=cart.map(function(x){return Object.assign({},x)});shift=activeDate;if(!shift)throw Object.assign(new Error('Shift aktif tidak ditemukan.'),{code:'INVENTORY_SHIFT_MISSING'});res=await reserveRecipeConsumption(snapshot);var v=await BASE_PROCESS.apply(this,arguments),txId=String(v||'');if(/^SJ-/.test(txId)){await commitRecipeReservation(res,txId,shift,snapshot);return v}await rollbackRecipeReservation(res,'BW02_EXACT_TX_ID_REQUIRED');return v}catch(e){if(res){try{await rollbackRecipeReservation(res,e&&e.code||e&&e.message||'BW02_EXACT_TX_ID_REQUIRED')}catch(rb){sjSaveError('INVENTORY_RECIPE_ROLLBACK',rb)}}sjSaveError('INVENTORY_RECIPE_SALE',e);alert('❌ '+(e.message||sjFriendlyError(e)));return false}finally{sjSetBusy(btn,false)}};try{processTransaction=window.processTransaction}catch(_){}}
+  const replacement=`function patchSale(){window.processTransaction=async function(){var cpMapped=(cart||[]).some(function(x){return String(x&&x.cp||'').trim()!==''}),recipeMapped=(cart||[]).some(function(x){return x.inventoryMode==='RECIPE'});if(cpMapped&&window.__SJ_V34_CUP_SALE_READY){try{await window.__SJ_V34_CUP_SALE_READY}catch(_){}}var cupUsage=cpMapped&&typeof window.__SJ_V34_CUP_SALE_USAGE==='function'?window.__SJ_V34_CUP_SALE_USAGE(cart||[]):{},has=recipeMapped||Object.keys(cupUsage||{}).length>0;if(!has)return BASE_PROCESS.apply(this,arguments);var btn=document.querySelector('#modal-bayar .btn-pay[onclick="processTransaction()"]'),snapshot=null,shift='',res=null;sjSetBusy(btn,true,'⏳ MEMPROSES...');try{if(window.SJReliability&&SJReliability.revalidateCart)await SJReliability.revalidateCart();snapshot=cart.map(function(x){return Object.assign({},x)});shift=activeDate;if(!shift)throw Object.assign(new Error('Shift aktif tidak ditemukan.'),{code:'INVENTORY_SHIFT_MISSING'});res=await reserveRecipeConsumption(snapshot,cupUsage);var v=await BASE_PROCESS.apply(this,arguments),txId=String(v||'');if(/^SJ-/.test(txId)){await commitRecipeReservation(res,txId,shift,snapshot);return v}await rollbackRecipeReservation(res,'BW02_EXACT_TX_ID_REQUIRED');return v}catch(e){if(res){try{await rollbackRecipeReservation(res,e&&e.code||e&&e.message||'BW02_EXACT_TX_ID_REQUIRED')}catch(rb){sjSaveError('INVENTORY_RECIPE_ROLLBACK',rb)}}sjSaveError('INVENTORY_RECIPE_SALE',e);alert('❌ '+(e.message||sjFriendlyError(e)));return false}finally{sjSetBusy(btn,false)}};try{processTransaction=window.processTransaction}catch(_){}}
 `;
-  return replaceBetween(legacy,start,end,replacement+'async function recoverVoidTransactions(){','P0_BW02_RECIPE_SALE');
+  return replaceBetween(legacy,start,end,replacement,'P0_BW02_RECIPE_SALE');
 }
 function patchBw02CostingSaleIdentity(legacy){
   const start="function installSaleWrapper(){if(window.__SJ_F03_SALE_WRAPPED)return;";
   const end="Object.assign(V,{quoteCartCosting:";
   const replacement=`function installSaleWrapper(){if(window.__SJ_F03_SALE_WRAPPED)return;var BASE_PROCESS=window.processTransaction;if(typeof BASE_PROCESS!=='function')return;window.__SJ_F03_SALE_WRAPPED=true;window.processTransaction=async function(){if(!Array.isArray(cart)||!cart.length)return BASE_PROCESS.apply(this,arguments);var cartSnapshot=cart.map(function(x){var p=(cloudData.global.menu||[]).find(function(m){return String(m.id)===String(x.baseProductId!=null?x.baseProductId:x.id)});return Object.assign({},x,{trackStock:String(x.inventoryMode||'').toUpperCase()==='RECIPE'?false:!!(x.trackStock||(p&&p.trackStock))})}),pricingQuote=window.SJPrice?SJPrice.quote(cartSnapshot):{netSubtotal:cartSnapshot.reduce(function(s,x){return s+n(x.p)*n(x.q)},0),total:cartSnapshot.reduce(function(s,x){return s+n(x.p)*n(x.q)},0),lines:[]},reservation=null;try{reservation=await createCostingReservation(cartSnapshot,pricingQuote,{})}catch(e){sjSaveError('COST_PREPARE',e);alert('HPP transaksi belum dapat disiapkan. Periksa koneksi lalu coba lagi.');return false}var result=await BASE_PROCESS.apply(this,arguments);try{var txId=String(result||'');if(/^SJ-/.test(txId))await attachReservationCosting(reservation,txId);else await db.ref(INV+'/costingReservations/'+reservation.id).update({status:'PREPARED',recoveryReason:'BW02_EXACT_TX_ID_REQUIRED',lastRecoveryAt:sjNowIso(),lastRecoveryTs:Date.now()})}catch(e){sjSaveError('COST_ATTACH',e)}return result};try{processTransaction=window.processTransaction}catch(_){}}
 `;
-  return replaceBetween(legacy,start,end,replacement+'Object.assign(V,{quoteCartCosting:','P0_BW02_COST_SALE');
+  return replaceBetween(legacy,start,end,replacement,'P0_BW02_COST_SALE');
 }
 function patchBw02RefundRecovery(legacy){
   const start="async function findOriginalTransaction(refund){";
@@ -125,7 +126,7 @@ function patchBw02RefundRecovery(legacy){
   var sn=await sjTimeout(db.ref(DB_PATH+'/'+shift+'/tx').orderByChild('id').equalTo(needle).limitToFirst(1).once('value'),6000,'REFUND_COST_TX_ID_TIMEOUT'),rows=sn.val()||{},keys=Object.keys(rows);if(keys.length===1)return{key:keys[0],tx:rows[keys[0]]||{},shift:shift};return null
 }
 `;
-  legacy=replaceBetween(legacy,start,end,replacement+'async function persistRefundCosting(refundId,costing){','P0_BW02_REFUND_LOOKUP');
+  legacy=replaceBetween(legacy,start,end,replacement,'P0_BW02_REFUND_LOOKUP');
   legacy=replaceOnce(legacy,"limitToLast(80).once('value')","limitToLast(12).once('value')",'P0_BW02_REFUND_RECOVERY_LIMIT');
   legacy=replaceOnce(legacy,"setInterval(function(){try{recoverRefundCosting()}catch(_){}},3000);","window.__SJ_BW02_REFUND_RECOVERY_TIMER_DISABLED=true;",'P0_BW02_REFUND_TIMER');
   return legacy;
@@ -141,6 +142,25 @@ function patchBw02(legacy){
   legacy=patchBw02CostingSaleIdentity(legacy);
   legacy=patchBw02RefundRecovery(legacy);
   legacy=patchBw02CostingRecoveryTimer(legacy);
+  return legacy;
+}
+function patchR9Lic01Uat7(legacy){
+  legacy=replaceOnce(legacy,
+    "}catch(e){if(reserved){try{await controlRef.transaction(cur=>{if(cur&&String(cur.currentSessionId||'')===String(sid)&&String(cur.status||'')==='CLOSING')return oldControl;return})}catch(_){}}sjSaveError('SHIFT_SESSION_CLOSE',e);if(e.code==='SHIFT_NOTE_REQUIRED')alert(e.message);else alert(sjFriendlyError(e))}finally{this.busy=false;sjSetBusy(btn,false)}",
+    "}catch(e){if(reserved&&e.code!=='UNKNOWN_COMMIT_STATE'){try{await controlRef.transaction(cur=>{if(cur&&String(cur.currentSessionId||'')===String(sid)&&String(cur.status||'')==='CLOSING')return oldControl;return})}catch(_){}}sjSaveError('SHIFT_SESSION_CLOSE',e);if(e.code==='SHIFT_NOTE_REQUIRED')alert(e.message);else if(e.code==='UNKNOWN_COMMIT_STATE')alert('Status penutupan belum dapat dipastikan. Jangan menutup ulang shift sampai status terverifikasi.');else alert(sjFriendlyError(e))}finally{this.busy=false;sjSetBusy(btn,false)}",
+    'R9_LIC01_SHIFT_UNKNOWN_COMMIT');
+  legacy=replaceOnce(legacy,
+    "async function reserveRecipeConsumption(cartSnapshot){var requested=Core.recipeConsumption(cartSnapshot,recipes());",
+    "async function reserveRecipeConsumption(cartSnapshot,cupUsage){var requested=Core.recipeConsumption(cartSnapshot,recipes());Object.keys(cupUsage||{}).forEach(function(id){requested[id]=Math.max(requested[id]||0,n(cupUsage[id]))});",
+    'R9_LIC01_CUP_RESERVATION');
+  legacy=replaceOnce(legacy,
+    "footer.style.display='none';ov.style.display='flex'",
+    "footer.style.setProperty('display','none','important');ov.style.display='flex'",
+    'R9_LIC01_RECEIPT_HIDE');
+  legacy=replaceOnce(legacy,
+    "if(footer)footer.style.display='';try{clsModal('modal-struk-fs')}",
+    "if(footer)footer.style.removeProperty('display');try{clsModal('modal-struk-fs')}",
+    'R9_LIC01_RECEIPT_RESTORE');
   return legacy;
 }
 function sleep(ms){Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms)}
@@ -167,7 +187,8 @@ function sourceFiles(dir){
 }
 function fingerprint(){
   const hash=createHash('sha256');
-  hash.update('REF01-BUILD-V3-S10C-R2\0');
+  hash.update('REF01-BUILD-V4-R9-LIC01-UAT7\0');
+  hash.update(readFileSync(fileURLToPath(import.meta.url)));
   hash.update(readFileSync(BASE));
   for(const file of sourceFiles(SOURCE)){
     hash.update(relative(ROOT,file));hash.update('\0');hash.update(readFileSync(file));hash.update('\0');
@@ -200,7 +221,8 @@ try{
     const withSync=injectS10CSyncAuthority(notificationSafe);
     const withProductCup=patchLegacyProductCupSelects(withSync);
     const withBw02=patchBw02(withProductCup);
-    const candidate=withBw02.replace(/<\/body>/i,`${PRODUCT_CUP_UI_ENTRY}\n${DASHBOARD_FAST_P1_ENTRY}\n${R6D_SALES_RECURSION_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n${BW02_ENTRY}\n${EMG_D1_P1_CONFIG_ENTRY}\n${EMG_D1_P1_ENTRY}\n</body>`);
+    const withR9=patchR9Lic01Uat7(withBw02);
+    const candidate=withR9.replace(/<\/body>/i,`${PRODUCT_CUP_UI_ENTRY}\n${R9_CLOSING_ENTRY}\n${DASHBOARD_FAST_P1_ENTRY}\n${R6D_SALES_RECURSION_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n${BW02_ENTRY}\n${EMG_D1_P1_CONFIG_ENTRY}\n${EMG_D1_P1_ENTRY}\n</body>`);
     writeFileSync(join(staging,'index.html'),candidate);
     writeFileSync(join(staging,'.ref01-build-fingerprint'),`${fp}\n`);
     rmSync(OUT,{recursive:true,force:true});
