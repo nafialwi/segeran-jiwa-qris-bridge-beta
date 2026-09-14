@@ -101,6 +101,10 @@ function patchBw02TransactionPayload(legacy){
     "var ps=sjGetPrinterSettings();if(ps.auto)setTimeout(()=>sjPrintReceiptObject(tx),250)\n    }catch(e)",
     "var ps=sjGetPrinterSettings();if(ps.auto)setTimeout(()=>sjPrintReceiptObject(tx),250);return txId\n    }catch(e)",
     'P0_BW02_TX_ID_RETURN');
+  legacy=replaceOnce(legacy,
+    "      }catch(uiErr){\n        sjSaveError('TX_POST_COMMIT_UI',uiErr);cart=[];if(window.SJPrice)SJPrice.resetSession();updateCartUI();showToast('Transaksi '+txId+' sudah tersimpan. Tampilan struk mengalami gangguan kecil.','warning')\n      }\n    }catch(e){",
+    "      }catch(uiErr){\n        sjSaveError('TX_POST_COMMIT_UI',uiErr);cart=[];if(window.SJPrice)SJPrice.resetSession();updateCartUI();showToast('Transaksi '+txId+' sudah tersimpan. Tampilan struk mengalami gangguan kecil.','warning')\n      }\n      return txId\n    }catch(e){",
+    'P0_BW02_PROCESS_SALE_TX_ID_RETURN');
   return legacy;
 }
 function patchBw02RecipeSaleIdentity(legacy){

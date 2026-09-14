@@ -65,12 +65,11 @@ export function createRc01RuntimeLoadingHardening(runtime=globalThis,{legacy=def
   const activeView=id=>{try{return runtime?.document?.getElementById?.(id)?.classList?.contains?.('active')===true}catch(_){return false}};
 
   function dashboardShifts(date){
-    const merged={},cloud=legacy.cloudData?.()||{};
+    const merged={};const cached=state.dashboard.cache.get(date);if(cached?.shifts)Object.assign(merged,cached.shifts);
+    const cloud=legacy.cloudData?.()||{};
     for(const code of ['S1','S2','S3']){const key=`${date}-${code}`;if(cloud[key])merged[key]=cloud[key]}
-    const active=String(legacy.activeDate?.()||''),activeIsShift=new RegExp('^'+String(date).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'-S[123]$').test(active);
-    const cached=state.dashboard.cache.get(date);if(cached?.shifts)Object.assign(merged,cached.shifts);
-    if(activeIsShift&&cloud[active])merged[active]=cloud[active];
-    if(!Object.keys(merged).length){const key=activeIsShift?active:`${date}${legacy.activeShift?.()||'-S1'}`;merged[key]=cloud[key]||legacy.emptyDay?.()||{}}
+    const active=legacy.activeDate?.();if(active&&String(active).startsWith(date+'-')&&cloud[active])merged[active]=cloud[active];
+    if(!Object.keys(merged).length){const key=active&&String(active).startsWith(date+'-')?active:`${date}${legacy.activeShift?.()||'-S1'}`;merged[key]=cloud[key]||legacy.emptyDay?.()||{}}
     return merged;
   }
 

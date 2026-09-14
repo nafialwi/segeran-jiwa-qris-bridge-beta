@@ -55,6 +55,9 @@ export function installCupProductCostingV34(runtime=globalThis,{inventoryWorkspa
   let cachedCupRows=[];
   async function refresh(){try{const raw=await repository?.readInventoryV2?.();cachedCupRows=buildCupInventoryRowsV34(raw||{});return cachedCupRows}catch(_){return cachedCupRows}}
   async function waitForAuthenticatedRuntime(){
+    let mode='';
+    try{mode=String(runtime?.SJProductionArchitectureP3?.authMode?.()||'').toUpperCase()}catch(_){}
+    if(mode==='LEGACY')return true;
     let auth=null;try{auth=runtime?.firebase?.auth?.()}catch(_){}
     if(!auth||auth.currentUser)return true;
     if(typeof auth.onAuthStateChanged!=='function')return true;

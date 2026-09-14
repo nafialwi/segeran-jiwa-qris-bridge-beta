@@ -47,9 +47,8 @@ test('R8-B3 stays presentation/validation-only and never adds closing persistenc
   for(const forbidden of ['.set(','.update(','.transaction(','verifiedShiftWrite(','firebase.database(']){
     assert.equal(source.includes(forbidden),false,`B3 must not add persistence primitive ${forbidden}`);
   }
-  assert.match(source,/KUNCI HITUNGAN FISIK/);
-  assert.match(source,/sjshift-close-session-exp/);
-  assert.match(source,/data-v34-cup-closing/);
+  assert.match(source,/requestCupClosingPresentation/);
+  assert.match(source,/cupShiftControl\?\.enhanceClosing/);
 });
 
 test('REF01 installs R8-B3 after P5 cup authority and reconciles it last',()=>{

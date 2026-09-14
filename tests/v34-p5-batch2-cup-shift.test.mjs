@@ -43,12 +43,12 @@ test('P5 Batch-2 augments existing START/CLOSE shift update payload without crea
   assert.equal(close['2026-09-03-S1/closingSnapshot'].cupControl.reconciliation.rows[0].variance,3);
 });
 
-test('P5 Batch-2 closing panel starts blank for manual count and clearly marks legacy shifts without opening authority',()=>{
+test('P5 Batch-2 closing without opening evidence starts blank and permits manual continuity count',()=>{
   const reconciliation={rows:[{code:'c10',name:'Cup 10 Oz',opening:0,inbound:0,closing:0,physicalUsed:0,theoreticalUsed:0,variance:0}]};
   const html=renderCupClosingPanelV34(cups,{reconciliation,readOnly:false,closingValues:{},openingKnown:false});
-  assert.match(html,/Shift ini dibuka sebelum Cup Control/);
+  assert.match(html,/Data hitung cup awal belum tersedia/);
   assert.match(html,/data-v34-cup-closing="c10" value=""/);
-  assert.match(html,/data-v34-cup-closing="c10"[^>]*disabled/);
+  assert.doesNotMatch(html,/data-v34-cup-closing="c10"[^>]*disabled/);
 });
 
 test('P5 Batch-2 stores opening and closing reconciliation at shift level so cashier handover does not lose cup authority',()=>{

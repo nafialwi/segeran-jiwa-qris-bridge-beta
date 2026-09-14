@@ -39,7 +39,8 @@ test('REF-01 checkout/report/state contracts preserve business semantics instead
   assert.equal(stateModel('permission').recoverable,false);
   assert.deepEqual(SYSTEM_STATES,['loading','empty','error','success','offline','permission','retry']);
   assert.equal(IMPLICIT_CAPABILITIES.unknownHpp.display,'Belum tersedia');
-  assert.equal(IMPLICIT_CAPABILITIES.transferProof.persistence,'draft-only-until-existing-writer');
+  assert.deepEqual(IMPLICIT_CAPABILITIES.transferProof.actions,[]);
+  assert.equal(IMPLICIT_CAPABILITIES.transferProof.persistence,'unavailable-until-existing-writer');
 });
 
 test('REF-01 implicit visual logic includes photo lifecycle, scanner fallback and stale shift recovery',()=>{
