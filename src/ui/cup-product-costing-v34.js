@@ -54,7 +54,16 @@ export function installCupProductCostingV34(runtime=globalThis,{inventoryWorkspa
   if(!inv||typeof original!=='function')return Object.freeze({installed:false,enhance(){return false}});
   let cachedCupRows=[];
   async function refresh(){try{const raw=await repository?.readInventoryV2?.();cachedCupRows=buildCupInventoryRowsV34(raw||{});return cachedCupRows}catch(_){return cachedCupRows}}
-  const ready=refresh();
+  async function waitForAuthenticatedRuntime(){
+    let auth=null;try{auth=runtime?.firebase?.auth?.()}catch(_){}
+    if(!auth||auth.currentUser)return true;
+    if(typeof auth.onAuthStateChanged!=='function')return true;
+    return new Promise(resolve=>{
+      let done=false,off=()=>{};const finish=value=>{if(done)return;done=true;try{off()}catch(_){}resolve(value)};
+      try{off=auth.onAuthStateChanged(user=>{if(user)finish(true)},()=>finish(false))}catch(_){finish(false)}
+    });
+  }
+  const ready=waitForAuthenticatedRuntime().then(ok=>ok?refresh():cachedCupRows).catch(()=>cachedCupRows);
   const saleUsage=cart=>{const workspaceRows=inventoryWorkspace?.cupRows?.()||[],cupRows=workspaceRows.some(x=>x?.registered)?workspaceRows:cachedCupRows;return cupSaleConsumptionV34(cart,cupRows)};
   try{Object.defineProperty(runtime,'__SJ_V34_CUP_SALE_USAGE',{value:saleUsage,writable:false,configurable:false,enumerable:false})}catch(_){runtime.__SJ_V34_CUP_SALE_USAGE=saleUsage}
   try{Object.defineProperty(runtime,'__SJ_V34_CUP_SALE_READY',{value:ready,writable:false,configurable:false,enumerable:false})}catch(_){runtime.__SJ_V34_CUP_SALE_READY=ready}
