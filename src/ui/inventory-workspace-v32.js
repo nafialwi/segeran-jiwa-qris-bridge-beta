@@ -2,6 +2,7 @@ import { readDateShifts } from './sales-shift-ux-refinement.js';
 import { renderCupReconciliationV1 } from './cup-reconciliation-v1.js';
 import { buildCupReconOpnameDraft, buildCupReconciliationGroups } from '../domain/cup-reconciliation-v1.js';
 import { createInventoryRepository } from '../data/repositories/inventory-repository.js';
+import { createInventoryReadDiagnostics } from '../data/inventory-read-diagnostics.js';
 import { buildIngredientInventoryRows, summarizeIngredientInventory, inventoryActivityTimeline } from '../domain/inventory-v32-analytics.js';
 import { buildFinishedGoodsRows } from '../domain/finished-goods-stock.js';
 import { activeProducts } from './sales-shift-ux-refinement.js';
@@ -191,8 +192,9 @@ export function installInventoryWorkspaceV32(runtime=globalThis,{readShifts=read
   if(runtime?.__SJ_V32_INVENTORY_WORKSPACE)return runtime.__SJ_V32_INVENTORY_WORKSPACE;
   const document=runtime?.document,inventory=runtime?.SJInventoryV2;
   if(!document||!inventory||typeof inventory.open!=='function')return Object.freeze({installed:false});
-  const legacyOpen=inventory.open.bind(inventory),repository=createInventoryRepository({db:runtime?.firebase?.database?.()}),core=runtime?.SJInventoryCore||null,localSimulation=ensureCupLocalSimulationStoreV34(runtime);
-  let rows=[],cupRows=[],productRows=[],activities=[],reconciliationMovements={},reconciliationShifts={},reconciliationModel={summary:{total:0,unresolved:0,needsOpname:0,resolved:0},groups:[]},reconciliationDateCache=Object.create(null),reconciliationTasks=Object.create(null),state={tab:'summary',query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:'',actionQuery:'',actionType:'ALL',reconExpandedDates:[],reconSelectedRef:'',reconDate:''},openLoadTask=null,openRequestSeq=0;
+  const legacyOpen=inventory.open.bind(inventory),readDiagnostics=runtime?.__SJ_INV01_READ_DIAGNOSTICS||createInventoryReadDiagnostics(),repository=createInventoryRepository({db:runtime?.firebase?.database?.(),diagnostics:readDiagnostics,consumer:'inventory-workspace-v32'}),core=runtime?.SJInventoryCore||null,localSimulation=ensureCupLocalSimulationStoreV34(runtime);
+  if(!runtime?.__SJ_INV01_READ_DIAGNOSTICS){try{Object.defineProperty(runtime,'__SJ_INV01_READ_DIAGNOSTICS',{value:readDiagnostics,writable:false,configurable:true})}catch(_){runtime.__SJ_INV01_READ_DIAGNOSTICS=readDiagnostics}}
+  let rows=[],cupRows=[],productRows=[],activities=[],reconciliationMovements={},reconciliationMovementsLoaded=false,reconciliationMovementTask=null,reconciliationShifts={},reconciliationModel={summary:{total:0,unresolved:0,needsOpname:0,resolved:0},groups:[]},reconciliationDateCache=Object.create(null),reconciliationTasks=Object.create(null),state={tab:'summary',query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:'',actionQuery:'',actionType:'ALL',reconExpandedDates:[],reconSelectedRef:'',reconDate:''},openLoadTask=null,openRequestSeq=0;
 
   function ensureHost(){
     let host=document.getElementById?.('sj-v32-inventory-workspace');if(host)return host;
@@ -367,11 +369,20 @@ export function installInventoryWorkspaceV32(runtime=globalThis,{readShifts=read
     return reconciliationModel;
   }
 
+  async function ensureReconciliationMovements({force=false}={}){
+    if(!force&&reconciliationMovementsLoaded)return reconciliationMovements;
+    if(!reconciliationMovementTask){
+      reconciliationMovementTask=repository.readMovements().then(snapshot=>{reconciliationMovements=snapshot||{};reconciliationMovementsLoaded=true;return reconciliationMovements}).finally(()=>{reconciliationMovementTask=null});
+    }
+    return reconciliationMovementTask;
+  }
+
   async function loadReconciliationDate(date,{force=false}={}){
     date=String(date||'').trim();
     if(!date)return reconciliationModel;
 
     state.reconDate=date;
+    await ensureReconciliationMovements({force});
 
     if(!force&&reconciliationDateCache[date]){
       if(!(state.reconExpandedDates||[]).includes(date)){
@@ -410,11 +421,14 @@ export function installInventoryWorkspaceV32(runtime=globalThis,{readShifts=read
     return cupRows.slice();
   }
   async function refreshCupRows(){
-    const raw=await repository.readInventoryV2();
+    const raw=await repository.readWorkspaceState();
     return applyCupRows(raw||{});
   }
   async function load(){
-    const [raw,outlet]=await Promise.all([repository.readInventoryV2(),repository.readLegacyStock()]);const inv=raw||{};rows=buildIngredientInventoryRows(inv,{core});applyCupRows(inv);activities=inventoryActivityTimeline(inv,120);reconciliationMovements=inv.movements||{};rebuildReconciliation();
+    const reconRefresh=reconciliationMovementsLoaded?repository.readMovements():Promise.resolve(null);
+    const [raw,outlet,recentMovements,reconMovements]=await Promise.all([repository.readWorkspaceState(),repository.readLegacyStock(),repository.readRecentMovements({limit:120}),reconRefresh]);
+    const inv=raw||{},activitySnapshot={...inv,movements:recentMovements||{}};rows=buildIngredientInventoryRows(inv,{core});applyCupRows(inv);activities=inventoryActivityTimeline(activitySnapshot,120);
+    if(reconMovements){reconciliationMovements=reconMovements||{};reconciliationMovementsLoaded=true}rebuildReconciliation();
     const products=activeProducts(runtime).filter(p=>p?.trackStock===true);productRows=buildFinishedGoodsRows(products,{outlet:outlet||{},warehouse:inv.productWarehouse||{}}).map(normalizedProductRow);return{rows,cupRows,productRows,activities}
   }
   async function openWorkspace(tab='summary'){
@@ -431,7 +445,7 @@ export function installInventoryWorkspaceV32(runtime=globalThis,{readShifts=read
     return openWorkspace('summary');
   }
   inventory.open=wrappedOpen;
-  const api=Object.freeze({installed:true,open:openWorkspace,openItem,openAction,legacyOpen,render:()=>render(),reload:load,refreshCupRows,loadReconciliationDate,reconciliation:()=>reconciliationModel,ensureCupMasters,applyInitialCupSetup,localCupSimulation:()=>localSimulation,rows:()=>rows.slice(),cupRows:()=>cupRows.slice(),productRows:()=>productRows.slice(),activities:()=>activities.slice()});
+  const api=Object.freeze({installed:true,open:openWorkspace,openItem,openAction,legacyOpen,render:()=>render(),reload:load,refreshCupRows,loadReconciliationDate,reconciliation:()=>reconciliationModel,readDiagnostics:()=>readDiagnostics.summary(),ensureCupMasters,applyInitialCupSetup,localCupSimulation:()=>localSimulation,rows:()=>rows.slice(),cupRows:()=>cupRows.slice(),productRows:()=>productRows.slice(),activities:()=>activities.slice()});
   try{Object.defineProperty(runtime,'__SJ_V32_INVENTORY_WORKSPACE',{value:api,writable:false,configurable:false})}catch(_){}
   return api;
 }

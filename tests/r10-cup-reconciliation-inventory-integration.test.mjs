@@ -104,7 +104,7 @@ test('R10 integration uses pure reconciliation domain and existing Inventory V2 
   assert.match(source,/buildCupReconciliationGroups/);
   assert.match(source,/renderCupReconciliationV1/);
   assert.match(source,/reconciliationMovements/);
-  assert.match(source,/inv\.movements/);
+  assert.match(source,/repository\.readMovements\(\)/);
 
   assert.match(source,/data-r10-date-toggle/);
   assert.match(source,/data-r10-recon-item/);
