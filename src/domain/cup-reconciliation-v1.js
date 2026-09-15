@@ -35,12 +35,14 @@ function dateKeyOf(shiftKey,reconciliation={}){
   return fromStamp||text(shiftKey)||'unknown';
 }
 
+function mapPut(map,key,value){Map.prototype.set.call(map,key,value);return value}
+
 function cupMap(cupRows=[]){
   const out=new Map();
   for(const row of cupRows||[]){
     const code=text(row?.code);
     if(!code)continue;
-    out.set(code,row);
+    mapPut(out,code,row);
   }
   return out;
 }
@@ -320,7 +322,7 @@ export function buildCupReconciliationGroups({
   const byDate=new Map();
 
   for(const item of all){
-    if(!byDate.has(item.dateKey))byDate.set(item.dateKey,[]);
+    if(!byDate.has(item.dateKey))mapPut(byDate,item.dateKey,[]);
     byDate.get(item.dateKey).push(item);
   }
 

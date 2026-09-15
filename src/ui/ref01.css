@@ -404,8 +404,8 @@ html[data-sj-v31="true"] .sj-v31-owner-daily-flow em{color:var(--sj-v31-green);f
 .sj-v32-inv-card>header h2{margin:0;color:#173e29;font-size:19px}.sj-v32-inv-card>header p{margin:3px 0 0;color:#738078;font-size:11px}
 .sj-v32-inv-card>header button{min-width:44px;min-height:44px;border:1px solid #dce7df;border-radius:13px;background:#fff;font-size:22px;color:#486354}
 .sj-v32-inv-shell{display:flex;flex-direction:column;max-height:calc(94dvh - 73px)}
-.sj-v32-inv-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:10px 12px;background:#fff;border-bottom:1px solid #e5ede8}
-.sj-v32-inv-nav button{min-height:42px;border:0;border-radius:11px;background:#f2f7f3;color:#50665a;font-weight:800;font-size:11px}.sj-v32-inv-nav button.active{background:#e5f5eb;color:#08783f}
+.sj-v32-inv-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;padding:10px 12px;background:#fff;border-bottom:1px solid #e5ede8}
+.sj-v32-inv-nav button{min-width:0;min-height:42px;border:0;border-radius:11px;background:#f2f7f3;color:#50665a;font-weight:800;font-size:10px;line-height:1.15;padding:6px 4px;overflow-wrap:anywhere}.sj-v32-inv-nav button.active{background:#e5f5eb;color:#08783f}
 .sj-v32-inv-body{overflow:auto;overscroll-behavior:contain;padding:12px 12px calc(18px + env(safe-area-inset-bottom));display:grid;gap:12px}
 .sj-v32-inv-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.sj-v32-inv-kpis article{background:#fff;border:1px solid #e1ebe4;border-radius:15px;padding:12px}.sj-v32-inv-kpis small{display:block;color:#728178;font-size:10px}.sj-v32-inv-kpis strong{display:block;margin-top:4px;color:#173e29;font-size:19px}
 .sj-v32-inv-principle,.sj-v32-inv-intent{background:#edf8f1;border:1px solid #cfe9d8;border-radius:15px;padding:12px;display:grid;gap:4px;color:#245a3a}.sj-v32-inv-principle b,.sj-v32-inv-intent b{font-size:12px}.sj-v32-inv-principle span,.sj-v32-inv-intent span{font-size:10.5px;line-height:1.45;color:#5b7666}.sj-v32-inv-intent button{justify-self:start;border:0;background:transparent;color:#08783f;font-weight:800;padding:5px 0}

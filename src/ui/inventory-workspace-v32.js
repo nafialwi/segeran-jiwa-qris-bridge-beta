@@ -200,9 +200,10 @@ export function installInventoryWorkspaceV32(runtime=globalThis,{readShifts=read
     host.querySelector?.('[data-v32-inventory-close]')?.addEventListener?.('click',()=>{host.style.display='none'});
     host.addEventListener?.('click',event=>handleClick(event,host));
     host.addEventListener?.('input',event=>{
-      const reconDate=event.target?.closest?.('[data-r10-load-date]');if(reconDate){const date=String(reconDate.value||'');if(!date)return;state.reconDate=date;loadReconciliationDate(date).then(()=>render(host)).catch(()=>runtime?.showToast?.('Data rekonsiliasi tanggal tersebut belum dapat dimuat.','warning'));return}const input=event.target?.closest?.('[data-v32-inventory-search]');if(input){state.query=input.value||'';updateStockList(host);return}
+      const input=event.target?.closest?.('[data-v32-inventory-search]');if(input){state.query=input.value||'';updateStockList(host);return}
       const actionSearch=event.target?.closest?.('[data-v32-action-search]');if(actionSearch){state.actionQuery=actionSearch.value||'';updateActionPickerList(host)}
     });
+    host.addEventListener?.('change',event=>{const reconDate=event.target?.closest?.('[data-r10-load-date]');if(!reconDate)return;const date=String(reconDate.value||'');if(!date)return;state.reconDate=date;loadReconciliationDate(date).then(()=>render(host)).catch(()=>runtime?.showToast?.('Data rekonsiliasi tanggal tersebut belum dapat dimuat.','warning'))});
     host.addEventListener?.('input',event=>{const setupField=event.target?.closest?.('[data-v34-cup-setup-field]');if(!setupField)return;const preview=host.querySelector?.('[data-v34-cup-setup-preview]');if(preview)preview.outerHTML=renderCupInitialSetupPreviewV34(cupSetupValues(host))});
     document.body?.appendChild?.(host);return host;
   }
