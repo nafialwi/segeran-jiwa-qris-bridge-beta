@@ -56,6 +56,7 @@ function createDefaultManager(runtime,commands){
     },
     readOnline:()=>runtime?.navigator?.onLine!==false,
     readShiftHint:()=>readShiftHint(runtime),
+    readLiveGuardEnabled:()=>runtime?.__SJ_LOCAL_QA_READ_ONLY!==true,
     onForcedLogout:async()=>commands.invoke('sc04.legacy.logout')
   });
 }

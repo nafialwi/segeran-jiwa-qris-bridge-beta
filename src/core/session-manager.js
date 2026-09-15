@@ -24,6 +24,7 @@ export function createSessionManager({
   readDeviceId=()=>'',
   readOnline=()=>true,
   readShiftHint=()=>({shiftKey:'',sessionId:''}),
+  readLiveGuardEnabled=()=>true,
   now=()=>Date.now(),
   maxAgeMs=DEFAULT_MAX_AGE_MS,
   legacyMaxAgeMs=DEFAULT_LEGACY_MAX_AGE_MS,
@@ -82,6 +83,9 @@ export function createSessionManager({
   function startLiveGuard(username,expectedRole=''){
     stopLiveGuard();
     forcing=false;
+    let enabled=true;
+    try{enabled=readLiveGuardEnabled()!==false}catch(_){enabled=true}
+    if(!enabled)return false;
     const id=text(username).toLowerCase(),deviceId=text(readDeviceId());
     if(!id||!deviceId||typeof repository.watchUser!=='function'||typeof repository.watchDevice!=='function') return false;
     let role=text(expectedRole);
