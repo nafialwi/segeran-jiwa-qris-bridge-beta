@@ -67,6 +67,43 @@ function markerFor(reference){
   return `[CUP_RECON:${reference}]`;
 }
 
+
+export function buildCupReconOpnameDraft(item={}){
+  if(text(item?.status)!==STATUS.NEEDS_OPNAME)throw Object.assign(
+    new Error('CUP_RECON_OPNAME_NOT_REQUIRED'),
+    {code:'CUP_RECON_OPNAME_NOT_REQUIRED'}
+  );
+
+  const ingredientId=text(item?.ingredientId);
+  if(!ingredientId)throw Object.assign(
+    new Error('CUP_RECON_OPNAME_ITEM_REQUIRED'),
+    {code:'CUP_RECON_OPNAME_ITEM_REQUIRED'}
+  );
+
+  const actual=finite(item?.physicalClosing);
+  if(actual===null)throw Object.assign(
+    new Error('CUP_RECON_OPNAME_PHYSICAL_REQUIRED'),
+    {code:'CUP_RECON_OPNAME_PHYSICAL_REQUIRED'}
+  );
+
+  const reference=text(item?.reference);
+  if(!reference)throw Object.assign(
+    new Error('CUP_RECON_IDENTITY_REQUIRED'),
+    {code:'CUP_RECON_IDENTITY_REQUIRED'}
+  );
+
+  return Object.freeze({
+    action:'opname',
+    itemType:'ingredient',
+    ingredientId,
+    location:'outlet',
+    actual,
+    note:`Rekonsiliasi Cup ${markerFor(reference)}`,
+    reconciliationRef:reference,
+    origin:'reconciliation'
+  });
+}
+
 export function buildCupReconciliationRef({
   shiftKey,
   sessionId,
