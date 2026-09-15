@@ -1,3 +1,6 @@
+import { readDateShifts } from './sales-shift-ux-refinement.js';
+import { renderCupReconciliationV1 } from './cup-reconciliation-v1.js';
+import { buildCupReconciliationGroups } from '../domain/cup-reconciliation-v1.js';
 import { createInventoryRepository } from '../data/repositories/inventory-repository.js';
 import { buildIngredientInventoryRows, summarizeIngredientInventory, inventoryActivityTimeline } from '../domain/inventory-v32-analytics.js';
 import { buildFinishedGoodsRows } from '../domain/finished-goods-stock.js';
@@ -15,7 +18,7 @@ const actionTitle=Object.freeze({transfer:'Pindahkan Stok',purchase:'Catat Pembe
 
 export function routeLegacyInventoryTabV32(tab='summary'){
   const value=String(tab||'summary').toLowerCase();
-  if(['summary','workspace','stock','activity','more'].includes(value))return{kind:'workspace',tab:value==='workspace'?'summary':value};
+  if(['summary','workspace','stock','activity','reconciliation','more'].includes(value))return{kind:'workspace',tab:value==='workspace'?'summary':value};
   if(value==='movements')return{kind:'workspace',tab:'activity'};
   if(['transfer','purchase','opname'].includes(value))return{kind:'action',action:value};
   if(value==='ingredients')return{kind:'workspace',tab:'more'};
@@ -24,7 +27,7 @@ export function routeLegacyInventoryTabV32(tab='summary'){
 }
 
 function nav(tab){
-  return `<nav class="sj-v32-inv-nav" aria-label="Menu Inventori">${[['summary','Ringkasan'],['stock','Stok'],['activity','Aktivitas'],['more','Lainnya']].map(([id,label])=>`<button type="button" data-v32-inventory-tab="${id}" class="${tab===id?'active':''}">${label}</button>`).join('')}</nav>`;
+  return `<nav class="sj-v32-inv-nav" aria-label="Menu Inventori">${[['summary','Ringkasan'],['stock','Stok'],['activity','Aktivitas'],['reconciliation','Rekonsiliasi'],['more','Lainnya']].map(([id,label])=>`<button type="button" data-v32-inventory-tab="${id}" class="${tab===id?'active':''}">${label}</button>`).join('')}</nav>`;
 }
 function statusClass(action){return action==='TRANSFER'?'transfer':action==='BUY'?'buy':action==='CHECK_PHYSICAL'?'check':'safe'}
 function rowAction(row,intent=''){
@@ -142,17 +145,33 @@ export function renderIngredientEditorV32({row=null}={}){
 
 function ingredientManagerHTML(rows=[]){return `<section class="sj-v32-inv-manager"><button type="button" class="sj-v32-inv-back" data-v32-manager-back>‹ Kembali ke Lainnya</button><div class="sj-v32-inv-section-head"><h3>Pengaturan Inventori / Bahan Baku</h3><button type="button" data-v32-manager-add>+ Tambah Bahan</button></div><p class="sj-v32-manager-copy">Klik bahan untuk membuka detail lalu atur batas kritis, waspada, target Gerai, dan target Gudang.</p><div class="sj-v32-inv-stock-list">${rows.length?rows.map(x=>stockRow(x)).join(''):'<div class="sj-v32-inv-empty">Belum ada bahan baku.</div>'}</div></section>`}
 
-export function renderInventoryWorkspaceV32({tab='summary',rows=[],cupRows=[],readOnly=false,recentMovements=[],recentActivities=[],query='',filter='ALL',intent='',selectedItemId='',mode='',productRows=[],process=null,manager=false,editorRow=undefined,actionQuery='',actionType='ALL',cupSetupValues={}}={}){
+
+function renderCupReconciliationWorkspaceV1({
+  model,
+  expandedDates=[],
+  selectedRef='',
+  selectedDate=''
+}={}){
+  const date=String(selectedDate||'');
+  const loader=`<label class="sj-r10-date-loader"><span>Pilih tanggal</span><input type="date" data-r10-load-date value="${esc(date)}" aria-label="Pilih tanggal rekonsiliasi cup"></label>`;
+  return `${loader}${renderCupReconciliationV1({
+    groups:model,
+    expandedDates,
+    selectedRef
+  })}`;
+}
+
+export function renderInventoryWorkspaceV32({tab='summary',rows=[],cupRows=[],readOnly=false,recentMovements=[],recentActivities=[],query='',filter='ALL',intent='',selectedItemId='',mode='',productRows=[],process=null,manager=false,editorRow=undefined,actionQuery='',actionType='ALL',cupSetupValues={},reconciliationModel={summary:{total:0,unresolved:0,needsOpname:0,resolved:0},groups:[]},reconciliationExpandedDates=[],reconciliationSelectedRef='',reconciliationDate=''}={}){
   const activities=recentActivities.length?recentActivities:recentMovements,cupIds=new Set((cupRows||[]).filter(x=>x?.registered&&x.ingredientId).map(x=>String(x.ingredientId))),baseRows=(rows||[]).filter(x=>!cupIds.has(String(x.id)));
   if(mode==='cup-setup')return `<div class="sj-v32-inv-shell" data-v32-inventory-shell data-active-tab="cup-setup"><div class="sj-v32-inv-body">${renderCupInitialSetupV34(cupRows,{readOnly,values:cupSetupValues})}</div></div>`;
   if(mode==='action-picker')return `<div class="sj-v32-inv-shell" data-v32-inventory-shell data-active-tab="action-picker"><div class="sj-v32-inv-body">${renderInventoryActionPickerV32({action:process?.action,ingredientRows:rows,productRows,query:actionQuery,typeFilter:actionType})}</div></div>`;
   if(mode==='process')return `<div class="sj-v32-inv-shell" data-v32-inventory-shell data-active-tab="process"><div class="sj-v32-inv-body">${renderInventoryProcessV32({action:process?.action,itemType:process?.itemType,row:process?.row,location:process?.location})}</div></div>`;
   if(mode==='manager')return `<div class="sj-v32-inv-shell" data-v32-inventory-shell data-active-tab="manager"><div class="sj-v32-inv-body">${ingredientManagerHTML(rows)}</div></div>`;
   if(mode==='editor')return `<div class="sj-v32-inv-shell" data-v32-inventory-shell data-active-tab="editor"><div class="sj-v32-inv-body">${renderIngredientEditorV32({row:editorRow})}</div></div>`;
-  const active=['summary','stock','activity','more'].includes(tab)?tab:'summary';
+  const active=['summary','stock','activity','reconciliation','more'].includes(tab)?tab:'summary';
   if(selectedItemId){const row=rows.find(x=>String(x.id)===String(selectedItemId));return `<div class="sj-v32-inv-shell" data-v32-inventory-shell data-active-tab="detail"><div class="sj-v32-inv-body">${renderInventoryItemDetailV32({row,activities})}</div></div>`}
   const cupSection=(active==='summary'||active==='stock')?renderCupInventorySectionV34(cupRows,{readOnly}):'';
-  const body=cupSection+(active==='stock'?stockHTML(baseRows,query,filter,intent):active==='activity'?activityHTML(activities):active==='more'?moreHTML():summaryHTML(baseRows));
+  const body=active==='reconciliation'?renderCupReconciliationWorkspaceV1({model:reconciliationModel,expandedDates:reconciliationExpandedDates,selectedRef:reconciliationSelectedRef,selectedDate:reconciliationDate}):cupSection+(active==='stock'?stockHTML(baseRows,query,filter,intent):active==='activity'?activityHTML(activities):active==='more'?moreHTML():summaryHTML(baseRows));
   return `<div class="sj-v32-inv-shell" data-v32-inventory-shell data-active-tab="${active}">${nav(active)}<div class="sj-v32-inv-body">${body}</div></div>`;
 }
 
@@ -168,12 +187,12 @@ export function assertActivePurchaseShiftV32(runtime=globalThis){
   return Object.freeze({state,sessionId,data});
 }
 
-export function installInventoryWorkspaceV32(runtime=globalThis){
+export function installInventoryWorkspaceV32(runtime=globalThis,{readShifts=readDateShifts}={}){
   if(runtime?.__SJ_V32_INVENTORY_WORKSPACE)return runtime.__SJ_V32_INVENTORY_WORKSPACE;
   const document=runtime?.document,inventory=runtime?.SJInventoryV2;
   if(!document||!inventory||typeof inventory.open!=='function')return Object.freeze({installed:false});
   const legacyOpen=inventory.open.bind(inventory),repository=createInventoryRepository({db:runtime?.firebase?.database?.()}),core=runtime?.SJInventoryCore||null,localSimulation=ensureCupLocalSimulationStoreV34(runtime);
-  let rows=[],cupRows=[],productRows=[],activities=[],state={tab:'summary',query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:'',actionQuery:'',actionType:'ALL'},openLoadTask=null,openRequestSeq=0;
+  let rows=[],cupRows=[],productRows=[],activities=[],reconciliationMovements={},reconciliationShifts={},reconciliationModel={summary:{total:0,unresolved:0,needsOpname:0,resolved:0},groups:[]},reconciliationDateCache=Object.create(null),reconciliationTasks=Object.create(null),state={tab:'summary',query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:'',actionQuery:'',actionType:'ALL',reconExpandedDates:[],reconSelectedRef:'',reconDate:''},openLoadTask=null,openRequestSeq=0;
 
   function ensureHost(){
     let host=document.getElementById?.('sj-v32-inventory-workspace');if(host)return host;
@@ -181,7 +200,7 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
     host.querySelector?.('[data-v32-inventory-close]')?.addEventListener?.('click',()=>{host.style.display='none'});
     host.addEventListener?.('click',event=>handleClick(event,host));
     host.addEventListener?.('input',event=>{
-      const input=event.target?.closest?.('[data-v32-inventory-search]');if(input){state.query=input.value||'';updateStockList(host);return}
+      const reconDate=event.target?.closest?.('[data-r10-load-date]');if(reconDate){const date=String(reconDate.value||'');if(!date)return;state.reconDate=date;loadReconciliationDate(date).then(()=>render(host)).catch(()=>runtime?.showToast?.('Data rekonsiliasi tanggal tersebut belum dapat dimuat.','warning'));return}const input=event.target?.closest?.('[data-v32-inventory-search]');if(input){state.query=input.value||'';updateStockList(host);return}
       const actionSearch=event.target?.closest?.('[data-v32-action-search]');if(actionSearch){state.actionQuery=actionSearch.value||'';updateActionPickerList(host)}
     });
     host.addEventListener?.('input',event=>{const setupField=event.target?.closest?.('[data-v34-cup-setup-field]');if(!setupField)return;const preview=host.querySelector?.('[data-v34-cup-setup-preview]');if(preview)preview.outerHTML=renderCupInitialSetupPreviewV34(cupSetupValues(host))});
@@ -190,7 +209,7 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
   function render(host=ensureHost()){
     const content=host?.querySelector?.('[data-v32-inventory-content]');if(!content)return;
     const editorRow=state.editorId&&state.editorId!=='__new__'?contextRow(state.editorId):state.editorId==='__new__'?null:undefined;
-    content.innerHTML=renderInventoryWorkspaceV32({tab:state.tab,rows,cupRows,readOnly:runtime?.__SJ_LOCAL_QA_READ_ONLY===true,productRows,recentActivities:activities,query:state.query,filter:state.filter,intent:state.intent,selectedItemId:state.detailId,mode:state.mode,process:state.process,manager:state.manager,editorRow,actionQuery:state.actionQuery,actionType:state.actionType,cupSetupValues:localSimulation.masterConfig||{}});
+    content.innerHTML=renderInventoryWorkspaceV32({tab:state.tab,rows,cupRows,readOnly:runtime?.__SJ_LOCAL_QA_READ_ONLY===true,productRows,recentActivities:activities,query:state.query,filter:state.filter,intent:state.intent,selectedItemId:state.detailId,mode:state.mode,process:state.process,manager:state.manager,editorRow,actionQuery:state.actionQuery,actionType:state.actionType,cupSetupValues:localSimulation.masterConfig||{},reconciliationModel,reconciliationExpandedDates:state.reconExpandedDates||[],reconciliationSelectedRef:state.reconSelectedRef||'',reconciliationDate:state.reconDate||''});
   }
   function updateStockList(host=ensureHost()){
     const list=host?.querySelector?.('[data-v32-inventory-stock-list]');if(list)list.innerHTML=stockRowsHTML(rows,state.query,state.filter,state.intent);
@@ -306,7 +325,11 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
     const pick=event.target?.closest?.('[data-v32-action-pick]');if(pick){const [itemType,id]=String(pick.dataset.v32ActionPick||'').split(':');const row=itemRow(itemType,id);if(row){state.mode='process';state.process={action:state.process?.action||'transfer',itemType,row,location:'warehouse'};render(host)}return}
     const open=event.target?.closest?.('[data-v32-inventory-open-item]');if(open){openItem(open.dataset.v32InventoryOpenItem);return}
     const activity=event.target?.closest?.('[data-v32-inventory-activity-item]');if(activity){const id=activity.dataset.v32InventoryActivityItem,type=activity.dataset.v32InventoryItemType;if(type==='ingredient'){openItem(id);return}const finished=runtime?.__SJ_V26_FINISHED_WAREHOUSE;if(finished?.openProductDetail){host.style.display='none';finished.openProductDetail(id);return}}
-    const tab=event.target?.closest?.('[data-v32-inventory-tab]');if(tab){state={...state,tab:tab.dataset.v32InventoryTab,query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:''};render(host);return}
+    const reconToggle=event.target?.closest?.('[data-r10-date-toggle]');if(reconToggle){const date=String(reconToggle.dataset.r10DateToggle||''),expanded=new Set(state.reconExpandedDates||[]);if(expanded.has(date))expanded.delete(date);else expanded.add(date);state.reconExpandedDates=[...expanded];render(host);return}
+    const reconItem=event.target?.closest?.('[data-r10-recon-item]');if(reconItem){state.reconSelectedRef=String(reconItem.dataset.r10ReconItem||'');render(host);return}
+    if(event.target?.closest?.('[data-r10-detail-back]')){state.reconSelectedRef='';render(host);return}
+    const reconActivity=event.target?.closest?.('[data-r10-stock-activity]');if(reconActivity){const id=String(reconActivity.dataset.r10StockActivity||'');state.reconSelectedRef='';if(id&&openItem(id))return;state.tab='activity';render(host);return}
+    const tab=event.target?.closest?.('[data-v32-inventory-tab]');if(tab){const next=tab.dataset.v32InventoryTab;state={...state,tab:next,query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:'',reconSelectedRef:''};if(next==='reconciliation'){const date=state.reconDate||currentReconciliationDate();if(date){try{await loadReconciliationDate(date)}catch(_){runtime?.showToast?.('Data rekonsiliasi belum dapat dimuat.','warning')}}}render(host);return}
     const filter=event.target?.closest?.('[data-v32-inventory-filter]');if(filter){state.filter=filter.dataset.v32InventoryFilter||'ALL';render(host);return}
     if(event.target?.closest?.('[data-v32-inventory-intent-cancel]')){state.intent='';render(host);return}
     const chooser=event.target?.closest?.('[data-v32-inventory-choose]');if(chooser){choose(chooser.dataset.v32InventoryChoose);return}
@@ -323,6 +346,63 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
     if(action==='cost'){host.style.display='none';if(typeof runtime?.SJCostingV1?.openInitialCost==='function')runtime.SJCostingV1.openInitialCost();else containAdvancedLegacy('purchase')}
   }
 
+
+  function currentReconciliationDate(){
+    const visible=String(document?.getElementById?.('date-sel')?.value||'').trim();
+    if(visible)return visible;
+    try{
+      const Fn=runtime?.Function||Function;
+      return String(Fn('try{return typeof activeDateOnly!=="undefined"?activeDateOnly:""}catch(_){return ""}')()||'').trim();
+    }catch(_){return ''}
+  }
+
+  function rebuildReconciliation(){
+    reconciliationModel=buildCupReconciliationGroups({
+      shifts:reconciliationShifts,
+      movements:reconciliationMovements,
+      cupRows
+    });
+    return reconciliationModel;
+  }
+
+  async function loadReconciliationDate(date,{force=false}={}){
+    date=String(date||'').trim();
+    if(!date)return reconciliationModel;
+
+    state.reconDate=date;
+
+    if(!force&&reconciliationDateCache[date]){
+      if(!(state.reconExpandedDates||[]).includes(date)){
+        state.reconExpandedDates=[date,...(state.reconExpandedDates||[])];
+      }
+      return rebuildReconciliation();
+    }
+
+    if(!reconciliationTasks[date]){
+      const task=Promise.resolve()
+        .then(()=>readShifts(runtime,date))
+        .then(snapshot=>{
+          for(const key of Object.keys(reconciliationShifts)){
+            if(String(key).startsWith(`${date}-S`))delete reconciliationShifts[key];
+          }
+          for(const [key,row] of Object.entries(snapshot||{})){
+            if(String(key).startsWith(`${date}-S`)&&row&&typeof row==='object'){
+              reconciliationShifts[key]=row;
+            }
+          }
+          reconciliationDateCache[date]=true;
+          if(!(state.reconExpandedDates||[]).includes(date)){
+            state.reconExpandedDates=[date,...(state.reconExpandedDates||[])];
+          }
+          return rebuildReconciliation();
+        })
+        .finally(()=>{delete reconciliationTasks[date]});
+      reconciliationTasks[date]=task;
+    }
+
+    return reconciliationTasks[date];
+  }
+
   function applyCupRows(inv){
     cupRows=runtime?.__SJ_LOCAL_QA_READ_ONLY===true&&localSimulation.masterConfig?buildCupLocalSimulationRowsV34(localSimulation.masterConfig):buildCupInventoryRowsV34(inv||{});
     return cupRows.slice();
@@ -332,14 +412,14 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
     return applyCupRows(raw||{});
   }
   async function load(){
-    const [raw,outlet]=await Promise.all([repository.readInventoryV2(),repository.readLegacyStock()]);const inv=raw||{};rows=buildIngredientInventoryRows(inv,{core});applyCupRows(inv);activities=inventoryActivityTimeline(inv,120);
+    const [raw,outlet]=await Promise.all([repository.readInventoryV2(),repository.readLegacyStock()]);const inv=raw||{};rows=buildIngredientInventoryRows(inv,{core});applyCupRows(inv);activities=inventoryActivityTimeline(inv,120);reconciliationMovements=inv.movements||{};rebuildReconciliation();
     const products=activeProducts(runtime).filter(p=>p?.trackStock===true);productRows=buildFinishedGoodsRows(products,{outlet:outlet||{},warehouse:inv.productWarehouse||{}}).map(normalizedProductRow);return{rows,cupRows,productRows,activities}
   }
   async function openWorkspace(tab='summary'){
     if(!ownerRole(roleOf(runtime)))return false;
-    const requestSeq=++openRequestSeq,host=ensureHost();if(!host)return false;state={tab:['summary','stock','activity','more'].includes(tab)?tab:'summary',query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:'',actionQuery:'',actionType:'ALL'};host.style.display='flex';const content=host.querySelector?.('[data-v32-inventory-content]');if(content)content.innerHTML='<div class="sj-v32-inv-empty">Memuat Bahan & Gudang…</div>';
+    const requestSeq=++openRequestSeq,host=ensureHost();if(!host)return false;state={tab:['summary','stock','activity','reconciliation','more'].includes(tab)?tab:'summary',query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:'',actionQuery:'',actionType:'ALL',reconExpandedDates:state.reconExpandedDates||[],reconSelectedRef:'',reconDate:state.reconDate||currentReconciliationDate()};host.style.display='flex';const content=host.querySelector?.('[data-v32-inventory-content]');if(content)content.innerHTML='<div class="sj-v32-inv-empty">Memuat Bahan & Gudang…</div>';
     if(!openLoadTask)openLoadTask=load().finally(()=>{openLoadTask=null});
-    try{await openLoadTask;if(requestSeq===openRequestSeq)render(host)}catch(_){if(requestSeq===openRequestSeq&&content)content.innerHTML='<div class="sj-v32-inv-empty">Data inventory belum dapat dimuat. Tidak ada data yang diubah.</div>'}return true;
+    try{await openLoadTask;if(state.tab==='reconciliation'&&state.reconDate){try{await loadReconciliationDate(state.reconDate)}catch(_){runtime?.showToast?.('Data rekonsiliasi belum dapat dimuat.','warning')}}if(requestSeq===openRequestSeq)render(host)}catch(_){if(requestSeq===openRequestSeq&&content)content.innerHTML='<div class="sj-v32-inv-empty">Data inventory belum dapat dimuat. Tidak ada data yang diubah.</div>'}return true;
   }
   function wrappedOpen(tab){
     const value=String(tab||'summary'),route=routeLegacyInventoryTabV32(value);
@@ -349,7 +429,7 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
     return openWorkspace('summary');
   }
   inventory.open=wrappedOpen;
-  const api=Object.freeze({installed:true,open:openWorkspace,openItem,openAction,legacyOpen,render:()=>render(),reload:load,refreshCupRows,ensureCupMasters,applyInitialCupSetup,localCupSimulation:()=>localSimulation,rows:()=>rows.slice(),cupRows:()=>cupRows.slice(),productRows:()=>productRows.slice(),activities:()=>activities.slice()});
+  const api=Object.freeze({installed:true,open:openWorkspace,openItem,openAction,legacyOpen,render:()=>render(),reload:load,refreshCupRows,loadReconciliationDate,reconciliation:()=>reconciliationModel,ensureCupMasters,applyInitialCupSetup,localCupSimulation:()=>localSimulation,rows:()=>rows.slice(),cupRows:()=>cupRows.slice(),productRows:()=>productRows.slice(),activities:()=>activities.slice()});
   try{Object.defineProperty(runtime,'__SJ_V32_INVENTORY_WORKSPACE',{value:api,writable:false,configurable:false})}catch(_){}
   return api;
 }

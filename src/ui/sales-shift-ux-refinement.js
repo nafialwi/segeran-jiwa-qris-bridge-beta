@@ -100,7 +100,7 @@ export function installSmartBarcodeResolver(runtime=globalThis){
 
 function currentDate(runtime){return String(runtime?.document?.getElementById?.('date-sel')?.value||runtime?.activeDateOnly||'')}
 function currentShiftLabel(runtime){const select=runtime?.document?.getElementById?.('shift-sel'),text=select?.selectedOptions?.[0]?.textContent;try{return String(text||runtime?.SJShift?.label?.(select?.value||runtime?.activeShift)||'Shift')}catch(_){return String(text||'Shift')}}
-async function readDateShifts(runtime,date){
+export async function readDateShifts(runtime,date){
   const db=runtime?.firebase?.database?.();if(!db||!date)return {};
   const snap=await db.ref(POS_ROOT).orderByKey().startAt(`${date}-S1`).endAt(`${date}-S3`).once('value');return snap?.val?.()||{};
 }

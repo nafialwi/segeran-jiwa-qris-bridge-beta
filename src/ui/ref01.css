@@ -1056,3 +1056,32 @@ html[data-sj-v31="true"] .sj-v33-shift-audit>.sj-v33-fin-subhead>span{padding:4p
     grid-row:1;
   }
 }
+
+.sj-r10-date-loader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  min-height:48px;
+  padding:8px 10px;
+  border:1px solid #e1e9e4;
+  border-radius:13px;
+  background:#fff;
+}
+
+.sj-r10-date-loader span{
+  color:#5f756a;
+  font-size:10px;
+  font-weight:800;
+}
+
+.sj-r10-date-loader input{
+  min-height:36px;
+  max-width:170px;
+  padding:0 9px;
+  border:1px solid #dbe5df;
+  border-radius:10px;
+  background:#f8faf9;
+  color:#244536;
+  font-size:11px;
+}
