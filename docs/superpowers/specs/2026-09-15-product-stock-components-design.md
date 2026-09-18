@@ -821,3 +821,284 @@ The milestone is complete only when all of the following are true:
 - Old cup-only runtime writers are removed/disabled after cutover.
 - No permanent duplicate stock authority remains.
 - Full regression and controlled production UAT pass.
+
+---
+
+## Architecture Amendment — 2026-09-18
+
+### Status and precedence
+
+This amendment is **FINAL APPROVED** for the Product Stock Components architecture.
+
+If any earlier section in this specification conflicts with this amendment, **this amendment takes precedence**. The earlier concepts remain useful as design history, but they are no longer authoritative where superseded below.
+
+The implementation must **not** introduce a second physical-stock balance authority alongside Inventory V2.
+
+### Final stock authority
+
+Product Stock Components reuses the existing Inventory V2 physical-stock model.
+
+Canonical physical balance:
+
+```text
+global/inventoryV2/balances/ingredients/<stockItemId>
+```
+
+Each stock item continues to use the existing Inventory V2 physical locations:
+
+```text
+outlet
+warehouse
+```
+
+The user-facing label may be **Item Stok** even though the persisted Inventory V2 master/balance authority remains the existing ingredient-compatible structure.
+
+Examples include:
+
+- Cup 22 oz Datar
+- Tutup Datar
+- Sedotan
+- Sosis
+- Kardus Snack
+- other discrete consumables configured by the owner
+
+A Product Stock Component is **not automatically a recipe ingredient in product behavior**. The component mapping is a simple discrete physical-consumption contract.
+
+### Superseded paths
+
+The following earlier proposed authorities are **cancelled** and must not be created as new balance or movement authorities:
+
+```text
+global/stockItems
+global/stockBalances
+global/stockMovements
+```
+
+They are superseded as follows:
+
+| Earlier proposal | Final authority |
+| --- | --- |
+| `global/stockItems` | existing Inventory V2 item/master authority |
+| `global/stockBalances` | `global/inventoryV2/balances/ingredients/<stockItemId>` |
+| `global/stockMovements` | existing `global/inventoryV2/movements` |
+| standalone component stock ledger | Inventory V2 movement/audit authority |
+| independent physical-stock subsystem | prohibited |
+
+No production migration may create or populate the cancelled paths above.
+
+### Product-to-stock mapping
+
+The product-to-component relationship is new, but remains inside the Inventory V2 authority family:
+
+```text
+global/inventoryV2/productStockComponents/<productId>/<stockItemId>
+```
+
+Each active mapping defines at minimum:
+
+```text
+stockItemId
+qtyPerUnit
+active
+```
+
+`qtyPerUnit` must be finite and greater than zero.
+
+A product may consume multiple stock items. Multiple products may consume the same stock item.
+
+For a completed sale line:
+
+```text
+physical usage = sold quantity × qtyPerUnit
+```
+
+Payment method, discount, selling price, cashier role, and transaction monetary total do not change physical consumption.
+
+### Exactly-once application journal
+
+Exactly-once state is recorded under Inventory V2:
+
+```text
+global/inventoryV2/stockApplications/<applicationId>
+```
+
+This is **not a second stock balance or ledger**. It is an idempotency and immutable-evidence journal for one stock application.
+
+Canonical sale application identity:
+
+```text
+STOCK_APPLY|<shift>|<txId>
+```
+
+The application snapshot must be deterministic and must preserve the transaction-time component allocation so later mapping changes cannot rewrite history.
+
+Allowed lifecycle states:
+
+```text
+CLAIMED
+COMPLETED
+ERROR
+SHORTAGE
+```
+
+`COMPLETED` is terminal success.
+
+`SHORTAGE` means the requested physical deduction cannot be fully applied without taking canonical outlet stock below zero.
+
+A retry, refresh, reconnect, or second device processing the same sale must not decrement canonical physical stock a second time.
+
+### Writer ownership
+
+Product Stock Components receives one dedicated writer boundary.
+
+The writer may mutate only the paths required for:
+
+1. the Product Stock Components application journal;
+2. canonical Inventory V2 outlet balances for the mapped stock items;
+3. canonical Inventory V2 movement/audit records.
+
+The writer must not create another balance authority.
+
+The pure domain module:
+
+```text
+src/domain/product-stock-components.js
+```
+
+remains persistence-free.
+
+Task 3 creates and verifies this dedicated exactly-once writer, but **does not connect it to the live sale flow yet**.
+
+Sale integration remains a later cutover task.
+
+### Relationship to Recipe Inventory V2
+
+Recipe Inventory V2 remains authoritative for genuine recipe consumption.
+
+Product Stock Components is used for simple discrete configured consumption and must not require:
+
+```text
+inventoryMode='RECIPE'
+__CUP_ONLY__
+synthetic recipe variants
+```
+
+The two mechanisms may coexist only because they represent different business concepts:
+
+- Recipe Inventory V2: genuine recipe/ingredient consumption.
+- Product Stock Components: explicit discrete item consumption per sold unit.
+
+They must not both deduct the same physical item for the same sale line.
+
+### Legacy cup migration
+
+Existing `cp` mappings are migrated to Product Stock Components mappings with quantity `1` for the corresponding physical cup item.
+
+Migration preserves the existing Inventory V2 physical balances.
+
+Migration must not reset stock and must not require manual stock re-entry.
+
+Historical data remains readable:
+
+- legacy `cp`;
+- historical Inventory V2 reservations;
+- historical movements;
+- reconciliation/audit evidence.
+
+After cutover:
+
+- `cp` is no longer the source of truth for new simple cup consumption;
+- Product Stock Components mapping is the source of truth;
+- permanent dual-write is prohibited.
+
+A temporary compatibility reader is allowed only for migration/cutover evidence and must not become a second writer.
+
+### Refund and void
+
+Refund/void restoration must use the immutable stock-application snapshot captured for the original sale, not the current product mapping.
+
+Restoration must be exactly-once and auditable.
+
+The implementation plan must define deterministic restore identities based on:
+
+```text
+STOCK_<KIND>|<shift>|<txId>|<correctionId>
+```
+
+where `<KIND>` is the correction type such as `REFUND` or `VOID`.
+
+The correction path must never restore more physical quantity than was originally applied for the sale.
+
+### Shortage and atomicity requirements
+
+Canonical physical stock must never be intentionally driven below zero.
+
+Before a stock application can reach `COMPLETED`, all required component deductions must be proven applied exactly once.
+
+A partial failure must remain recoverable and auditable. It must not be silently reported as success.
+
+The writer design must explicitly test:
+
+- duplicate application attempts;
+- retry after interrupted processing;
+- multi-component products;
+- one shared component across multiple product lines;
+- insufficient outlet stock;
+- zero-value monetary sales that still consume physical stock;
+- mapping changes after the original transaction;
+- immutable application evidence;
+- no duplicate movement/application on retry.
+
+### Read-performance constraint
+
+The Product Stock Components architecture must preserve the R10 Inventory read-hardening work.
+
+Normal sale processing must use targeted reads/writes for the specific application and stock items involved.
+
+It must not reintroduce:
+
+- full `inventoryV2` root reads;
+- recurring polling;
+- permanent broad listeners;
+- repeated full-history movement scans.
+
+### Task-boundary correction
+
+The implementation plan must be amended before Task 3 coding.
+
+Revised responsibility:
+
+```text
+Task 3 — Exactly-Once Product Stock Component Writer
+```
+
+Task 3 may add the dedicated writer and its tests against the Inventory V2 authority described here.
+
+Task 3 must **not**:
+
+- connect the writer to production sale runtime;
+- publish Firebase rules;
+- run production migration;
+- deploy the application;
+- create `global/stockBalances`;
+- create `global/stockMovements`;
+- introduce permanent dual-write.
+
+Those integrations remain governed by later implementation-plan tasks and explicit production approval gates.
+
+### Locked invariants
+
+The following are locked:
+
+1. Inventory V2 is the canonical physical-stock authority for Product Stock Components.
+2. No parallel physical-stock balance authority is allowed.
+3. Mapping lives under the Inventory V2 authority family.
+4. Exactly-once application journal is evidence/idempotency state, not a second balance.
+5. Existing Inventory V2 movement authority is reused.
+6. Recipe Inventory V2 remains for genuine recipes.
+7. Simple discrete components do not require synthetic recipes.
+8. Historical cup evidence remains readable.
+9. No permanent dual-write.
+10. No negative-stock success.
+11. No production rules, migration, app deploy, or main merge without explicit approval.
+12. Frozen RC01 R6B authority must remain unchanged.
