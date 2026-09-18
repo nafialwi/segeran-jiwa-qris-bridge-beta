@@ -1102,3 +1102,47 @@ The following are locked:
 10. No negative-stock success.
 11. No production rules, migration, app deploy, or main merge without explicit approval.
 12. Frozen RC01 R6B authority must remain unchanged.
+
+---
+
+## Config Scope Clarification — 2026-09-18
+
+This clarification is **FINAL APPROVED** and refines the earlier Architecture Amendment.
+
+The dedicated Product Stock Components writer additionally owns **Owner-only configuration persistence** for:
+
+```text
+global/inventoryV2/productStockComponents/<productId>/<stockItemId>
+```
+
+This does not create another physical-stock authority.
+
+Authority remains:
+
+```text
+Inventory V2 item/master authority
+  -> Item Stok master data
+
+global/inventoryV2/balances/ingredients/<stockItemId>
+  -> canonical outlet/warehouse physical balance
+
+global/inventoryV2/productStockComponents/<productId>/<stockItemId>
+  -> Product Stock Component configuration, dedicated writer, Owner/manajemen only
+
+global/inventoryV2/stockApplications/<applicationId>
+  -> exactly-once application/restore evidence
+
+global/inventoryV2/movements
+  -> canonical movement/audit evidence
+```
+
+Cashier/transaksi may never edit Item Stok master data or `productStockComponents`.
+
+The writer-ownership section of the earlier amendment is therefore interpreted as permitting the dedicated writer to mutate exactly these Product Stock Component scopes:
+
+1. `inventoryV2/productStockComponents` for Owner-only mapping configuration;
+2. `inventoryV2/stockApplications` for exactly-once application/restore journals;
+3. `inventoryV2/balances/ingredients` for targeted canonical outlet balance operations and their crash-recovery marker metadata;
+4. `inventoryV2/movements` for deterministic Product Stock Component movement evidence.
+
+No `global/stockItems`, `global/stockBalances`, `global/stockMovements`, `global/productStockComponents`, or `global/stockApplications` authority may be introduced.
