@@ -22,6 +22,25 @@ function ensureMaterialsShortcut(document,runtime,role,activities){
   return true;
 }
 
+export function ensureStockItemsShortcut(document,runtime,role,activities){
+  const roleKey=String(role??'').trim().toLowerCase();
+  if(!['owner','manajemen'].includes(roleKey)||!activities||activities.querySelector?.('[data-sj-v31-stock-items]'))return false;
+  if(typeof document?.createElement!=='function')return false;
+  const button=document.createElement('button');
+  button.type='button';button.className='sjvc02-activity sj-v31-stock-items-entry';
+  button.dataset.sjV31StockItems='true';button.setAttribute?.('data-sj-v31-stock-items','true');
+  button.innerHTML=`<span class="ico">${renderIcon('inventory',{size:21,label:'Item Stok'})}</span><b>Item Stok</b><span>Kelola master item fisik yang dipakai produk</span>`;
+  button.addEventListener?.('click',()=>{
+    try{
+      const v3=runtime?.__SJ_V32_INVENTORY_WORKSPACE;
+      if(typeof v3?.legacyOpen==='function')return v3.legacyOpen('ingredients');
+      if(typeof runtime?.SJInventoryV2?.open==='function')return runtime.SJInventoryV2.open('ingredients');
+      runtime?.showToast?.('Item Stok belum siap. Buka Bahan & Gudang terlebih dahulu.','warning');
+    }catch(_){}
+  });
+  activities.appendChild?.(button);return true;
+}
+
 export function ensureCustomerDebtShortcut(document,runtime,role,activities){
   if(!isOwnerOperationalRole(role)||!activities||activities.querySelector?.('[data-sj-v31-customer-debt]'))return false;
   if(typeof document?.createElement!=='function')return false;
@@ -35,7 +54,7 @@ export function ensureCustomerDebtShortcut(document,runtime,role,activities){
 export function decorateV31OperationalControlCenter(document,runtime=globalThis,role=null){
   const page=document?.querySelector?.('.sjvc02-operations');const activities=page?.querySelector?.('.sjvc02-activities');
   if(!page||!activities)return Object.freeze({applied:false,groups:0,materials:false});
-  const materials=ensureMaterialsShortcut(document,runtime,role,activities);
+  const materials=ensureMaterialsShortcut(document,runtime,role,activities);const stockItems=ensureStockItemsShortcut(document,runtime,role,activities);
   const debt=ensureCustomerDebtShortcut(document,runtime,role,activities);
   if(activities.dataset?.sjV31Grouped==='true')return Object.freeze({applied:true,groups:Number(activities.dataset.sjV31GroupCount||0),materials,debt});
   const cards=Array.from(activities.children||[]).filter(node=>node?.classList?.contains?.('sjvc02-activity'));

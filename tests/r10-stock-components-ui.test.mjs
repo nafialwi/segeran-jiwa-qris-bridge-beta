@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import {
+  installProductStockComponentsUi,
+  normalizeProductStockComponentRows,
+  summarizeProductStockComponents
+} from '../src/ui/product-stock-components-ui.js';
+import { readFileSync } from 'node:fs';
+
 import { POS_ROOT } from '../src/data/firebase-client.js';
 import { createInventoryRepository } from '../src/data/repositories/inventory-repository.js';
 
@@ -50,4 +57,94 @@ test('Task 6 repository reads only targeted Inventory V2 paths',async()=>{
 
   assert.deepEqual(db.calls,[mappingPath,itemPath,itemsPath,appPath]);
   assert.equal(db.calls.includes(`${POS_ROOT}/global/inventoryV2`),false);
+});
+
+
+test('Task 6 component rows reject duplicates and non-positive quantities',()=>{
+  assert.throws(()=>normalizeProductStockComponentRows([
+    {stockItemId:'ING1',qtyPerUnit:1},{stockItemId:'ING1',qtyPerUnit:2}
+  ]),error=>error?.code==='STOCK_COMPONENT_DUPLICATE_ITEM');
+  for(const qty of [0,-1,'',null]){
+    assert.throws(()=>normalizeProductStockComponentRows([
+      {stockItemId:'ING1',qtyPerUnit:qty}
+    ]),error=>error?.code==='STOCK_COMPONENT_QTY_REQUIRED');
+  }
+});
+
+test('Task 6 summary is compact for one or multiple components',()=>{
+  const items={
+    ING1:{name:'Cup 22 oz Datar',unit:'pcs'},
+    ING2:{name:'Sedotan',unit:'pcs'},
+    ING3:{name:'Tutup Datar',unit:'pcs'}
+  };
+  assert.equal(summarizeProductStockComponents(
+    {ING1:{stockItemId:'ING1',qtyPerUnit:1,active:true}},items
+  ),'Cup 22 oz Datar ×1');
+  assert.equal(summarizeProductStockComponents({
+    ING1:{stockItemId:'ING1',qtyPerUnit:1,active:true},
+    ING2:{stockItemId:'ING2',qtyPerUnit:1,active:true},
+    ING3:{stockItemId:'ING3',qtyPerUnit:1,active:true}
+  },items),'3 item stok');
+});
+
+test('Owner can save multiple Item Stok rows only through dedicated writer',async()=>{
+  let writerCalls=0;
+  const opened=[];
+  const ui=installProductStockComponentsUi({
+    currentUserRole:'manajemen',currentLoginId:'owner-1',currentUserName:'Owner',
+    __SJ_V32_INVENTORY_WORKSPACE:{legacyOpen(tab){opened.push(tab);return true;}}
+  },{
+    document:null,
+    inventoryRepository:{
+      readProductStockComponents:async()=>({ING1:{stockItemId:'ING1',qtyPerUnit:1,active:true}}),
+      readStockItems:async()=>({ING1:{name:'Cup 22 oz Datar',unit:'pcs'},ING2:{name:'Sedotan',unit:'pcs'}})
+    },
+    stockComponentWriter:{saveProductComponents:async input=>{writerCalls++;return input;}}
+  });
+  assert.equal(ui.management(),true);
+  const model=await ui.openProduct('P1');
+  assert.equal(model.summary,'Cup 22 oz Datar ×1');
+  const result=await ui.saveProduct('P1',[
+    {stockItemId:'ING1',qtyPerUnit:1},{stockItemId:'ING2',qtyPerUnit:2}
+  ]);
+  assert.equal(writerCalls,1);
+  assert.equal(result.actor.role,'manajemen');
+  assert.deepEqual(Object.keys(result.components).sort(),['ING1','ING2']);
+  assert.equal(ui.openStockItems(),true);
+  assert.deepEqual(opened,['ingredients']);
+});
+
+test('Cashier has no Product Stock Component configuration authority',async()=>{
+  let reads=0,writes=0,masterOpens=0;
+  const ui=installProductStockComponentsUi({
+    currentUserRole:'transaksi',
+    __SJ_V32_INVENTORY_WORKSPACE:{legacyOpen(){masterOpens++;}}
+  },{
+    document:null,
+    inventoryRepository:{
+      readProductStockComponents:async()=>{reads++;return{};},
+      readStockItems:async()=>{reads++;return{};}
+    },
+    stockComponentWriter:{saveProductComponents:async()=>{writes++;}}
+  });
+  await assert.rejects(ui.openProduct('P1'),error=>error?.code==='STOCK_COMPONENT_CONFIG_OWNER_REQUIRED');
+  await assert.rejects(ui.saveProduct('P1',[{stockItemId:'ING1',qtyPerUnit:1}]),error=>error?.code==='STOCK_COMPONENT_CONFIG_OWNER_REQUIRED');
+  assert.throws(()=>ui.openStockItems(),error=>error?.code==='STOCK_COMPONENT_CONFIG_OWNER_REQUIRED');
+  assert.equal(reads,0);assert.equal(writes,0);assert.equal(masterOpens,0);
+});
+
+test('Task 6 UI source owns presentation but no direct Firebase mutation or bottom nav',()=>{
+  const source=readFileSync(new URL('../src/ui/product-stock-components-ui.js',import.meta.url),'utf8');
+  for(const copy of ['data-sj-stock-components','PEMAKAIAN STOK','Atur Pemakaian Stok','Item Stok']){
+    assert.match(source,new RegExp(copy));
+  }
+  assert.doesNotMatch(source,/\.(?:set|update|transaction|remove)\s*\(/);
+  assert.doesNotMatch(source,/bottom[-_ ]?nav/i);
+});
+
+test('Task 6 V31 Item Stok shortcut delegates to existing Inventory V2 authority',()=>{
+  const source=readFileSync(new URL('../src/ui/v31-ux-polish.js',import.meta.url),'utf8');
+  assert.match(source,/ensureStockItemsShortcut/);
+  assert.match(source,/data-sj-v31-stock-items|sjV31StockItems/);
+  assert.match(source,/legacyOpen\(['"]ingredients['"]\)/);
 });
