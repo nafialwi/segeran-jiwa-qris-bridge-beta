@@ -2,8 +2,10 @@ import { posPath } from '../firebase-client.js';
 import {
   buildApplicationSnapshot,
   normalizeStockComponents,
+  restoreAllocation,
   stockApplicationId,
-  stockComponentFingerprint
+  stockComponentFingerprint,
+  stockRestoreId
 } from '../../domain/product-stock-components.js';
 
 const text=value=>String(value??'').trim();
@@ -306,12 +308,229 @@ export function createStockComponentWriter({
     return executeClaimed(applicationId,application,{resultLabel:'RECOVERED'});
   }
 
-  async function restoreVoid(){
-    fail('STOCK_RESTORE_NOT_IMPLEMENTED');
+  function lineRestoreDeltas(components){
+    const byLine=Object.create(null);
+    for(const component of components){
+      for(const allocation of Array.isArray(component.allocations)?component.allocations:[]){
+        const key=String(allocation.lineIndex);
+        const qty=Number(allocation.restoredSoldQty);
+        const existing=byLine[key];
+        if(existing!=null&&existing!==qty){
+          fail('STOCK_RESTORE_LINE_ALLOCATION_CONFLICT',key);
+        }
+        byLine[key]=qty;
+      }
+    }
+    return byLine;
   }
 
-  async function restoreRefund(){
-    fail('STOCK_RESTORE_NOT_IMPLEMENTED');
+  function voidRefundLines(application){
+    const snapshot=application?.snapshot||{};
+    const prior=application?.restoredLines||{};
+    const out=[];
+    for(const line of Array.isArray(snapshot.lines)?snapshot.lines:[]){
+      const lineIndex=Number(line.lineIndex);
+      const remaining=Number(line.soldQty||0)-Number(prior[String(lineIndex)]||0);
+      if(remaining>0){
+        out.push({lineIndex,productId:line.productId,q:remaining});
+      }
+    }
+    return out;
+  }
+
+  async function claimRestore({
+    kind,
+    shiftKey,
+    txId,
+    correctionId,
+    refundLines,
+    actor
+  }){
+    const applicationId=stockApplicationId(shiftKey,txId);
+    const restoreId=stockRestoreId(kind,shiftKey,txId,correctionId);
+    let created=false;
+    let reason='STOCK_RESTORE_APPLICATION_NOT_FOUND';
+
+    const result=await db.ref(applicationPath(applicationId)).transaction(current=>{
+      if(!current){
+        reason='STOCK_RESTORE_APPLICATION_NOT_FOUND';
+        return;
+      }
+      if(current.status!=='COMPLETED'){
+        reason='STOCK_RESTORE_APPLICATION_NOT_COMPLETED';
+        return;
+      }
+
+      const next=clone(current);
+      next.restores=clone(next.restores)||{};
+      if(next.restores[restoreId])return next;
+
+      const requested=kind==='VOID'
+        ?voidRefundLines(next)
+        :(Array.isArray(refundLines)?refundLines:[]);
+      const components=restoreAllocation(next.snapshot,requested,next.restoredLines||{});
+      const lineRestores=lineRestoreDeltas(components);
+
+      next.restoredLines=clone(next.restoredLines)||{};
+      for(const [lineIndex,qty] of Object.entries(lineRestores)){
+        next.restoredLines[lineIndex]=Number(next.restoredLines[lineIndex]||0)+Number(qty||0);
+      }
+
+      next.restores[restoreId]={
+        id:restoreId,
+        kind,
+        status:'CLAIMED',
+        correctionId:text(correctionId),
+        components:clone(components),
+        lineRestores:clone(lineRestores),
+        createdAt:now(),
+        createdBy:text(actor?.id)
+      };
+      created=true;
+      return next;
+    });
+
+    if(!result?.committed)fail(reason);
+    const application=clone(snapshotValue(result));
+    if(!application)fail(reason);
+    const restore=clone(application.restores?.[restoreId]);
+    if(!restore)fail('STOCK_RESTORE_CLAIM_MISSING',restoreId);
+    return {applicationId,restoreId,application,restore,created};
+  }
+
+  async function transactRestoreComponent(applicationId,restoreId,kind,component){
+    const stockItemId=assertKey(component.stockItemId,'stockItemId');
+    const qty=Number(component.restoredQty);
+    if(!Number.isFinite(qty)||qty<=0)fail('STOCK_RESTORE_QTY_INVALID',stockItemId);
+    const op=operationId(kind,restoreId,stockItemId);
+
+    const result=await db.ref(balancePath(stockItemId)).transaction(current=>{
+      const next=clone(current)||{outlet:0,warehouse:0};
+      const markers=clone(next.stockComponentOps)||{};
+      const existing=markers[op];
+      if(existing?.state==='APPLIED')return next;
+
+      next.outlet=Number(next.outlet||0)+qty;
+      markers[op]={
+        state:'APPLIED',
+        applicationId,
+        restoreId,
+        kind,
+        qty,
+        at:now()
+      };
+      next.stockComponentOps=markers;
+      next.lastOp=op;
+      return next;
+    });
+
+    if(!result?.committed)fail('STOCK_RESTORE_BALANCE_TRANSACTION_ABORTED',stockItemId);
+    const row=clone(snapshotValue(result))||{};
+    const marker=row.stockComponentOps?.[op];
+    if(marker?.state!=='APPLIED')fail('STOCK_RESTORE_MARKER_NOT_APPLIED',stockItemId);
+  }
+
+  function restoreCompletionPatch(applicationId,restoreId,application,restore){
+    const patch={
+      [`stockApplications/${applicationId}/restores/${restoreId}/status`]:'COMPLETED',
+      [`stockApplications/${applicationId}/restores/${restoreId}/completedAt`]:now()
+    };
+
+    for(const component of Array.isArray(restore.components)?restore.components:[]){
+      const id=movementId(restore.kind,restoreId,component.stockItemId);
+      patch[`movements/${id}`]={
+        id,
+        itemType:'ingredient',
+        itemId:component.stockItemId,
+        itemName:component.stockItemName,
+        type:`${restore.kind}_COMPONENT`,
+        location:'outlet',
+        delta:Number(component.restoredQty),
+        refId:restore.correctionId,
+        originalTxId:application.txId,
+        applicationId,
+        restoreId,
+        shift:application.shiftKey,
+        user:text(application.snapshot?.actorName),
+        userId:text(application.snapshot?.actorId),
+        ts:now(),
+        at:nowIso(now())
+      };
+    }
+    return patch;
+  }
+
+  async function executeRestore(claim,{resultLabel='RESTORED'}={}){
+    const {applicationId,restoreId,application,restore}=claim;
+    if(restore.status==='COMPLETED'){
+      return Object.freeze({
+        applicationId,
+        restoreId,
+        status:'COMPLETED',
+        result:'ALREADY_RESTORED'
+      });
+    }
+    if(restore.status!=='CLAIMED'){
+      fail('STOCK_RESTORE_STATUS_INVALID',text(restore.status));
+    }
+
+    for(const component of Array.isArray(restore.components)?restore.components:[]){
+      await transactRestoreComponent(applicationId,restoreId,restore.kind,component);
+    }
+
+    await db.ref(inventoryRootPath()).update(
+      restoreCompletionPatch(applicationId,restoreId,application,restore)
+    );
+
+    return Object.freeze({
+      applicationId,
+      restoreId,
+      status:'COMPLETED',
+      result:resultLabel
+    });
+  }
+
+  async function restoreVoid({
+    shiftKey,
+    txId,
+    voidId,
+    transaction={},
+    actor={}
+  }={}){
+    void transaction;
+    assertSaleActor(actor);
+    const correctionId=assertKey(voidId,'voidId');
+    const claim=await claimRestore({
+      kind:'VOID',
+      shiftKey,
+      txId,
+      correctionId,
+      refundLines:[],
+      actor
+    });
+    return executeRestore(claim,{resultLabel:claim.created?'RESTORED':'RECOVERED'});
+  }
+
+  async function restoreRefund({
+    shiftKey,
+    txId,
+    refundId,
+    refundLines=[],
+    transaction={},
+    actor={}
+  }={}){
+    void transaction;
+    assertSaleActor(actor);
+    const correctionId=assertKey(refundId,'refundId');
+    const claim=await claimRestore({
+      kind:'REFUND',
+      shiftKey,
+      txId,
+      correctionId,
+      refundLines,
+      actor
+    });
+    return executeRestore(claim,{resultLabel:claim.created?'RESTORED':'RECOVERED'});
   }
 
   return Object.freeze({

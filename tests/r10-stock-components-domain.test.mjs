@@ -198,10 +198,70 @@ test('stockComponentFingerprint is stable across object key order',()=>{
   assert.match(a,/^sc1:[0-9a-f]{8}$/);
 });
 
-test('restoreAllocation is reserved for the correction task and is explicit about unsupported restore input',()=>{
-  assert.deepEqual(restoreAllocation({components:[]},[],{}),[]);
+test('restoreAllocation restores historical component quantities from the immutable application snapshot',()=>{
+  const application=buildApplicationSnapshot({
+    shiftKey:'S1',
+    txId:'T1',
+    lines:[{id:'P1',q:3}],
+    mapping:{P1:{
+      STK_CUP:{qtyPerUnit:1,active:true},
+      STK_STRAW:{qtyPerUnit:2,active:true}
+    }},
+    stockItems:{
+      STK_CUP:{name:'Cup',unit:'pcs'},
+      STK_STRAW:{name:'Sedotan',unit:'pcs'}
+    }
+  });
+
+  const result=restoreAllocation(
+    application,
+    [{lineIndex:0,id:'P1',q:1}],
+    {}
+  );
+
+  assert.deepEqual(
+    result.map(row=>[row.stockItemId,row.restoredQty]),
+    [['STK_CUP',1],['STK_STRAW',2]]
+  );
+  assert.deepEqual(
+    result[0].allocations.map(row=>[row.lineIndex,row.productId,row.restoredSoldQty,row.qtyPerUnit,row.restoredQty]),
+    [[0,'P1',1,1,1]]
+  );
+});
+
+test('restoreAllocation honors cumulative restored quantities and rejects over-restore',()=>{
+  const application=buildApplicationSnapshot({
+    shiftKey:'S1',
+    txId:'T2',
+    lines:[{id:'P1',q:3}],
+    mapping:{P1:{STK_CUP:{qtyPerUnit:1,active:true}}},
+    stockItems:{STK_CUP:{name:'Cup',unit:'pcs'}}
+  });
+
+  const remaining=restoreAllocation(
+    application,
+    [{lineIndex:0,id:'P1',q:2}],
+    {'0':1}
+  );
+  assert.equal(remaining[0].restoredQty,2);
+
   assert.throws(
-    ()=>restoreAllocation({components:[{stockItemId:'STK_X',appliedQty:1}]},[{id:'P1',q:1}],{}),
-    error=>error?.code==='STOCK_RESTORE_NOT_IMPLEMENTED'
+    ()=>restoreAllocation(application,[{lineIndex:0,id:'P1',q:3}],{'0':1}),
+    error=>error?.code==='STOCK_RESTORE_EXCEEDS_APPLIED'
+  );
+});
+
+test('restoreAllocation fails closed when a product-only refund is ambiguous across duplicate sale lines',()=>{
+  const application=buildApplicationSnapshot({
+    shiftKey:'S1',
+    txId:'T3',
+    lines:[{id:'P1',q:1},{id:'P1',q:1}],
+    mapping:{P1:{STK_CUP:{qtyPerUnit:1,active:true}}},
+    stockItems:{STK_CUP:{name:'Cup',unit:'pcs'}}
+  });
+
+  assert.throws(
+    ()=>restoreAllocation(application,[{id:'P1',q:1}],{}),
+    error=>error?.code==='STOCK_RESTORE_LINE_AMBIGUOUS'
   );
 });

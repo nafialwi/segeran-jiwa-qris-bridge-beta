@@ -192,10 +192,94 @@ export function buildApplicationSnapshot({
   });
 }
 
+function restoreLineIndex(line,applicationLines){
+  const explicit=Number(line?.lineIndex);
+  if(Number.isInteger(explicit)&&explicit>=0){
+    const target=applicationLines.find(row=>Number(row.lineIndex)===explicit);
+    if(!target)throw domainError('STOCK_RESTORE_LINE_NOT_FOUND',String(explicit));
+    const requestedProduct=lineProductId(line);
+    if(requestedProduct&&requestedProduct!==target.productId){
+      throw domainError('STOCK_RESTORE_LINE_PRODUCT_MISMATCH',String(explicit));
+    }
+    return explicit;
+  }
+
+  const productId=lineProductId(line);
+  if(!productId)throw domainError('STOCK_RESTORE_LINE_REQUIRED');
+  const matches=applicationLines.filter(row=>row.productId===productId);
+  if(matches.length===0)throw domainError('STOCK_RESTORE_LINE_NOT_FOUND',productId);
+  if(matches.length>1)throw domainError('STOCK_RESTORE_LINE_AMBIGUOUS',productId);
+  return Number(matches[0].lineIndex);
+}
+
+function restoredLineQty(alreadyRestored,lineIndex){
+  const source=alreadyRestored&&typeof alreadyRestored==='object'
+    ?(alreadyRestored.lines&&typeof alreadyRestored.lines==='object'?alreadyRestored.lines:alreadyRestored)
+    :{};
+  const qty=Number(source[String(lineIndex)]??source[lineIndex]??0);
+  if(!Number.isFinite(qty)||qty<0)throw domainError('STOCK_RESTORE_HISTORY_INVALID',String(lineIndex));
+  return qty;
+}
+
 export function restoreAllocation(application={},refundLines=[],alreadyRestored={}){
-  const components=Array.isArray(application?.components)?application.components:[];
+  const snapshot=application?.snapshot&&typeof application.snapshot==='object'
+    ?application.snapshot
+    :application;
+  const components=Array.isArray(snapshot?.components)?snapshot.components:[];
+  const applicationLines=Array.isArray(snapshot?.lines)?snapshot.lines:[];
   const refunds=Array.isArray(refundLines)?refundLines:[];
-  if(!components.length||!refunds.length)return Object.freeze([]);
-  void alreadyRestored;
-  throw domainError('STOCK_RESTORE_NOT_IMPLEMENTED');
+
+  if(!refunds.length||!components.length)return Object.freeze([]);
+
+  const requested=Object.create(null);
+  for(const line of refunds){
+    const lineIndex=restoreLineIndex(line,applicationLines);
+    const qty=lineQty(line);
+    if(qty<=0)throw domainError('STOCK_RESTORE_QTY_INVALID',String(lineIndex));
+    requested[lineIndex]=(requested[lineIndex]||0)+qty;
+  }
+
+  for(const [rawIndex,qty] of Object.entries(requested)){
+    const lineIndex=Number(rawIndex);
+    const original=applicationLines.find(row=>Number(row.lineIndex)===lineIndex);
+    if(!original)throw domainError('STOCK_RESTORE_LINE_NOT_FOUND',rawIndex);
+    const prior=restoredLineQty(alreadyRestored,lineIndex);
+    if(prior+qty>Number(original.soldQty||0)+Number.EPSILON){
+      throw domainError('STOCK_RESTORE_EXCEEDS_APPLIED',rawIndex);
+    }
+  }
+
+  const rows=[];
+  for(const component of components){
+    const allocations=[];
+    let restoredQty=0;
+    for(const allocation of Array.isArray(component.allocations)?component.allocations:[]){
+      const lineIndex=Number(allocation.lineIndex);
+      const restoredSoldQty=Number(requested[lineIndex]||0);
+      if(restoredSoldQty<=0)continue;
+      const qtyPerUnit=Number(allocation.qtyPerUnit);
+      if(!Number.isFinite(qtyPerUnit)||qtyPerUnit<=0){
+        throw domainError('STOCK_RESTORE_ALLOCATION_INVALID',String(lineIndex));
+      }
+      const qty=restoredSoldQty*qtyPerUnit;
+      restoredQty+=qty;
+      allocations.push(Object.freeze({
+        lineIndex,
+        productId:text(allocation.productId),
+        restoredSoldQty,
+        qtyPerUnit,
+        restoredQty:qty
+      }));
+    }
+    if(restoredQty<=0)continue;
+    rows.push(Object.freeze({
+      stockItemId:text(component.stockItemId),
+      stockItemName:text(component.stockItemName)||text(component.stockItemId),
+      unit:text(component.unit)||'pcs',
+      restoredQty,
+      allocations:Object.freeze(allocations)
+    }));
+  }
+
+  return freezeRows(rows.sort((a,b)=>a.stockItemId.localeCompare(b.stockItemId)));
 }

@@ -269,3 +269,126 @@ test('completed movement timestamp converts the injected numeric clock to ISO ev
     assert.equal(movement.at,new Date(fixedNow).toISOString());
   }
 });
+
+
+test('full void restores original component stock exactly once',async()=>{
+  const db=fakeDb(seedBalances({STK_CUP:10,STK_STRAW:20}));
+  const writer=createStockComponentWriter({db,now:()=>9000,serverTimestamp:()=>9000});
+  const input=saleInput({txId:'TX-VOID'});
+  await writer.applyCompletedSale(input);
+
+  assert.equal(getAt(db.data,`${POS_ROOT}/global/inventoryV2/balances/ingredients/STK_CUP/outlet`),8);
+  assert.equal(getAt(db.data,`${POS_ROOT}/global/inventoryV2/balances/ingredients/STK_STRAW/outlet`),18);
+
+  const first=await writer.restoreVoid({
+    shiftKey:input.shiftKey,
+    txId:input.txId,
+    voidId:'VOID-1',
+    transaction:{status:'VOID'},
+    actor:{id:'owner-1',name:'Owner',role:'manajemen'}
+  });
+  assert.equal(first.status,'COMPLETED');
+  assert.equal(first.result,'RESTORED');
+
+  assert.equal(getAt(db.data,`${POS_ROOT}/global/inventoryV2/balances/ingredients/STK_CUP/outlet`),10);
+  assert.equal(getAt(db.data,`${POS_ROOT}/global/inventoryV2/balances/ingredients/STK_STRAW/outlet`),20);
+
+  const retry=await writer.restoreVoid({
+    shiftKey:input.shiftKey,
+    txId:input.txId,
+    voidId:'VOID-1',
+    transaction:{status:'VOID'},
+    actor:{id:'owner-1',name:'Owner',role:'manajemen'}
+  });
+  assert.equal(retry.status,'COMPLETED');
+  assert.equal(retry.result,'ALREADY_RESTORED');
+
+  assert.equal(getAt(db.data,`${POS_ROOT}/global/inventoryV2/balances/ingredients/STK_CUP/outlet`),10);
+  assert.equal(getAt(db.data,`${POS_ROOT}/global/inventoryV2/balances/ingredients/STK_STRAW/outlet`),20);
+
+  const movements=Object.values(getAt(db.data,`${POS_ROOT}/global/inventoryV2/movements`));
+  assert.equal(movements.filter(x=>x.type==='VOID_COMPONENT').length,2);
+});
+
+test('partial refunds restore proportionally from historical snapshot and never over-restore',async()=>{
+  const db=fakeDb(seedBalances({STK_CUP:10,STK_STRAW:10}));
+  const writer=createStockComponentWriter({db,now:()=>10000,serverTimestamp:()=>10000});
+  const input=saleInput({
+    txId:'TX-REFUND',
+    transaction:{status:'COMPLETED',cartData:[{id:'P1',q:3}]}
+  });
+  await writer.applyCompletedSale(input);
+
+  // Current mapping may change after sale; restore must ignore it.
+  input.mapping.P1.STK_CUP.qtyPerUnit=9;
+  delete input.mapping.P1.STK_STRAW;
+
+  const first=await writer.restoreRefund({
+    shiftKey:input.shiftKey,
+    txId:input.txId,
+    refundId:'RF-1',
+    refundLines:[{lineIndex:0,id:'P1',q:1}],
+    transaction:{status:'REFUND'},
+    actor:{id:'owner-1',name:'Owner',role:'manajemen'}
+  });
+  assert.equal(first.status,'COMPLETED');
+  assert.equal(first.result,'RESTORED');
+  assert.equal(getAt(db.data,`${POS_ROOT}/global/inventoryV2/balances/ingredients/STK_CUP/outlet`),8);
+  assert.equal(getAt(db.data,`${POS_ROOT}/global/inventoryV2/balances/ingredients/STK_STRAW/outlet`),8);
+
+  const second=await writer.restoreRefund({
+    shiftKey:input.shiftKey,
+    txId:input.txId,
+    refundId:'RF-2',
+    refundLines:[{lineIndex:0,id:'P1',q:2}],
+    transaction:{status:'REFUND'},
+    actor:{id:'owner-1',name:'Owner',role:'manajemen'}
+  });
+  assert.equal(second.status,'COMPLETED');
+  assert.equal(getAt(db.data,`${POS_ROOT}/global/inventoryV2/balances/ingredients/STK_CUP/outlet`),10);
+  assert.equal(getAt(db.data,`${POS_ROOT}/global/inventoryV2/balances/ingredients/STK_STRAW/outlet`),10);
+
+  await assert.rejects(
+    writer.restoreRefund({
+      shiftKey:input.shiftKey,
+      txId:input.txId,
+      refundId:'RF-3',
+      refundLines:[{lineIndex:0,id:'P1',q:1}],
+      transaction:{status:'REFUND'},
+      actor:{id:'owner-1',name:'Owner',role:'manajemen'}
+    }),
+    error=>error?.code==='STOCK_RESTORE_EXCEEDS_APPLIED'
+  );
+
+  const application=await writer.readApplication({shiftKey:input.shiftKey,txId:input.txId});
+  assert.equal(application.restoredLines['0'],3);
+});
+
+test('refund retry with the same correction id is exactly once',async()=>{
+  const db=fakeDb(seedBalances({STK_CUP:5,STK_STRAW:5}));
+  const writer=createStockComponentWriter({db,now:()=>11000,serverTimestamp:()=>11000});
+  const input=saleInput({
+    txId:'TX-RF-IDEMPOTENT',
+    transaction:{status:'COMPLETED',cartData:[{id:'P1',q:2}]}
+  });
+  await writer.applyCompletedSale(input);
+
+  const args={
+    shiftKey:input.shiftKey,
+    txId:input.txId,
+    refundId:'RF-SAME',
+    refundLines:[{lineIndex:0,id:'P1',q:1}],
+    transaction:{status:'REFUND'},
+    actor:{id:'owner-1',name:'Owner',role:'manajemen'}
+  };
+  const first=await writer.restoreRefund(args);
+  const second=await writer.restoreRefund(args);
+
+  assert.equal(first.result,'RESTORED');
+  assert.equal(second.result,'ALREADY_RESTORED');
+  assert.equal(getAt(db.data,`${POS_ROOT}/global/inventoryV2/balances/ingredients/STK_CUP/outlet`),4);
+  assert.equal(getAt(db.data,`${POS_ROOT}/global/inventoryV2/balances/ingredients/STK_STRAW/outlet`),4);
+
+  const movements=Object.values(getAt(db.data,`${POS_ROOT}/global/inventoryV2/movements`));
+  assert.equal(movements.filter(x=>x.type==='REFUND_COMPONENT').length,2);
+});
