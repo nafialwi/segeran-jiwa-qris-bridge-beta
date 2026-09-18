@@ -8,8 +8,11 @@ const ROOT=dirname(dirname(fileURLToPath(import.meta.url)));
 const EXPECTED_BASELINE='877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f';
 const POS_ROOT='toko_segeranjiwa_v58',QRIS_ROOT='segeranjiwa_qris_beta_v1';
 const EXPECTED_WRITERS=[
-  'src/data/writers/finance-writer.js','src/data/writers/purchase-reconciliation-writer.js',
-  'src/data/writers/qris-cash-out-coordinator.js','src/data/writers/qris-deferred-settlement-writer.js'
+  'src/data/writers/finance-writer.js',
+  'src/data/writers/purchase-reconciliation-writer.js',
+  'src/data/writers/qris-cash-out-coordinator.js',
+  'src/data/writers/qris-deferred-settlement-writer.js',
+  'src/data/writers/stock-component-writer.js'
 ].sort();
 const SHIELD='src/compat/rc01-qris-event-sync-shield.js',COMPAT='src/compat/rc01-qris-deferred-settlement-compat.js';
 const sha=p=>createHash('sha256').update(readFileSync(p)).digest('hex');

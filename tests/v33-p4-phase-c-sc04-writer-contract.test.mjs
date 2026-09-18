@@ -8,7 +8,8 @@ test('RC01 S10A mutation policy exact-allows the three P4 writers plus the appro
     'src/data/writers/finance-writer.js',
     'src/data/writers/purchase-reconciliation-writer.js',
     'src/data/writers/qris-cash-out-coordinator.js',
-    'src/data/writers/qris-deferred-settlement-writer.js'
+    'src/data/writers/qris-deferred-settlement-writer.js',
+    'src/data/writers/stock-component-writer.js'
   ]);
   for(const rel of APPROVED_MUTATION_FILES){
     const source=readFileSync(new URL(`../${rel}`,import.meta.url),'utf8');
@@ -36,4 +37,22 @@ test('S10A writer policy rejects POS-root or non-QRIS mutation paths from the de
   const rel='src/data/writers/qris-deferred-settlement-writer.js';
   const violations=validateMutationSource(rel,`export async function bad(db){await db.ref('toko_segeranjiwa_v58/global/users').transaction(x=>x)}`);
   assert.ok(violations.some(x=>x.code==='QRIS_DEFERRED_SETTLEMENT_PATH_CONTRACT'));
+});
+
+
+test('R10 stock component writer policy rejects mutation outside approved Inventory V2 paths',()=>{
+  const rel='src/data/writers/stock-component-writer.js';
+  const violations=validateMutationSource(rel,`export async function bad(db){await db.ref('toko_segeranjiwa_v58/global/users').transaction(x=>x)}`);
+  assert.ok(violations.some(x=>x.code==='STOCK_COMPONENT_WRITER_PATH_CONTRACT'));
+});
+
+test('R10 stock component writer policy forbids set/remove and non Inventory V2 roots',()=>{
+  const rel='src/data/writers/stock-component-writer.js';
+  const source=`const inventoryRootPath=()=>posPath('global','inventoryV2');
+const mappingPath=productId=>posPath('global','inventoryV2','productStockComponents',productId);
+const applicationPath=applicationId=>posPath('global','inventoryV2','stockApplications',applicationId);
+const balancePath=stockItemId=>posPath('global','inventoryV2','balances','ingredients',stockItemId);
+export async function bad(db){await db.ref(mappingPath('P1')).set({x:1})}`;
+  const violations=validateMutationSource(rel,source);
+  assert.ok(violations.some(x=>x.code==='STOCK_COMPONENT_WRITER_METHOD_CONTRACT'));
 });
