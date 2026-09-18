@@ -7,6 +7,7 @@ import {
   summarizeProductStockComponents
 } from '../src/ui/product-stock-components-ui.js';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 import { POS_ROOT } from '../src/data/firebase-client.js';
 import { createInventoryRepository } from '../src/data/repositories/inventory-repository.js';
@@ -147,4 +148,58 @@ test('Task 6 V31 Item Stok shortcut delegates to existing Inventory V2 authority
   assert.match(source,/ensureStockItemsShortcut/);
   assert.match(source,/data-sj-v31-stock-items|sjV31StockItems/);
   assert.match(source,/legacyOpen\(['"]ingredients['"]\)/);
+});
+
+
+test('Task 6 installs through REF01 bootstrap after Inventory Workspace and leaves entry frozen',()=>{
+  const bootstrap=readFileSync(
+    new URL('../src/app/ref01-bootstrap.js',import.meta.url),
+    'utf8'
+  );
+  const entry=readFileSync(
+    new URL('../src/ref01-entry.js',import.meta.url),
+    'utf8'
+  );
+  const headEntry=execFileSync(
+    'git',
+    ['show','HEAD:src/ref01-entry.js'],
+    {encoding:'utf8'}
+  );
+
+  assert.equal(entry,headEntry);
+  assert.doesNotMatch(
+    entry,
+    /product-stock-components-ui|installProductStockComponentsUi/
+  );
+
+  assert.match(
+    bootstrap,
+    /product-stock-components-ui\.js/
+  );
+  assert.match(
+    bootstrap,
+    /installProductStockComponentsUi\(runtime\)/
+  );
+
+  const inventoryIndex=bootstrap.indexOf(
+    'let inventoryWorkspace=installInventoryWorkspaceV32(runtime);'
+  );
+  const componentsIndex=bootstrap.indexOf(
+    'const productStockComponentsUi=installProductStockComponentsUi(runtime);'
+  );
+
+  assert.ok(inventoryIndex>=0);
+  assert.ok(
+    componentsIndex>inventoryIndex,
+    'Product Stock Components must install after Inventory Workspace'
+  );
+
+  assert.match(
+    bootstrap,
+    /productStockComponentsUi\?\.refresh\?\.\(\)/
+  );
+  assert.match(
+    bootstrap,
+    /inventoryWorkspace,productStockComponentsUi,p5Packaging/
+  );
 });
