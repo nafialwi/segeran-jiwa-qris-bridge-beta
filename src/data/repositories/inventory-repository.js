@@ -39,6 +39,44 @@ export function createInventoryRepository({db,diagnostics=null,consumer='invento
   function readIngredientBalances(){return read('ingredientBalances',posPath('global','inventoryV2','balances','ingredients'))}
   function readIngredientCosts(){return read('ingredientCosts',posPath('global','inventoryV2','costs','ingredients'))}
   function readProductWarehouse(){return read('productWarehouse',posPath('global','inventoryV2','productWarehouse'))}
+  function requiredKey(value,label){
+    const key=String(value??'').trim();
+    if(!key)throw Object.assign(
+      new Error(`INVENTORY_READ_KEY_REQUIRED:${label}`),
+      {code:'INVENTORY_READ_KEY_REQUIRED'}
+    );
+    return key;
+  }
+  function readProductStockComponents(productId){
+    return read(
+      'productStockComponents',
+      posPath(
+        'global','inventoryV2','productStockComponents',
+        requiredKey(productId,'productId')
+      )
+    );
+  }
+  function readStockItem(stockItemId){
+    return read(
+      'stockItem',
+      posPath(
+        'global','inventoryV2','ingredients',
+        requiredKey(stockItemId,'stockItemId')
+      )
+    );
+  }
+  function readStockItems(){
+    return read('stockItems',posPath('global','inventoryV2','ingredients'));
+  }
+  function readStockApplication(applicationId){
+    return read(
+      'stockApplication',
+      posPath(
+        'global','inventoryV2','stockApplications',
+        requiredKey(applicationId,'applicationId')
+      )
+    );
+  }
   function readRecipes(){return read('recipes',posPath('global','inventoryV2','recipes'))}
-  return Object.freeze({readLegacyStock,readInventoryV2,readMovements,readRecentMovements,readIngredients,readIngredientBalances,readIngredientCosts,readProductWarehouse,readRecipes,readWorkspaceState});
+  return Object.freeze({readLegacyStock,readInventoryV2,readMovements,readRecentMovements,readIngredients,readIngredientBalances,readIngredientCosts,readProductWarehouse,readRecipes,readProductStockComponents,readStockItem,readStockItems,readStockApplication,readWorkspaceState});
 }
