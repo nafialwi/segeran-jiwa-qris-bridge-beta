@@ -3,7 +3,7 @@ import { buildIngredientInventoryRows, summarizeIngredientInventory, inventoryAc
 import { buildFinishedGoodsRows } from '../domain/finished-goods-stock.js';
 import { activeProducts } from './sales-shift-ux-refinement.js';
 import { renderIcon } from './icons.js';
-import { CUP_CATALOG_V34, buildCupInventoryRowsV34, buildCupLocalSimulationRowsV34, ensureCupLocalSimulationStoreV34, planCupInitialSetupV34, validateCupInitialSetupV34 } from '../domain/packaging-cup-v34.js';
+import { CUP_CATALOG_V34, buildCupInventoryRowsV34, buildCupLocalSimulationRowsV34, ensureCupLocalSimulationStoreV34, planCupInitialSetupV34, validateCupInitialSetupV34, isCupIngredientMasterV34 } from '../domain/packaging-cup-v34.js';
 
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
@@ -15,6 +15,7 @@ const actionTitle=Object.freeze({transfer:'Pindahkan Stok',purchase:'Catat Pembe
 
 export function routeLegacyInventoryTabV32(tab='summary'){
   const value=String(tab||'summary').toLowerCase();
+  if(value==='reconciliation')return{kind:'workspace',tab:'summary'};
   if(['summary','workspace','stock','activity','more'].includes(value))return{kind:'workspace',tab:value==='workspace'?'summary':value};
   if(value==='movements')return{kind:'workspace',tab:'activity'};
   if(['transfer','purchase','opname'].includes(value))return{kind:'action',action:value};
@@ -56,16 +57,9 @@ function stockHTML(rows=[],query='',filter='ALL',intent=''){
   const intentNote=intent?`<aside class="sj-v32-inv-intent"><b>${actionTitle[intent]}</b><span>Cari dan pilih bahan. Form v3 akan terbuka dengan item sudah terpilih.</span><button type="button" data-v32-inventory-intent-cancel>Batal</button></aside>`:'';
   return `${intentNote}<label class="sj-v32-inv-search"><span>${renderIcon('search',{size:18})}</span><input type="search" data-v32-inventory-search value="${esc(query)}" placeholder="Cari bahan / kategori..." aria-label="Cari bahan"></label><div class="sj-v32-inv-filters">${[['ALL','Semua'],['ACTION','Perlu Tindakan'],['TRANSFER','Transfer'],['BUY','Perlu Beli']].map(([id,label])=>`<button type="button" data-v32-inventory-filter="${id}" class="${filter===id?'active':''}">${label}</button>`).join('')}</div><section class="sj-v32-inv-stock-list" data-v32-inventory-stock-list>${stockRowsHTML(rows,query,filter,intent)}</section>`;
 }
-export function renderCupInventorySectionV34(cupRows=[],{readOnly=false}={}){
-  const rows=Array.isArray(cupRows)?cupRows:[],missing=rows.filter(x=>!x?.registered);
-  const cards=rows.map(row=>{
-    if(!row?.registered)return `<article class="sj-v34-cup-card missing" data-v34-cup-code="${esc(row?.code)}"><header><div><small>Kemasan · pcs</small><b>${esc(row?.name)}</b></div><em>Belum terdaftar</em></header><p>Master Inventory V2 belum tersedia.</p></article>`;
-    const wac=row.costKnown&&row.wac!==null?money(row.wac):'Belum tersedia';
-    return `<article class="sj-v34-cup-card" data-v34-cup-code="${esc(row.code)}" data-v34-cup-ingredient-id="${esc(row.ingredientId)}"><header><div><small>Kemasan · pcs</small><b>${esc(row.name)}</b></div><em>${esc(qty(row.totalQty,'pcs'))}</em></header><div class="sj-v34-cup-stock"><span><small>Gerai</small><strong>${esc(qty(row.outletQty,'pcs'))}</strong></span><span><small>Gudang</small><strong>${esc(qty(row.warehouseQty,'pcs'))}</strong></span><span><small>WAC</small><strong>${esc(wac)}</strong></span></div><div class="sj-v34-cup-actions"><button type="button" data-v32-inventory-action="purchase" data-v32-ingredient-id="${esc(row.ingredientId)}">Beli</button><button type="button" data-v32-inventory-action="transfer" data-v32-ingredient-id="${esc(row.ingredientId)}">Transfer</button><button type="button" data-v32-inventory-action="opname" data-v32-ingredient-id="${esc(row.ingredientId)}">Opname</button></div></article>`;
-  }).join('');
-  const simulated=rows.some(x=>x?.simulated);
-  const setup=simulated?'<button type="button" data-v34-cup-setup>Ubah Simulasi Cup · LOCAL ONLY</button>':missing.length?`<button type="button" data-v34-cup-setup>${readOnly?'Simulasikan Master Cup · LOCAL ONLY':'Siapkan Master Cup'}</button>`:`<span class="sj-v32-inv-ok">${CUP_CATALOG_V34.length} master cup siap</span>`;
-  return `<section class="sj-v32-inv-section sj-v34-cup-section" data-v34-cup-inventory><div class="sj-v32-inv-section-head"><div><h3>Kemasan &amp; Cup</h3><small>Stok fisik pcs · authority Inventory V2</small></div>${setup}</div><div class="sj-v34-cup-grid">${cards}</div></section>`;
+export function renderCupInventorySectionV34(){
+  // CUP-CONTROL-V1: Cup is an operational consumable, not an Inventory V2 stock card.
+  return '';
 }
 
 export function renderCupInitialSetupPreviewV34(values={}){
@@ -73,11 +67,9 @@ export function renderCupInitialSetupPreviewV34(values={}){
   return `<aside class="sj-v34-cup-setup-preview" data-v34-cup-setup-preview><span><small>Total cup awal</small><b>${esc(qty(pcs,'pcs'))}</b></span><span><small>Nilai persediaan awal</small><b>${esc(money(value))}</b></span><em>Preview · belum disimpan</em></aside>`;
 }
 
-export function renderCupInitialSetupV34(cupRows=[],{readOnly=false,values={}}={}){
-  const byCode=Object.fromEntries((cupRows||[]).map(x=>[x?.code,x]));
-  const fields=CUP_CATALOG_V34.map(spec=>{const row=byCode[spec.code]||{},v=values?.[spec.code]||{},locked=row.registered&&!row.simulated;return `<article class="sj-v34-cup-setup-row" data-v34-cup-setup-row="${esc(spec.code)}"><header><div><b>${esc(spec.name)}</b><small>${locked?'Master sudah ada':'Master baru · pcs'}</small></div>${locked?'<em>EXISTING</em>':''}</header><div class="sj-v34-cup-setup-grid"><label>Gudang awal<input type="number" min="0" step="1" inputmode="numeric" data-v34-cup-setup-field="${esc(spec.code)}:warehouseQty" value="${esc(v.warehouseQty??row.warehouseQty??0)}"${locked?' disabled':''}></label><label>Gerai awal<input type="number" min="0" step="1" inputmode="numeric" data-v34-cup-setup-field="${esc(spec.code)}:outletQty" value="${esc(v.outletQty??row.outletQty??0)}"${locked?' disabled':''}></label><label>WAC awal / pcs<input type="number" min="0" step="0.01" inputmode="decimal" data-v34-cup-setup-field="${esc(spec.code)}:wac" value="${esc(v.wac??row.wac??0)}"${locked?' disabled':''}></label></div></article>`}).join('');
-  const local=readOnly?'<aside class="sj-v34-cup-setup-note"><b>Simulasi Master Cup Lokal</b><span>Angka hanya hidup di memori halaman ini, tidak menulis production dan hilang saat halaman direfresh.</span></aside>':'<aside class="sj-v34-cup-setup-note"><b>Initial Cup Setup</b><span>Master memakai Inventory V2 existing; WAC memakai Harga Modal Awal; saldo Gudang/Gerai memakai Opname. Tidak dibuat sebagai transaksi Pembelian.</span></aside>';
-  return `<section class="sj-v32-process sj-v34-cup-setup" data-v34-cup-setup-panel><button type="button" class="sj-v32-inv-back" data-v34-cup-setup-back>‹ Kembali</button><header><div><small>Kemasan &amp; Cup · setup awal</small><h3>${readOnly?'Simulasi Master Cup Lokal':'Siapkan Master Cup'}</h3><p>Isi stok fisik awal dan harga modal per pcs untuk ${CUP_CATALOG_V34.length} jenis cup.</p></div>${readOnly?'<em>LOCAL QA</em>':''}</header>${local}${renderCupInitialSetupPreviewV34(values)}<div class="sj-v34-cup-setup-list">${fields}</div><div class="sj-v32-process-actions"><button type="button" data-v34-cup-setup-apply>${readOnly?'Gunakan Simulasi Lokal':'Simpan Master & Saldo Awal'}</button><button type="button" data-v34-cup-setup-cancel>Batal</button></div></section>`;
+export function renderCupInitialSetupV34(){
+  // Compatibility export only. Operational Cup setup moved out of Inventory V2.
+  return `<section class="sj-v32-process sj-v34-cup-setup" data-v34-cup-setup-deprecated><header><div><small>Cup Control</small><h3>Setup Cup dipindahkan</h3><p>Cup tidak lagi dikelola sebagai stok Inventory V2. Gunakan hitung Opening, Restock, Expected Usage, dan Physical Closing pada Cup Control.</p></div></header></section>`;
 }
 
 function activityKindClass(kind=''){return String(kind||'').toLowerCase().replace(/[^a-z0-9_-]+/g,'-')}
@@ -143,7 +135,7 @@ export function renderIngredientEditorV32({row=null}={}){
 function ingredientManagerHTML(rows=[]){return `<section class="sj-v32-inv-manager"><button type="button" class="sj-v32-inv-back" data-v32-manager-back>‹ Kembali ke Lainnya</button><div class="sj-v32-inv-section-head"><h3>Pengaturan Inventori / Bahan Baku</h3><button type="button" data-v32-manager-add>+ Tambah Bahan</button></div><p class="sj-v32-manager-copy">Klik bahan untuk membuka detail lalu atur batas kritis, waspada, target Gerai, dan target Gudang.</p><div class="sj-v32-inv-stock-list">${rows.length?rows.map(x=>stockRow(x)).join(''):'<div class="sj-v32-inv-empty">Belum ada bahan baku.</div>'}</div></section>`}
 
 export function renderInventoryWorkspaceV32({tab='summary',rows=[],cupRows=[],readOnly=false,recentMovements=[],recentActivities=[],query='',filter='ALL',intent='',selectedItemId='',mode='',productRows=[],process=null,manager=false,editorRow=undefined,actionQuery='',actionType='ALL',cupSetupValues={}}={}){
-  const activities=recentActivities.length?recentActivities:recentMovements,cupIds=new Set((cupRows||[]).filter(x=>x?.registered&&x.ingredientId).map(x=>String(x.ingredientId))),baseRows=(rows||[]).filter(x=>!cupIds.has(String(x.id)));
+  const activities=recentActivities.length?recentActivities:recentMovements,baseRows=(rows||[]).filter(row=>!isCupIngredientMasterV34(row?.master||row));
   if(mode==='cup-setup')return `<div class="sj-v32-inv-shell" data-v32-inventory-shell data-active-tab="cup-setup"><div class="sj-v32-inv-body">${renderCupInitialSetupV34(cupRows,{readOnly,values:cupSetupValues})}</div></div>`;
   if(mode==='action-picker')return `<div class="sj-v32-inv-shell" data-v32-inventory-shell data-active-tab="action-picker"><div class="sj-v32-inv-body">${renderInventoryActionPickerV32({action:process?.action,ingredientRows:rows,productRows,query:actionQuery,typeFilter:actionType})}</div></div>`;
   if(mode==='process')return `<div class="sj-v32-inv-shell" data-v32-inventory-shell data-active-tab="process"><div class="sj-v32-inv-body">${renderInventoryProcessV32({action:process?.action,itemType:process?.itemType,row:process?.row,location:process?.location})}</div></div>`;
@@ -184,7 +176,6 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
       const input=event.target?.closest?.('[data-v32-inventory-search]');if(input){state.query=input.value||'';updateStockList(host);return}
       const actionSearch=event.target?.closest?.('[data-v32-action-search]');if(actionSearch){state.actionQuery=actionSearch.value||'';updateActionPickerList(host)}
     });
-    host.addEventListener?.('input',event=>{const setupField=event.target?.closest?.('[data-v34-cup-setup-field]');if(!setupField)return;const preview=host.querySelector?.('[data-v34-cup-setup-preview]');if(preview)preview.outerHTML=renderCupInitialSetupPreviewV34(cupSetupValues(host))});
     document.body?.appendChild?.(host);return host;
   }
   function render(host=ensureHost()){
@@ -250,15 +241,7 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
     const handler=button.onclick;if(typeof handler==='function')await Promise.resolve(handler.call(button,{type:'click',target:button,currentTarget:button,preventDefault(){}}));else button.click?.();hideLegacyWriterHost();await wait(runtime,120);releaseLegacyWriterHost();return true;
   }
 
-  async function ensureCupMasters(){
-    if(runtime?.__SJ_LOCAL_QA_READ_ONLY===true)throw new Error('LOCAL_QA_READ_ONLY');
-    const missing=(cupRows||[]).filter(x=>!x?.registered);
-    for(const row of missing){
-      const spec=CUP_CATALOG_V34.find(x=>x.code===row.code);if(!spec)continue;
-      await invokeLegacyIngredientSave(null,{name:spec.name,unit:'pcs',category:'KEMASAN CUP',criticalOutlet:0,warningOutlet:0,targetOutlet:0,minWarehouse:0,targetWarehouse:0,dashboardPinned:false});
-    }
-    return true;
-  }
+  async function ensureCupMasters(){throw Object.assign(new Error('CUP_CONTROL_INVENTORY_DEPRECATED'),{code:'CUP_CONTROL_INVENTORY_DEPRECATED'})}
 
   function containAdvancedLegacy(tab){
     const host=ensureHost();if(host)host.style.display='none';legacyOpen(tab);
@@ -280,15 +263,7 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
   }
   function editorValues(host){const get=name=>host?.querySelector?.(`[data-v32-editor-field="${name}"]`)?.value;return{name:get('name')||'',unit:get('unit')||'g',category:get('category')||'BAHAN',criticalOutlet:num(get('criticalOutlet')),warningOutlet:num(get('warningOutlet')),targetOutlet:num(get('targetOutlet')),minWarehouse:num(get('minWarehouse')),targetWarehouse:num(get('targetWarehouse')),dashboardPinned:get('dashboardPinned')==='1'}}
 
-  function cupSetupValues(host){const out={};for(const spec of CUP_CATALOG_V34){const get=name=>host?.querySelector?.(`[data-v34-cup-setup-field="${spec.code}:${name}"]`)?.value;out[spec.code]={warehouseQty:get('warehouseQty')??0,outletQty:get('outletQty')??0,wac:get('wac')??0}}return out}
-
-  async function applyInitialCupSetup(config){
-    if(!ownerRole(roleOf(runtime)))throw new Error('CUP_INITIAL_SETUP_OWNER_REQUIRED');
-    const valid=validateCupInitialSetupV34(config);
-    await ensureCupMasters();await load();const plan=planCupInitialSetupV34(cupRows,valid);
-    for(const action of plan.rows){const row=cupRows.find(x=>x.code===action.code);if(!row?.ingredientId)throw new Error(`CUP_MASTER_RESOLVE_FAILED:${action.code}`);if(!action.createMaster&&row.totalQty>0)continue;if(action.setInitialCost){const setCost=runtime?.SJCostingV1?.setInitialCost;if(typeof setCost!=='function')throw new Error('CUP_INITIAL_COST_AUTHORITY_UNAVAILABLE');await setCost('ingredient',row.ingredientId,action.wac)}await invokeLegacyWriter('opname','ingredient',row.ingredientId,{location:'warehouse',actual:action.warehouseQty,note:'Initial Cup Setup v3.4'});await invokeLegacyWriter('opname','ingredient',row.ingredientId,{location:'outlet',actual:action.outletQty,note:'Initial Cup Setup v3.4'})}
-    await load();return true;
-  }
+  async function applyInitialCupSetup(){throw Object.assign(new Error('CUP_CONTROL_INVENTORY_DEPRECATED'),{code:'CUP_CONTROL_INVENTORY_DEPRECATED'})}
 
   async function handleClick(event,host){
     if(event.target===host){host.style.display='none';return}
@@ -298,9 +273,6 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
     if(event.target?.closest?.('[data-v32-manager-back]')){state.mode='';state.manager=false;state.tab='more';render(host);return}
     if(event.target?.closest?.('[data-v32-editor-back]')){state.mode=state.editorId==='__new__'?'manager':'';state.manager=state.editorId==='__new__';state.editorId='';render(host);return}
     if(event.target?.closest?.('[data-v32-manager-add]')){state.mode='editor';state.editorId='__new__';render(host);return}
-    if(event.target?.closest?.('[data-v34-cup-setup-back],[data-v34-cup-setup-cancel]')){state.mode='';render(host);return}
-    const cupSetup=event.target?.closest?.('[data-v34-cup-setup]');if(cupSetup){state.mode='cup-setup';render(host);return}
-    const cupSetupApply=event.target?.closest?.('[data-v34-cup-setup-apply]');if(cupSetupApply){cupSetupApply.disabled=true;const label=cupSetupApply.textContent;cupSetupApply.textContent=runtime?.__SJ_LOCAL_QA_READ_ONLY===true?'Menerapkan simulasi…':'Menyiapkan…';try{const values=validateCupInitialSetupV34(cupSetupValues(host));if(runtime?.__SJ_LOCAL_QA_READ_ONLY===true){localSimulation.masterConfig=values;cupRows=buildCupLocalSimulationRowsV34(values);state.mode='';render(host);runtime?.alert?.('Simulasi master cup aktif hanya di halaman LOCAL QA ini.')}else{await applyInitialCupSetup(values);state.mode='';render(host)}}catch(e){runtime?.alert?.(e?.code==='CUP_INITIAL_WAC_REQUIRED'?'Isi WAC awal untuk cup yang memiliki stok.':e?.message||'Initial Cup Setup belum dapat dijalankan.')}finally{if(cupSetupApply.isConnected){cupSetupApply.disabled=false;cupSetupApply.textContent=label}}return}
     const manage=event.target?.closest?.('[data-v32-inventory-manage]');if(manage){state.mode='manager';state.manager=true;state.detailId='';render(host);return}
     const typeFilter=event.target?.closest?.('[data-v32-action-type]');if(typeFilter){state.actionType=typeFilter.dataset.v32ActionType||'ALL';render(host);return}
     const pick=event.target?.closest?.('[data-v32-action-pick]');if(pick){const [itemType,id]=String(pick.dataset.v32ActionPick||'').split(':');const row=itemRow(itemType,id);if(row){state.mode='process';state.process={action:state.process?.action||'transfer',itemType,row,location:'warehouse'};render(host)}return}
@@ -324,16 +296,25 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
   }
 
   function applyCupRows(inv){
-    cupRows=runtime?.__SJ_LOCAL_QA_READ_ONLY===true&&localSimulation.masterConfig?buildCupLocalSimulationRowsV34(localSimulation.masterConfig):buildCupInventoryRowsV34(inv||{});
+    const masters=inv?.ingredients||{},costs=inv?.costs?.ingredients||{};
+    cupRows=buildCupInventoryRowsV34({ingredients:masters,costs:{ingredients:costs}});
     return cupRows.slice();
   }
   async function refreshCupRows(){
-    const raw=await repository.readInventoryV2();
-    return applyCupRows(raw||{});
+    const [ingredients,costs]=await Promise.all([repository.readIngredientMasters(),repository.readIngredientCosts()]);
+    cupRows=buildCupInventoryRowsV34({ingredients:ingredients||{},costs:{ingredients:costs||{}}});
+    return cupRows.slice();
   }
   async function load(){
-    const [raw,outlet]=await Promise.all([repository.readInventoryV2(),repository.readLegacyStock()]);const inv=raw||{};rows=buildIngredientInventoryRows(inv,{core});applyCupRows(inv);activities=inventoryActivityTimeline(inv,120);
-    const products=activeProducts(runtime).filter(p=>p?.trackStock===true);productRows=buildFinishedGoodsRows(products,{outlet:outlet||{},warehouse:inv.productWarehouse||{}}).map(normalizedProductRow);return{rows,cupRows,productRows,activities}
+    const [raw,outlet]=await Promise.all([repository.readInventoryV2(),repository.readLegacyStock()]);
+    const inv=raw||{};
+    applyCupRows(inv);
+    const legacyCupIds=new Set((cupRows||[]).filter(x=>x?.ingredientId).map(x=>String(x.ingredientId)));
+    rows=buildIngredientInventoryRows(inv,{core}).filter(row=>!isCupIngredientMasterV34(row?.master||row));
+    activities=inventoryActivityTimeline(inv,120).filter(a=>!legacyCupIds.has(String(a.itemId)));
+    const products=activeProducts(runtime).filter(p=>p?.trackStock===true);
+    productRows=buildFinishedGoodsRows(products,{outlet:outlet||{},warehouse:inv.productWarehouse||{}}).map(normalizedProductRow);
+    return{rows,cupRows,productRows,activities};
   }
   async function openWorkspace(tab='summary'){
     if(!ownerRole(roleOf(runtime)))return false;
@@ -349,7 +330,7 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
     return openWorkspace('summary');
   }
   inventory.open=wrappedOpen;
-  const api=Object.freeze({installed:true,open:openWorkspace,openItem,openAction,legacyOpen,render:()=>render(),reload:load,refreshCupRows,ensureCupMasters,applyInitialCupSetup,localCupSimulation:()=>localSimulation,rows:()=>rows.slice(),cupRows:()=>cupRows.slice(),productRows:()=>productRows.slice(),activities:()=>activities.slice()});
+  const api=Object.freeze({installed:true,open:openWorkspace,openItem,openAction,legacyOpen,render:()=>render(),reload:load,refreshCupRows,ensureCupMasters,applyInitialCupSetup,localCupSimulation:()=>Object.freeze({deprecated:true,authority:'CUP_CONTROL'}),rows:()=>rows.slice(),cupRows:()=>cupRows.slice(),productRows:()=>productRows.slice(),activities:()=>activities.slice()});
   try{Object.defineProperty(runtime,'__SJ_V32_INVENTORY_WORKSPACE',{value:api,writable:false,configurable:false})}catch(_){}
   return api;
 }

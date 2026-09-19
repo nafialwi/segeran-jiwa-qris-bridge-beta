@@ -1,3 +1,4 @@
+import { reconcileCupControlV1 } from './cup-control-v1.js';
 const num=v=>Number.isFinite(Number(v))?Number(v):0;
 const text=v=>String(v??'').trim();
 const upper=v=>text(v).toUpperCase();
@@ -104,10 +105,15 @@ export function ensureCupLocalSimulationStoreV34(runtime=globalThis){
 
 export function theoreticalCupUsageV34(transactions=[],menu=[]){
   const out=Object.fromEntries(CUP_CATALOG_V34.map(x=>[x.code,0]));
-  const products=productMap(menu);
+  const products=productMap(menu),seenTransactions=new Set();
   for(const tx of transactions||[]){
+    const identity=text(tx?.id??tx?._key??tx?.transactionId??tx?.txId);
+    if(identity){if(seenTransactions.has(identity))continue;seenTransactions.add(identity)}
     const status=upper(tx?.status);if(['VOID','VOIDED','CANCELLED','CANCELED'].includes(status))continue;
-    for(const line of txLines(tx||{})){
+    const lines=txLines(tx||{});
+    for(const line of lines){
+      // Refund does not restore a disposable cup. A committed sale keeps its original
+      // packaging usage; only a VOID/CANCELLED transaction is excluded above.
       const qty=Math.max(0,num(line?.q??line?.qty??line?.quantity));if(qty<=0)continue;
       let code=text(line?.cp).toLowerCase();
       if(!isCupCodeV34(code)){
@@ -120,68 +126,36 @@ export function theoreticalCupUsageV34(transactions=[],menu=[]){
   return Object.freeze(out);
 }
 
-export function cupInboundFromMovementsV34(raw={},cupRows=[],shiftKey='',window={}){
-  const out=Object.fromEntries(CUP_CATALOG_V34.map(x=>[x.code,0])),startTs=num(window?.startTs),endTs=num(window?.endTs)||Number.MAX_SAFE_INTEGER;
-  const byIngredient=Object.fromEntries((cupRows||[]).filter(x=>x?.registered&&x.ingredientId).map(x=>[text(x.ingredientId),x.code]));
-  for(const movement of rows(raw.movements)){
-    if(upper(movement.itemType)!=='INGREDIENT')continue;
-    if(upper(movement.type)!=='TRANSFER_IN')continue;
-    if(upper(movement.location)!=='OUTLET')continue;
-    const movementShift=text(movement.shift||movement.shiftKey),movementTs=num(movement.ts);
-    if(movementShift){if(movementShift!==text(shiftKey))continue}else if(startTs>0){if(movementTs<startTs||movementTs>endTs)continue}else continue;
-    const code=byIngredient[text(movement.itemId||movement.ingredientId)];if(!code)continue;
-    const delta=num(movement.delta);if(delta>0)out[code]+=delta;
-  }
-  return Object.freeze(out);
+export function cupInboundFromMovementsV34(){
+  // Compatibility-only. Inventory V2 movements are no longer Cup Control authority.
+  return Object.freeze(Object.fromEntries(CUP_CATALOG_V34.map(x=>[x.code,0])));
 }
 
-export function reconcileCupShiftV34({opening={},inbound={},closing={},theoretical={},reasons={}}={}){
-  const rowsOut=CUP_CATALOG_V34.map(spec=>{
-    const open=num(opening?.[spec.code]),incoming=num(inbound?.[spec.code]),close=num(closing?.[spec.code]),expected=num(theoretical?.[spec.code]);
-    const physicalUsed=open+incoming-close,expectedClosing=open+incoming-expected,physicalClosing=close,variance=expectedClosing-physicalClosing;
-    return Object.freeze({code:spec.code,name:spec.name,unit:'pcs',opening:open,inbound:incoming,closing:close,expectedClosing,physicalClosing,physicalUsed,theoreticalUsed:expected,variance,reason:text(reasons?.[spec.code]||'')||null});
-  });
-  return Object.freeze({authority:'SHIFT_OPENING',openingKnown:true,rows:Object.freeze(rowsOut),totalVariance:rowsOut.reduce((sum,x)=>sum+Math.abs(x.variance),0)});
+export function reconcileCupShiftV34({opening={},inbound={},closing={},theoretical={},reasons={},manualUsage={},waste={},adjustment={}}={}){
+  return reconcileCupControlV1({catalog:CUP_CATALOG_V34,opening,restock:inbound,transactionUsage:theoretical,manualUsage,waste,adjustment,physical:closing,reasons,openingKnown:true});
 }
 
-export function reconcileCupClosingAuthorityV34({openingKnown=true,opening={},inbound={},systemClosing={},closing={},theoretical={},reasons={}}={}){
-  if(openingKnown)return reconcileCupShiftV34({opening,inbound,closing,theoretical,reasons});
-  const rowsOut=CUP_CATALOG_V34.map(spec=>{
-    const rawPhysical=closing?.[spec.code],hasPhysical=rawPhysical!==null&&rawPhysical!==undefined&&String(rawPhysical).trim()!=='';
-    const expectedClosing=num(systemClosing?.[spec.code]),physicalClosing=hasPhysical?num(rawPhysical):null,variance=hasPhysical?expectedClosing-physicalClosing:null;
-    return Object.freeze({code:spec.code,name:spec.name,unit:'pcs',opening:null,inbound:null,closing:physicalClosing,expectedClosing,physicalClosing,physicalUsed:null,theoreticalUsed:num(theoretical?.[spec.code]),variance,reason:text(reasons?.[spec.code]||'')||null});
-  });
-  return Object.freeze({authority:'INVENTORY_FALLBACK',openingKnown:false,rows:Object.freeze(rowsOut),totalVariance:rowsOut.reduce((sum,x)=>sum+(x.variance==null?0:Math.abs(x.variance)),0)});
+export function reconcileCupClosingAuthorityV34({openingKnown=true,opening={},inbound={},closing={},theoretical={},reasons={},manualUsage={},waste={},adjustment={}}={}){
+  return reconcileCupControlV1({catalog:CUP_CATALOG_V34,opening,restock:inbound,transactionUsage:theoretical,manualUsage,waste,adjustment,physical:closing,reasons,openingKnown:!!openingKnown});
 }
 
-export function buildCupOutletOpnameDraftsV34(cupRows=[],closing={}){
-  const out=[];
-  for(const row of cupRows||[]){
-    if(!row?.registered||!row.ingredientId||!isCupCodeV34(row.code))continue;
-    const raw=closing?.[row.code];
-    if(raw===null||raw===undefined||String(raw).trim()==='')continue;
-    const physical=Math.max(0,num(raw)),system=Math.max(0,num(row.outletQty));
-    if(Math.abs(physical-system)<1e-9)continue;
-    out.push(Object.freeze({code:row.code,name:row.name,ingredientId:text(row.ingredientId),location:'outlet',systemQty:system,physicalQty:physical,delta:physical-system,note:'Rekonsiliasi Cup Tutup Shift'}));
-  }
-  return Object.freeze(out);
+export function buildCupOutletOpnameDraftsV34(){
+  // Deprecated by CUP-CONTROL-V1. Physical closing is carried forward by Cup Control,
+  // never translated into an Inventory V2 Opname draft.
+  return Object.freeze([]);
 }
 
 export function decorateRecipeWithCupV34(recipe={},product={},cupRows=[]){
-  const code=text(product?.cp).toLowerCase(),spec=cupSpecByCodeV34(code);
-  if(!spec)return clone(recipe);
-  const cup=(cupRows||[]).find(x=>x?.code===code&&x.registered&&x.ingredientId);
-  if(!cup)return clone(recipe);
-  const out=clone(recipe)||{};out.variants=out.variants&&typeof out.variants==='object'?out.variants:{};
-  if(!Object.keys(out.variants).length){
-    out.variants.__CUP_ONLY__={variantId:'__CUP_ONLY__',name:'Regular',price:0,active:true,components:{[cup.ingredientId]:1},syntheticCupOnly:true};
-  }else{
-    for(const [variantId,variant] of Object.entries(out.variants)){
-      if(!variant||variant.active===false)continue;
-      const components=variant.components&&typeof variant.components==='object'?variant.components:{};
-      out.variants[variantId]={...variant,components:{...components,[cup.ingredientId]:1}};
-    }
-  }
-  out._packagingV34={code,name:spec.name,ingredientId:cup.ingredientId,qtyPerSale:1,unit:'pcs'};
+  const code=text(product?.cp).toLowerCase(),spec=cupSpecByCodeV34(code),out=clone(recipe)||{};
+  if(!spec)return out;
+  const legacy=(cupRows||[]).find(x=>x?.code===code)||null;
+  // Keep packaging metadata for immutable costing/audit evidence only. Do not inject
+  // the legacy Cup ingredient into recipe components; Inventory V2 must not consume Cup.
+  out._packagingV34={
+    code,name:spec.name,qtyPerSale:1,unit:'pcs',inventoryTracked:false,
+    legacyIngredientId:legacy?.ingredientId||null,
+    unitCost:legacy?.costKnown&&legacy?.wac!==null?num(legacy.wac):null,
+    costKnown:legacy?.costKnown===true
+  };
   return out;
 }
