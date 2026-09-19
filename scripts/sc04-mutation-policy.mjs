@@ -5,7 +5,8 @@ export const APPROVED_MUTATION_FILES=Object.freeze([
   'src/data/writers/finance-writer.js',
   'src/data/writers/qris-cash-out-coordinator.js',
   'src/data/writers/purchase-reconciliation-writer.js',
-  'src/data/writers/qris-deferred-settlement-writer.js'
+  'src/data/writers/qris-deferred-settlement-writer.js',
+  'src/data/writers/stock-component-writer.js'
 ]);
 const APPROVED=new Set(APPROVED_MUTATION_FILES);
 const add=(out,code,detail)=>out.push({code,detail});
@@ -79,6 +80,42 @@ function validateQrisDeferredSettlementWriter(source,out){
   if(/posPath\s*\(/.test(source)||/toko_segeranjiwa_v58/.test(source)||/db\.ref\s*\(\s*['"`]/.test(source))add(out,'QRIS_DEFERRED_SETTLEMENT_PATH_CONTRACT','non-QRIS/direct literal path');
 }
 
+
+function validateStockComponentWriter(source,out){
+  const methods=methodsOf(source);
+  for(const method of methods){
+    if(!['transaction','update'].includes(method)){
+      add(out,'STOCK_COMPONENT_WRITER_METHOD_CONTRACT',method);
+    }
+  }
+
+  const required=[
+    /inventoryRootPath\s*=\s*\(\)\s*=>\s*posPath\(\s*['"]global['"]\s*,\s*['"]inventoryV2['"]\s*\)/,
+    /mappingPath\s*=\s*productId\s*=>\s*posPath\(\s*['"]global['"]\s*,\s*['"]inventoryV2['"]\s*,\s*['"]productStockComponents['"]\s*,\s*productId\s*\)/,
+    /applicationPath\s*=\s*applicationId\s*=>\s*posPath\(\s*['"]global['"]\s*,\s*['"]inventoryV2['"]\s*,\s*['"]stockApplications['"]\s*,\s*applicationId\s*\)/,
+    /balancePath\s*=\s*stockItemId\s*=>\s*posPath\(\s*['"]global['"]\s*,\s*['"]inventoryV2['"]\s*,\s*['"]balances['"]\s*,\s*['"]ingredients['"]\s*,\s*stockItemId\s*\)/
+  ];
+  for(const re of required){
+    if(!re.test(source))add(out,'STOCK_COMPONENT_WRITER_PATH_CONTRACT',String(re));
+  }
+
+  if(/qrisPath\s*\(|QRIS_ROOT|toko_segeranjiwa_v58\s*\/|db\.ref\s*\(\s*['"`]/.test(source)){
+    add(out,'STOCK_COMPONENT_WRITER_PATH_CONTRACT','non-helper/direct external path');
+  }
+
+  const helperDeclarationPatterns=[
+    /const\s+inventoryRootPath\s*=\s*\(\)\s*=>\s*posPath\([^;\n]+;?/,
+    /const\s+mappingPath\s*=\s*productId\s*=>\s*posPath\([^;\n]+;?/,
+    /const\s+applicationPath\s*=\s*applicationId\s*=>\s*posPath\([^;\n]+;?/,
+    /const\s+balancePath\s*=\s*stockItemId\s*=>\s*posPath\([^;\n]+;?/
+  ];
+  let remainder=String(source);
+  for(const re of helperDeclarationPatterns)remainder=remainder.replace(re,'');
+  if(/posPath\s*\(/.test(remainder)){
+    add(out,'STOCK_COMPONENT_WRITER_PATH_CONTRACT','unexpected posPath usage outside approved helpers');
+  }
+}
+
 export function validateMutationSource(relativePath,source){
   const rel=String(relativePath||'').replaceAll('\\','/'),text=String(source||''),out=[];
   const methods=methodsOf(text);
@@ -90,5 +127,6 @@ export function validateMutationSource(relativePath,source){
   if(rel==='src/data/writers/qris-cash-out-coordinator.js')validateQrisCoordinator(text,out);
   if(rel==='src/data/writers/purchase-reconciliation-writer.js')validatePurchaseReconciliationWriter(text,out);
   if(rel==='src/data/writers/qris-deferred-settlement-writer.js')validateQrisDeferredSettlementWriter(text,out);
+  if(rel==='src/data/writers/stock-component-writer.js')validateStockComponentWriter(text,out);
   return out;
 }

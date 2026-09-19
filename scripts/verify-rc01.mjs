@@ -11,7 +11,8 @@ const EXPECTED_WRITERS=[
   'src/data/writers/finance-writer.js',
   'src/data/writers/purchase-reconciliation-writer.js',
   'src/data/writers/qris-cash-out-coordinator.js',
-  'src/data/writers/qris-deferred-settlement-writer.js'
+  'src/data/writers/qris-deferred-settlement-writer.js',
+  'src/data/writers/stock-component-writer.js'
 ].sort();
 const sha=p=>createHash('sha256').update(readFileSync(p)).digest('hex');
 const text=rel=>readFileSync(join(ROOT,rel),'utf8');

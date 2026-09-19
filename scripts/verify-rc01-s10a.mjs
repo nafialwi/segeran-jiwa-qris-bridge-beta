@@ -12,7 +12,8 @@ const EXPECTED_WRITERS=[
   'src/data/writers/finance-writer.js',
   'src/data/writers/purchase-reconciliation-writer.js',
   'src/data/writers/qris-cash-out-coordinator.js',
-  'src/data/writers/qris-deferred-settlement-writer.js'
+  'src/data/writers/qris-deferred-settlement-writer.js',
+  'src/data/writers/stock-component-writer.js'
 ].sort();
 const COMPAT='src/compat/rc01-qris-deferred-settlement-compat.js';
 const WRITER='src/data/writers/qris-deferred-settlement-writer.js';

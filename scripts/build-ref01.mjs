@@ -15,6 +15,7 @@ const CLASSIC_ENTRY='<script src="./src/compat/ref01-production-sales-compat.js"
 const S10C_SYNC_ENTRY='<script src="./src/compat/rc01-sync-authority.js" data-sj-rc01-s10c-sync-authority="true"></script>';
 const R6C_NOTIFICATION_ENTRY='<script src="./src/compat/rc01-notification-permission-hygiene.js" data-sj-rc01-s10c-r6c-notification-hygiene="true"></script>';
 const R6D_SALES_RECURSION_ENTRY='<script src="./src/compat/rc01-sales-render-recursion-hardening.js" data-sj-rc01-s10c-r6d-sales-recursion="true"></script>';
+const STOCK_COMPONENT_CONTEXT_ENTRY='<script src="./src/compat/legacy-stock-components-context.js" data-sj-r10-stock-component-context="true"></script>';
 const R6C_NOTIFICATION_BOOTSTRAP_MARKER='SJX.init();';
 const S10C_INSTALL_MARKER='try{SJMobileUX.install();';
 const QRIS_BETA_MARKER='if(window.SJQrisSignalBeta)return;';
@@ -226,7 +227,7 @@ try{
     const withProductCup=patchLegacyProductCupSelects(withSync);
     const withBw02=patchBw02(withProductCup);
     const withR9=patchR9Lic01Uat7(withBw02);
-    const candidate=withR9.replace(/<\/body>/i,`${PRODUCT_CUP_UI_ENTRY}\n${R9_CLOSING_ENTRY}\n${DASHBOARD_FAST_P1_ENTRY}\n${R6D_SALES_RECURSION_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n${BW02_ENTRY}\n${EMG_D1_P1_CONFIG_ENTRY}\n${EMG_D1_P1_ENTRY}\n</body>`);
+    const candidate=withR9.replace(/<\/body>/i,`${PRODUCT_CUP_UI_ENTRY}\n${R9_CLOSING_ENTRY}\n${DASHBOARD_FAST_P1_ENTRY}\n${R6D_SALES_RECURSION_ENTRY}\n${STOCK_COMPONENT_CONTEXT_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n${BW02_ENTRY}\n${EMG_D1_P1_CONFIG_ENTRY}\n${EMG_D1_P1_ENTRY}\n</body>`);
     writeFileSync(join(staging,'index.html'),candidate);
     writeFileSync(join(staging,'.ref01-build-fingerprint'),`${fp}\n`);
     rmSync(OUT,{recursive:true,force:true});
