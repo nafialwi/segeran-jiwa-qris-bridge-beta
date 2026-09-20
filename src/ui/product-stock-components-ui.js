@@ -107,6 +107,11 @@ export function installProductStockComponentsUi(runtime=globalThis,{document=run
   let editorState=null;
   let editorRequestSeq=0;
   let summaryRequestSeq=0;
+  let editorReturnFocus=null;
+  let editorBodyOverflow='';
+  let editorParentSurface=null;
+  let editorParentAriaHidden=null;
+  let editorPresentationLocked=false;
 
   const management=()=>isStockComponentManager(roleOf(runtime));
   function assertManager(){if(!management())fail('STOCK_COMPONENT_CONFIG_OWNER_REQUIRED');}
@@ -163,10 +168,46 @@ export function installProductStockComponentsUi(runtime=globalThis,{document=run
     const node=editorNode();
     if(node?.parentNode?.removeChild)node.parentNode.removeChild(node);
   }
+  function lockEditorPresentation(trigger=null){
+    if(editorPresentationLocked)return;
+    editorPresentationLocked=true;
+    editorReturnFocus=trigger||document?.activeElement||null;
+    const body=document?.body;
+    if(body?.style){
+      editorBodyOverflow=body.style.overflow||'';
+      body.style.overflow='hidden';
+    }
+    editorParentSurface=document?.querySelector?.('#modal-edit-master')||null;
+    if(editorParentSurface){
+      editorParentAriaHidden=editorParentSurface.getAttribute?.('aria-hidden')??null;
+      editorParentSurface.setAttribute?.('aria-hidden','true');
+    }
+  }
+  function unlockEditorPresentation({restoreFocus=true}={}){
+    if(!editorPresentationLocked)return;
+    const body=document?.body;
+    if(body?.style)body.style.overflow=editorBodyOverflow;
+    if(editorParentSurface){
+      if(editorParentAriaHidden==null)editorParentSurface.removeAttribute?.('aria-hidden');
+      else editorParentSurface.setAttribute?.('aria-hidden',editorParentAriaHidden);
+    }
+    const focusTarget=editorReturnFocus;
+    editorPresentationLocked=false;
+    editorReturnFocus=null;
+    editorBodyOverflow='';
+    editorParentSurface=null;
+    editorParentAriaHidden=null;
+    if(restoreFocus){try{focusTarget?.focus?.({preventScroll:true})}catch(_){focusTarget?.focus?.()}}
+  }
+  function focusEditor(editor){
+    const target=editor?.querySelector?.('[data-sj-stock-close="true"],[data-sj-stock-item="true"],[data-sj-stock-add="true"]');
+    try{target?.focus?.({preventScroll:true})}catch(_){target?.focus?.()}
+  }
   function closeEditor(){
     editorRequestSeq++;
     removeEditorNode();
     editorState=null;
+    unlockEditorPresentation();
     return true;
   }
   function optionMarkup(stockItems,selected=''){
@@ -216,6 +257,15 @@ export function installProductStockComponentsUi(runtime=globalThis,{document=run
     });
     editor.querySelector?.('[data-sj-stock-close="true"]')?.addEventListener?.('click',()=>closeEditor());
     editor.addEventListener?.('click',event=>{if(event?.target===editor)closeEditor();});
+    editor.addEventListener?.('keydown',event=>{
+      if(event?.key==='Escape'){event.preventDefault?.();closeEditor();return;}
+      if(event?.key!=='Tab')return;
+      const focusable=[...(editor.querySelectorAll?.('button:not([disabled]),select:not([disabled]),input:not([disabled]),[tabindex]:not([tabindex="-1"])')||[])];
+      if(focusable.length<2)return;
+      const first=focusable[0],last=focusable[focusable.length-1],active=document?.activeElement;
+      if(event.shiftKey&&active===first){event.preventDefault?.();last?.focus?.();}
+      else if(!event.shiftKey&&active===last){event.preventDefault?.();first?.focus?.();}
+    });
     editor.querySelector?.('[data-sj-stock-save="true"]')?.addEventListener?.('click',async()=>{
       const button=editor.querySelector?.('[data-sj-stock-save="true"]');
       try{
@@ -236,12 +286,14 @@ export function installProductStockComponentsUi(runtime=globalThis,{document=run
     });
     syncEmptyState(editor);
   }
-  async function openEditor(productId){
+  async function openEditor(productId,{trigger=null}={}){
     assertManager();
     const id=text(productId);if(!id)fail('STOCK_COMPONENT_PRODUCT_REQUIRED');
-    const requestId=++editorRequestSeq;
     removeEditorNode();
+    unlockEditorPresentation({restoreFocus:false});
+    const requestId=++editorRequestSeq;
     editorState=null;
+    lockEditorPresentation(trigger);
 
     let editor=null;
     if(document?.body&&typeof document?.createElement==='function'){
@@ -275,12 +327,15 @@ export function installProductStockComponentsUi(runtime=globalThis,{document=run
         </div>
       </div>`;
       wireEditor(editor,model);
+      focusEditor(editor);
       return model;
     }catch(error){
       if(requestId!==editorRequestSeq){editor?.remove?.();return null;}
       if(editor){
         editor.innerHTML=`<div class="sj-stock-components-editor-card"><div class="sj-stock-components-editor-head"><div><b>PEMAKAIAN STOK</b><small>Tidak dapat dimuat.</small></div><button type="button" data-sj-stock-close="true">×</button></div><div class="sj-stock-components-editor-error">${esc(friendlyError(error))}</div></div>`;
         editor.querySelector?.('[data-sj-stock-close="true"]')?.addEventListener?.('click',()=>closeEditor());
+        editor.addEventListener?.('keydown',event=>{if(event?.key==='Escape'){event.preventDefault?.();closeEditor();}});
+        focusEditor(editor);
       }
       throw error;
     }
@@ -303,10 +358,10 @@ export function installProductStockComponentsUi(runtime=globalThis,{document=run
     const anchor=host.querySelector?.('#edit-img-preview');
     if(anchor&&anchor.parentNode===host)host.insertBefore(section,anchor);
     else host.appendChild?.(section);
-    section.querySelector?.('[data-sj-stock-edit="true"]')?.addEventListener?.('click',()=>{
+    section.querySelector?.('[data-sj-stock-edit="true"]')?.addEventListener?.('click',event=>{
       const productId=productIdFromSurface(surface);
       if(!productId){runtime?.showToast?.('Simpan produk terlebih dahulu sebelum mengatur Pemakaian Stok.','warning');return;}
-      openEditor(productId).catch(error=>runtime?.console?.warn?.('[STOCK-COMP] editor open failed',error));
+      openEditor(productId,{trigger:event?.currentTarget||event?.target||null}).catch(error=>runtime?.console?.warn?.('[STOCK-COMP] editor open failed',error));
     });
     return section;
   }

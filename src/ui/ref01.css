@@ -14,6 +14,10 @@
   --sj-ref-shadow:0 5px 18px rgba(23,35,29,.06);
   --sj-ref-motion:200ms;
   --sj-ref-touch:44px;
+  --sj-layer-modal:1000;
+  --sj-layer-child-sheet:1120;
+  --sj-layer-workspace:12600;
+  --sj-layer-critical:13000;
 }
 
 /* PROMPT 5 owns visual reconciliation only. Existing business renderers remain authorities. */
@@ -398,7 +402,7 @@ html[data-sj-v31="true"] .sj-v31-owner-daily-flow b{display:block;margin-top:2px
 html[data-sj-v31="true"] .sj-v31-owner-daily-flow em{color:var(--sj-v31-green);font-size:7.5px;font-style:normal;font-weight:760;white-space:nowrap}
 
 /* SJ v3.2 P3 — Inventory action workspace */
-.sj-v32-inv-overlay{position:fixed;inset:0;z-index:12600;background:rgba(10,26,18,.52);display:none;align-items:flex-end;justify-content:center;padding:0}
+.sj-v32-inv-overlay{position:fixed;inset:0;z-index:var(--sj-layer-workspace,12600);background:rgba(10,26,18,.52);display:none;align-items:flex-end;justify-content:center;padding:0}
 .sj-v32-inv-card{width:min(720px,100%);max-height:94dvh;background:var(--sj-v31-bg,#f6faf7);border-radius:24px 24px 0 0;overflow:hidden;box-shadow:0 -18px 48px rgba(9,45,27,.18)}
 .sj-v32-inv-card>header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 16px 12px;background:var(--sj-v31-surface,#fff);border-bottom:1px solid #e3ece6}
 .sj-v32-inv-card>header h2{margin:0;color:#173e29;font-size:19px}.sj-v32-inv-card>header p{margin:3px 0 0;color:#738078;font-size:11px}
@@ -549,7 +553,7 @@ html[data-sj-v31="true"] .sj-v33-shift-audit>.sj-v33-fin-subhead>span{padding:4p
 .sj-stock-components-summary-value{display:flex;align-items:center;gap:7px;flex:0 0 auto;max-width:44%;color:#08783f}
 .sj-stock-components-summary-value strong{display:block;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px}
 .sj-stock-components-summary-value i{font-size:20px;font-style:normal;color:#7b9184}
-.sj-stock-components-editor-layer{position:fixed;inset:0;z-index:1120;background:rgba(15,23,42,.58);display:flex;align-items:flex-end;justify-content:center;padding:16px;overscroll-behavior:contain}
+.sj-stock-components-editor-layer{position:fixed;inset:0;z-index:var(--sj-layer-child-sheet,1120);background:rgba(15,23,42,.58);display:flex;align-items:flex-end;justify-content:center;padding:16px;overscroll-behavior:contain}
 .sj-stock-components-editor-card{width:min(560px,100%);max-height:min(84dvh,720px);overflow:auto;background:#fff;border-radius:20px;padding:14px;box-shadow:0 22px 70px rgba(15,23,42,.24);color:#22392c;overscroll-behavior:contain}
 .sj-stock-components-editor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:2px 2px 10px}
 .sj-stock-components-editor-head>div{min-width:0}
@@ -577,4 +581,22 @@ html[data-sj-v31="true"] .sj-v33-shift-audit>.sj-v33-fin-subhead>span{padding:4p
   .sj-stock-component-remove{grid-column:1/-1;min-height:38px}
   .sj-stock-components-summary-value{max-width:40%}
   .sj-stock-components-editor-actions{margin-left:-12px;margin-right:-12px}
+}
+
+/* PU-06 — Presentation convergence */
+.overlay{z-index:var(--sj-layer-modal,1000)}
+.sj-stock-components-editor-layer button:focus-visible,
+.sj-stock-components-editor-layer select:focus-visible,
+.sj-stock-components-editor-layer input:focus-visible,
+.sj-v32-inv-overlay button:focus-visible,
+.sj-v32-inv-overlay select:focus-visible,
+.sj-v32-inv-overlay input:focus-visible{
+  outline:2px solid #08783f;
+  outline-offset:2px;
+}
+.sj-stock-components-editor-card,.sj-v32-inv-card{touch-action:manipulation}
+@media(max-width:520px){
+  .sj-v32-inv-overlay{padding:0;align-items:stretch}
+  .sj-v32-inv-card{width:100%;height:100dvh;max-height:none;border-radius:0}
+  .sj-v32-inv-shell{max-height:calc(100dvh - 73px)}
 }

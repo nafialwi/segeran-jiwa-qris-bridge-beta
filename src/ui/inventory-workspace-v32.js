@@ -168,11 +168,54 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
   const legacyOpen=inventory.open.bind(inventory),readDiagnostics=runtime?.__SJ_INV01_READ_DIAGNOSTICS||createInventoryReadDiagnostics(),repository=createInventoryRepository({db:runtime?.firebase?.database?.(),diagnostics:readDiagnostics,consumer:'inventory-workspace-v32'}),core=runtime?.SJInventoryCore||null,localSimulation=ensureCupLocalSimulationStoreV34(runtime);
   if(!runtime?.__SJ_INV01_READ_DIAGNOSTICS){try{Object.defineProperty(runtime,'__SJ_INV01_READ_DIAGNOSTICS',{value:readDiagnostics,writable:false,configurable:true})}catch(_){runtime.__SJ_INV01_READ_DIAGNOSTICS=readDiagnostics}}
   let rows=[],cupRows=[],productRows=[],activities=[],state={tab:'summary',query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:'',actionQuery:'',actionType:'ALL'},openLoadTask=null,openRequestSeq=0;
+  let presentationLocked=false,presentationBodyOverflow='',presentationReturnFocus=null;
+
+  function focusWorkspace(host){
+    const target=host?.querySelector?.('[data-v32-inventory-close]');
+    try{target?.focus?.({preventScroll:true})}catch(_){target?.focus?.()}
+  }
+  function lockWorkspacePresentation(host,trigger=null){
+    if(!presentationLocked){
+      presentationLocked=true;
+      presentationReturnFocus=trigger||document?.activeElement||null;
+      const body=document?.body;
+      if(body?.style){
+        presentationBodyOverflow=body.style.overflow||'';
+        body.style.overflow='hidden';
+      }
+    }
+    host?.setAttribute?.('aria-hidden','false');
+    focusWorkspace(host);
+  }
+  function unlockWorkspacePresentation({restoreFocus=true}={}){
+    if(!presentationLocked)return;
+    const body=document?.body;
+    if(body?.style)body.style.overflow=presentationBodyOverflow;
+    const focusTarget=presentationReturnFocus;
+    presentationLocked=false;
+    presentationBodyOverflow='';
+    presentationReturnFocus=null;
+    if(restoreFocus){try{focusTarget?.focus?.({preventScroll:true})}catch(_){focusTarget?.focus?.()}}
+  }
+  function closeWorkspace({restoreFocus=true}={}){
+    openRequestSeq++;
+    const host=document.getElementById?.('sj-v32-inventory-workspace');
+    if(host){host.style.display='none';host.setAttribute?.('aria-hidden','true')}
+    unlockWorkspacePresentation({restoreFocus});
+    return true;
+  }
+  function suspendWorkspacePresentation(){
+    const host=document.getElementById?.('sj-v32-inventory-workspace');
+    if(host){host.style.display='none';host.setAttribute?.('aria-hidden','true')}
+    unlockWorkspacePresentation({restoreFocus:false});
+    return true;
+  }
 
   function ensureHost(){
     let host=document.getElementById?.('sj-v32-inventory-workspace');if(host)return host;
-    host=document.createElement?.('div');if(!host)return null;host.id='sj-v32-inventory-workspace';host.className='sj-v32-inv-overlay';host.innerHTML='<div class="sj-v32-inv-card"><header><div><h2>Bahan & Gudang</h2><p>Observe → Understand → Act</p></div><button type="button" data-v32-inventory-close aria-label="Tutup">×</button></header><div data-v32-inventory-content></div></div>';
-    host.querySelector?.('[data-v32-inventory-close]')?.addEventListener?.('click',()=>{host.style.display='none'});
+    host=document.createElement?.('div');if(!host)return null;host.id='sj-v32-inventory-workspace';host.className='sj-v32-inv-overlay';host.setAttribute?.('role','dialog');host.setAttribute?.('aria-modal','true');host.setAttribute?.('aria-label','Bahan & Gudang');host.setAttribute?.('aria-hidden','true');host.innerHTML='<div class="sj-v32-inv-card"><header><div><h2>Bahan & Gudang</h2><p>Observe → Understand → Act</p></div><button type="button" data-v32-inventory-close aria-label="Tutup">×</button></header><div data-v32-inventory-content></div></div>';
+    host.querySelector?.('[data-v32-inventory-close]')?.addEventListener?.('click',()=>closeWorkspace());
+    host.addEventListener?.('keydown',event=>{if(event?.key==='Escape'){event.preventDefault?.();closeWorkspace()}});
     host.addEventListener?.('click',event=>handleClick(event,host));
     host.addEventListener?.('input',event=>{
       const input=event.target?.closest?.('[data-v32-inventory-search]');if(input){state.query=input.value||'';updateStockList(host);return}
@@ -246,15 +289,15 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
   async function ensureCupMasters(){throw Object.assign(new Error('CUP_CONTROL_INVENTORY_DEPRECATED'),{code:'CUP_CONTROL_INVENTORY_DEPRECATED'})}
 
   function containAdvancedLegacy(tab){
-    const host=ensureHost();if(host)host.style.display='none';legacyOpen(tab);
-    const apply=()=>{const modal=legacyModal(),card=modal?.querySelector?.('.modal'),body=document.getElementById?.('sjinv-body');if(!modal||!card||!body)return;delete modal.dataset.sjV32WriterHost;modal.dataset.sjV32Contained='true';modal.style.display='flex';modal.querySelector?.('.sjinv-head')?.setAttribute?.('hidden','');modal.querySelector?.('.sjinv-tabs')?.setAttribute?.('hidden','');if(!card.querySelector?.('[data-v32-contained-head]'))card.insertAdjacentHTML?.('afterbegin',`<div class="sj-v32-contained-head" data-v32-contained-head><div><small>Pengaturan Lanjutan</small><h2>${tab==='recipes'?'Resep Produk & Ukuran':'Pengaturan Stok'}</h2><p>Gunakan layar ini hanya untuk pengaturan lanjutan yang belum tersedia di halaman utama.</p></div><button type="button" data-v32-contained-close>×</button></div>`);card.querySelector?.('[data-v32-contained-close]')?.addEventListener?.('click',()=>{modal.style.display='none';modal.removeAttribute?.('data-sj-v32-contained');const h=ensureHost();if(h){h.style.display='flex';state={...state,tab:'more',mode:'',detailId:'',process:null};render(h)}})};
+    suspendWorkspacePresentation();legacyOpen(tab);
+    const apply=()=>{const modal=legacyModal(),card=modal?.querySelector?.('.modal'),body=document.getElementById?.('sjinv-body');if(!modal||!card||!body)return;delete modal.dataset.sjV32WriterHost;modal.dataset.sjV32Contained='true';modal.style.display='flex';modal.querySelector?.('.sjinv-head')?.setAttribute?.('hidden','');modal.querySelector?.('.sjinv-tabs')?.setAttribute?.('hidden','');if(!card.querySelector?.('[data-v32-contained-head]'))card.insertAdjacentHTML?.('afterbegin',`<div class="sj-v32-contained-head" data-v32-contained-head><div><small>Pengaturan Lanjutan</small><h2>${tab==='recipes'?'Resep Produk & Ukuran':'Pengaturan Stok'}</h2><p>Gunakan layar ini hanya untuk pengaturan lanjutan yang belum tersedia di halaman utama.</p></div><button type="button" data-v32-contained-close>×</button></div>`);card.querySelector?.('[data-v32-contained-close]')?.addEventListener?.('click',()=>{modal.style.display='none';modal.removeAttribute?.('data-sj-v32-contained');const h=ensureHost();if(h){h.style.display='flex';lockWorkspacePresentation(h);state={...state,tab:'more',mode:'',detailId:'',process:null};render(h)}})};
     (typeof runtime?.setTimeout==='function'?runtime.setTimeout:setTimeout)(apply,25);(typeof runtime?.setTimeout==='function'?runtime.setTimeout:setTimeout)(apply,100);return true;
   }
 
   function choose(action){state={...state,mode:'action-picker',process:{action},actionQuery:'',actionType:'ALL',detailId:'',intent:''};render()}
   function openItem(id){if(!contextRow(id))return false;state={...state,mode:'',manager:false,editorId:'',detailId:String(id),intent:''};render();return true}
   async function openAction(action,itemType='ingredient',id='',options={}){
-    if(!ownerRole(roleOf(runtime)))return false;const host=ensureHost();if(!host)return false;host.style.display='flex';if(!rows.length&&!productRows.length){const content=host.querySelector?.('[data-v32-inventory-content]');if(content)content.innerHTML='<div class="sj-v32-inv-empty">Memuat item…</div>';await load()}
+    if(!ownerRole(roleOf(runtime)))return false;const host=ensureHost();if(!host)return false;host.style.display='flex';lockWorkspacePresentation(host);if(!rows.length&&!productRows.length){const content=host.querySelector?.('[data-v32-inventory-content]');if(content)content.innerHTML='<div class="sj-v32-inv-empty">Memuat item…</div>';await load()}
     if(!id){state={...state,mode:'action-picker',process:{action},actionQuery:'',actionType:'ALL',detailId:''};render(host);return true}
     const row=itemRow(itemType,id);if(!row)return false;state={...state,mode:'process',process:{action,itemType,row,location:options.location||'warehouse'},detailId:'',actionQuery:'',actionType:'ALL'};render(host);return true;
   }
@@ -268,10 +311,10 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
   async function applyInitialCupSetup(){throw Object.assign(new Error('CUP_CONTROL_INVENTORY_DEPRECATED'),{code:'CUP_CONTROL_INVENTORY_DEPRECATED'})}
 
   async function handleClick(event,host){
-    if(event.target===host){host.style.display='none';return}
+    if(event.target===host){closeWorkspace();return}
     if(event.target?.closest?.('[data-v32-inventory-detail-back]')){state.detailId='';state.mode='';render(host);return}
     if(event.target?.closest?.('[data-v32-action-back]')){state.mode='';state.process=null;state.tab='activity';render(host);return}
-    if(event.target?.closest?.('[data-v32-process-back],[data-v32-process-cancel]')){const p=state.process;state.mode='';state.process=null;if(p?.itemType==='ingredient'){state.detailId=p.row?.id||''}else{host.style.display='none';runtime?.__SJ_V26_FINISHED_WAREHOUSE?.openProductDetail?.(p?.row?.id||'');return}render(host);return}
+    if(event.target?.closest?.('[data-v32-process-back],[data-v32-process-cancel]')){const p=state.process;state.mode='';state.process=null;if(p?.itemType==='ingredient'){state.detailId=p.row?.id||''}else{suspendWorkspacePresentation();runtime?.__SJ_V26_FINISHED_WAREHOUSE?.openProductDetail?.(p?.row?.id||'');return}render(host);return}
     if(event.target?.closest?.('[data-v32-manager-back]')){state.mode='';state.manager=false;state.tab='more';render(host);return}
     if(event.target?.closest?.('[data-v32-editor-back]')){state.mode=state.editorId==='__new__'?'manager':'';state.manager=state.editorId==='__new__';state.editorId='';render(host);return}
     if(event.target?.closest?.('[data-v32-manager-add]')){state.mode='editor';state.editorId='__new__';render(host);return}
@@ -279,12 +322,12 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
     const typeFilter=event.target?.closest?.('[data-v32-action-type]');if(typeFilter){state.actionType=typeFilter.dataset.v32ActionType||'ALL';render(host);return}
     const pick=event.target?.closest?.('[data-v32-action-pick]');if(pick){const [itemType,id]=String(pick.dataset.v32ActionPick||'').split(':');const row=itemRow(itemType,id);if(row){state.mode='process';state.process={action:state.process?.action||'transfer',itemType,row,location:'warehouse'};render(host)}return}
     const open=event.target?.closest?.('[data-v32-inventory-open-item]');if(open){openItem(open.dataset.v32InventoryOpenItem);return}
-    const activity=event.target?.closest?.('[data-v32-inventory-activity-item]');if(activity){const id=activity.dataset.v32InventoryActivityItem,type=activity.dataset.v32InventoryItemType;if(type==='ingredient'){openItem(id);return}const finished=runtime?.__SJ_V26_FINISHED_WAREHOUSE;if(finished?.openProductDetail){host.style.display='none';finished.openProductDetail(id);return}}
+    const activity=event.target?.closest?.('[data-v32-inventory-activity-item]');if(activity){const id=activity.dataset.v32InventoryActivityItem,type=activity.dataset.v32InventoryItemType;if(type==='ingredient'){openItem(id);return}const finished=runtime?.__SJ_V26_FINISHED_WAREHOUSE;if(finished?.openProductDetail){suspendWorkspacePresentation();finished.openProductDetail(id);return}}
     const tab=event.target?.closest?.('[data-v32-inventory-tab]');if(tab){state={...state,tab:tab.dataset.v32InventoryTab,query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:''};render(host);return}
     const filter=event.target?.closest?.('[data-v32-inventory-filter]');if(filter){state.filter=filter.dataset.v32InventoryFilter||'ALL';render(host);return}
     if(event.target?.closest?.('[data-v32-inventory-intent-cancel]')){state.intent='';render(host);return}
     const chooser=event.target?.closest?.('[data-v32-inventory-choose]');if(chooser){choose(chooser.dataset.v32InventoryChoose);return}
-    const submit=event.target?.closest?.('[data-v32-process-submit]');if(submit){const p=state.process;if(!p)return;submit.disabled=true;const label=submit.textContent;submit.textContent='Memproses…';try{await invokeLegacyWriter(p.action,p.itemType,p.row.id,processValues(host));await load();if(p.itemType==='ingredient'){state={...state,mode:'',process:null,detailId:p.row.id};render(host)}else{host.style.display='none';runtime?.__SJ_V26_FINISHED_WAREHOUSE?.openProductDetail?.(p.row.id)}}catch(e){runtime?.alert?.(e?.message||'Proses belum dapat dijalankan.')}finally{if(submit.isConnected){submit.disabled=false;submit.textContent=label}}return}
+    const submit=event.target?.closest?.('[data-v32-process-submit]');if(submit){const p=state.process;if(!p)return;submit.disabled=true;const label=submit.textContent;submit.textContent='Memproses…';try{await invokeLegacyWriter(p.action,p.itemType,p.row.id,processValues(host));await load();if(p.itemType==='ingredient'){state={...state,mode:'',process:null,detailId:p.row.id};render(host)}else{suspendWorkspacePresentation();runtime?.__SJ_V26_FINISHED_WAREHOUSE?.openProductDetail?.(p.row.id)}}catch(e){runtime?.alert?.(e?.message||'Proses belum dapat dijalankan.')}finally{if(submit.isConnected){submit.disabled=false;submit.textContent=label}}return}
     const saveEditor=event.target?.closest?.('[data-v32-editor-save]');if(saveEditor){const row=state.editorId&&state.editorId!=='__new__'?contextRow(state.editorId):null;saveEditor.disabled=true;const label=saveEditor.textContent;saveEditor.textContent='Menyimpan…';try{await invokeLegacyIngredientSave(row,editorValues(host));await load();state={...state,mode:'manager',manager:true,editorId:'',detailId:''};render(host)}catch(e){runtime?.alert?.(e?.message||'Bahan belum dapat disimpan.')}finally{if(saveEditor.isConnected){saveEditor.disabled=false;saveEditor.textContent=label}}return}
     const archiveEditor=event.target?.closest?.('[data-v32-editor-archive]');if(archiveEditor){const row=contextRow(archiveEditor.dataset.v32IngredientId||state.editorId);if(!row)return;archiveEditor.disabled=true;const label=archiveEditor.textContent;archiveEditor.textContent='Memproses…';try{await invokeLegacyIngredientArchive(row);await load();state={...state,mode:'manager',manager:true,editorId:'',detailId:''};render(host)}catch(e){runtime?.alert?.(e?.message||'Bahan belum dapat diarsipkan.')}finally{if(archiveEditor.isConnected){archiveEditor.disabled=false;archiveEditor.textContent=label}}return}
     const actionButton=event.target?.closest?.('[data-v32-inventory-action]');if(!actionButton)return;
@@ -294,7 +337,7 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
     if(action==='recipes'){containAdvancedLegacy('recipes');return}
     if(action==='movements'){state={...state,tab:'activity',mode:'',detailId:'',process:null};render(host);return}
     if(action==='settings'){state.mode='manager';state.manager=true;render(host);return}
-    if(action==='cost'){host.style.display='none';if(typeof runtime?.SJCostingV1?.openInitialCost==='function')runtime.SJCostingV1.openInitialCost();else containAdvancedLegacy('purchase')}
+    if(action==='cost'){suspendWorkspacePresentation();if(typeof runtime?.SJCostingV1?.openInitialCost==='function')runtime.SJCostingV1.openInitialCost();else containAdvancedLegacy('purchase')}
   }
 
   function applyCupRows(inv){
@@ -324,7 +367,7 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
   }
   async function openWorkspace(tab='summary'){
     if(!ownerRole(roleOf(runtime)))return false;
-    const requestSeq=++openRequestSeq,host=ensureHost();if(!host)return false;state={tab:['summary','stock','activity','more'].includes(tab)?tab:'summary',query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:'',actionQuery:'',actionType:'ALL'};host.style.display='flex';const content=host.querySelector?.('[data-v32-inventory-content]');if(content)content.innerHTML='<div class="sj-v32-inv-empty">Memuat Bahan & Gudang…</div>';
+    const requestSeq=++openRequestSeq,host=ensureHost();if(!host)return false;state={tab:['summary','stock','activity','more'].includes(tab)?tab:'summary',query:'',filter:'ALL',intent:'',detailId:'',mode:'',process:null,manager:false,editorId:'',actionQuery:'',actionType:'ALL'};host.style.display='flex';lockWorkspacePresentation(host);const content=host.querySelector?.('[data-v32-inventory-content]');if(content)content.innerHTML='<div class="sj-v32-inv-empty">Memuat Bahan & Gudang…</div>';
     if(!openLoadTask)openLoadTask=load().finally(()=>{openLoadTask=null});
     try{await openLoadTask;if(requestSeq===openRequestSeq)render(host)}catch(_){if(requestSeq===openRequestSeq&&content)content.innerHTML='<div class="sj-v32-inv-empty">Data inventory belum dapat dimuat. Tidak ada data yang diubah.</div>'}return true;
   }
@@ -333,6 +376,7 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
     const requestSeq=++openRequestSeq,host=ensureHost();if(!host)return false;
     state={tab:'more',query:'',filter:'ALL',intent:'',detailId:'',mode:'manager',process:null,manager:true,editorId:'',actionQuery:'',actionType:'ALL'};
     host.style.display='flex';
+    lockWorkspacePresentation(host);
     const content=host.querySelector?.('[data-v32-inventory-content]');
     if(content)content.innerHTML='<div class="sj-v32-inv-empty">Memuat Item Stok…</div>';
     if(!openLoadTask)openLoadTask=load().finally(()=>{openLoadTask=null});
