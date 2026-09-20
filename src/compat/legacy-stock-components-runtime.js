@@ -2,6 +2,7 @@ import { posPath } from '../data/firebase-client.js';
 import { createInventoryRepository } from '../data/repositories/inventory-repository.js';
 import { createStockComponentWriter } from '../data/writers/stock-component-writer.js';
 import { createBrowserJsonStore } from '../data/local-store.js';
+import { assertProductStockItemEligible } from '../domain/product-stock-components.js';
 
 const RUNTIME_KEY='__SJ_LEGACY_STOCK_COMPONENTS_RUNTIME';
 const WRAP_MARK='__sjR10StockComponentsWrapped';
@@ -79,7 +80,12 @@ export function correctionFromVerifiedUpdate(updates={},code=''){
     const match=marker[0].match(/^(.+)\/tx\/([^/]+)\/lastRefundId$/);if(!match)return null;
     const shiftKey=match[1],txId=match[2],refundId=text(marker[1]);
     const refund=updates[`global/refunds/${refundId}`]||{};
-    const refundLines=(Array.isArray(refund.items)?refund.items:[]).map((line,index)=>({lineIndex:Number.isInteger(Number(line?.lineIndex))?Number(line.lineIndex):index,productId:lineProductId(line),q:qty(line?.q)})).filter(line=>line.q>0);
+    const refundLines=(Array.isArray(refund.items)?refund.items:[]).map(line=>{
+      const rawIndex=Number(line?.lineIndex);
+      const row={productId:lineProductId(line),q:qty(line?.q)};
+      if(Number.isInteger(rawIndex)&&rawIndex>=0)row.lineIndex=rawIndex;
+      return row;
+    }).filter(line=>line.q>0);
     return Object.freeze({kind:'REFUND',shiftKey,txId,refundId,refundLines,returnStock:refund.returnStock!==false,transaction:{},actor:correctionActor(updates,'REFUND')});
   }
   if(kind==='VOID_ATOMIC_TIMEOUT'){
@@ -101,7 +107,7 @@ export function installLegacyStockComponentsRuntime(runtime=globalThis,{
   function repo(){return repository||(repository=createInventoryRepository({db:db(),consumer:'legacy-stock-components-runtime'}))}
   function stockWriter(){return writer||(writer=createStockComponentWriter({db:db(),now,serverTimestamp:()=>runtime?.firebase?.database?.ServerValue?.TIMESTAMP??now()}))}
   function txReader(){return reader||(reader=defaultTransactionReader(db))}
-  async function mappingSnapshot(cart){const productIds=[...new Set((cart||[]).map(lineProductId).filter(Boolean))],mapping={},stockIds=new Set();for(const productId of productIds){const rows=await repo().readProductStockComponents(productId),active=activeRows(rows);if(!active.length)continue;mapping[productId]=rows||{};active.forEach(row=>stockIds.add(String(row.stockItemId)))}if(!Object.keys(mapping).length)return null;const stockItems={};for(const stockItemId of stockIds){const item=await repo().readStockItem(stockItemId);if(!item)throw coded('STOCK_ITEM_NOT_FOUND',stockItemId);stockItems[stockItemId]=item}return Object.freeze({mapping,stockItems})}
+  async function mappingSnapshot(cart){const productIds=[...new Set((cart||[]).map(lineProductId).filter(Boolean))],mapping={},stockIds=new Set();for(const productId of productIds){const rows=await repo().readProductStockComponents(productId),active=activeRows(rows);if(!active.length)continue;mapping[productId]=rows||{};active.forEach(row=>stockIds.add(String(row.stockItemId)))}if(!Object.keys(mapping).length)return null;const stockItems={};for(const stockItemId of stockIds){const item=await repo().readStockItem(stockItemId);assertProductStockItemEligible(item,stockItemId);stockItems[stockItemId]=item}return Object.freeze({mapping,stockItems})}
   function putPending(job){const rows=pending.load().filter(x=>x?.id!==job.id);rows.push(clone(job));pending.save(rows.slice(-24))}
   function dropPending(id){pending.save(pending.load().filter(x=>x?.id!==id))}
   async function resolveSale(job,candidateTxId=''){const endedAt=now(),directId=text(candidateTxId);if(directId){const transaction=await txReader().readById(job.shiftKey,directId);if(validCandidate({txId:directId,transaction,beforeKeys:job.beforeKeys,fingerprint:job.fingerprint,startedAt:job.startedAt,endedAt}))return Object.freeze({txId:directId,transaction})}const recent=await txReader().readRecent(job.shiftKey,job.startedAt);return matchCompletedStockSale({beforeKeys:job.beforeKeys,after:recent,fingerprint:job.fingerprint,startedAt:job.startedAt,endedAt})}

@@ -68,6 +68,19 @@ function linesFromTransaction(transaction={}){
   return Array.isArray(lines)?lines:[];
 }
 
+function refundRequestFingerprint(refundLines=[]){
+  const grouped=Object.create(null);
+  for(const line of Array.isArray(refundLines)?refundLines:[]){
+    const rawIndex=Number(line?.lineIndex);
+    const lineIndex=Number.isInteger(rawIndex)&&rawIndex>=0?rawIndex:null;
+    const productId=text(line?.baseProductId??line?.productId??line?.id);
+    const qty=Number(line?.q??line?.qty??line?.quantity??0);
+    const key=lineIndex===null?'P:'+productId:'L:'+String(lineIndex)+':'+productId;
+    grouped[key]=Number(grouped[key]||0)+(Number.isFinite(qty)?qty:0);
+  }
+  return stockComponentFingerprint(Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b)));
+}
+
 function normalizedConfigRows(components,actor,now){
   const rows={};
   for(const row of normalizeStockComponents(components)){
@@ -128,6 +141,14 @@ export function createStockComponentWriter({
     const application=clone(snapshotValue(result));
     if(!application)fail('STOCK_COMPONENT_APPLICATION_CLAIM_FAILED',applicationId);
     assertSnapshotSeal(application);
+    if(text(application.shiftKey)!==text(shiftKey)||text(application.txId)!==text(txId)){
+      fail('STOCK_COMPONENT_APPLICATION_IDENTITY_CONFLICT',applicationId);
+    }
+    const existingLineFingerprint=text(application.snapshot?.lineFingerprint);
+    const incomingLineFingerprint=text(snapshot?.lineFingerprint);
+    if(existingLineFingerprint&&incomingLineFingerprint&&existingLineFingerprint!==incomingLineFingerprint){
+      fail('STOCK_COMPONENT_APPLICATION_IDENTITY_CONFLICT',applicationId);
+    }
     return {applicationId,application,created};
   }
 
@@ -364,6 +385,9 @@ export function createStockComponentWriter({
   }){
     const applicationId=stockApplicationId(shiftKey,txId);
     const restoreId=stockRestoreId(kind,shiftKey,txId,correctionId);
+    const requestFingerprint=kind==='REFUND'
+      ?refundRequestFingerprint(refundLines)
+      :stockComponentFingerprint({kind:'VOID',correctionId:text(correctionId)});
     let created=false;
     let reason='STOCK_RESTORE_APPLICATION_NOT_FOUND';
 
@@ -380,7 +404,19 @@ export function createStockComponentWriter({
 
       const next=clone(current);
       next.restores=clone(next.restores)||{};
-      if(next.restores[restoreId])return next;
+      const existingRestore=next.restores[restoreId];
+      if(existingRestore){
+        if(text(existingRestore.kind)!==text(kind)||text(existingRestore.correctionId)!==text(correctionId)){
+          reason='STOCK_RESTORE_IDENTITY_CONFLICT';
+          return;
+        }
+        const existingFingerprint=text(existingRestore.requestFingerprint);
+        if(kind==='REFUND'&&existingFingerprint&&existingFingerprint!==requestFingerprint){
+          reason='STOCK_RESTORE_IDENTITY_CONFLICT';
+          return;
+        }
+        return next;
+      }
 
       const requested=kind==='VOID'
         ?voidRefundLines(next)
@@ -398,6 +434,7 @@ export function createStockComponentWriter({
         kind,
         status:'CLAIMED',
         correctionId:text(correctionId),
+        requestFingerprint,
         components:clone(components),
         lineRestores:clone(lineRestores),
         createdAt:now(),
@@ -539,6 +576,7 @@ export function createStockComponentWriter({
   }={}){
     void transaction;
     assertSaleActor(actor);
+    if(!Array.isArray(refundLines)||refundLines.length===0)fail('STOCK_REFUND_LINES_REQUIRED');
     const correctionId=assertKey(refundId,'refundId');
     const claim=await claimRestore({
       kind:'REFUND',
