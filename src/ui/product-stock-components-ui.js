@@ -1,3 +1,4 @@
+import { assertProductStockItemEligible, isProductStockItemEligible } from '../domain/product-stock-components.js';
 import { createInventoryRepository } from '../data/repositories/inventory-repository.js';
 import { createStockComponentWriter } from '../data/writers/stock-component-writer.js';
 
@@ -71,6 +72,8 @@ function modelFrom(mapping,stockItems,productId){
   return Object.freeze({productId,mapping:mapping||{},stockItems:stockItems||{},summary:summarizeProductStockComponents(mapping,stockItems)});
 }
 
+function eligibleStockItems(stockItems={}){return Object.freeze(Object.fromEntries(Object.entries(stockItems||{}).filter(([,item])=>isProductStockItemEligible(item))))}
+
 export function installProductStockComponentsUi(runtime=globalThis,{document=runtime?.document,inventoryRepository=null,stockComponentWriter=null}={}){
   if(runtime?.[RUNTIME_KEY])return runtime[RUNTIME_KEY];
   let repository=inventoryRepository;
@@ -100,12 +103,14 @@ export function installProductStockComponentsUi(runtime=globalThis,{document=run
     const [mapping,stockItems]=await Promise.all([
       getRepository().readProductStockComponents(id),getRepository().readStockItems()
     ]);
-    return modelFrom(mapping,stockItems,id);
+    return modelFrom(mapping,eligibleStockItems(stockItems),id);
   }
   async function saveProduct(productId,rows){
     assertManager();
     const id=text(productId);if(!id)fail('STOCK_COMPONENT_PRODUCT_REQUIRED');
     const components=normalizeProductStockComponentRows(rows);
+    const stockItems=await getRepository().readStockItems();
+    for(const component of Object.values(components))assertProductStockItemEligible(stockItems?.[component.stockItemId],component.stockItemId);
     const actor=actorOf(runtime);
     await getWriter().saveProductComponents({productId:id,components,actor});
     return Object.freeze({productId:id,components,actor});

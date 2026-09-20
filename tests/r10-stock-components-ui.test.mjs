@@ -36,8 +36,8 @@ test('Task 6 repository reads only targeted Inventory V2 paths',async()=>{
 
   const db=fakeDb({
     [mappingPath]:{ING1:{stockItemId:'ING1',qtyPerUnit:1,active:true}},
-    [itemPath]:{name:'Cup 22 oz Datar',unit:'pcs'},
-    [itemsPath]:{ING1:{name:'Cup 22 oz Datar',unit:'pcs'}},
+    [itemPath]:{name:'Sedotan',unit:'pcs'},
+    [itemsPath]:{ING1:{name:'Sedotan',unit:'pcs'}},
     [appPath]:{status:'COMPLETED'}
   });
 
@@ -47,10 +47,10 @@ test('Task 6 repository reads only targeted Inventory V2 paths',async()=>{
     ING1:{stockItemId:'ING1',qtyPerUnit:1,active:true}
   });
   assert.deepEqual(await repo.readStockItem('ING1'),{
-    name:'Cup 22 oz Datar',unit:'pcs'
+    name:'Sedotan',unit:'pcs'
   });
   assert.deepEqual(await repo.readStockItems(),{
-    ING1:{name:'Cup 22 oz Datar',unit:'pcs'}
+    ING1:{name:'Sedotan',unit:'pcs'}
   });
   assert.deepEqual(await repo.readStockApplication('APP1'),{
     status:'COMPLETED'
@@ -74,13 +74,13 @@ test('Task 6 component rows reject duplicates and non-positive quantities',()=>{
 
 test('Task 6 summary is compact for one or multiple components',()=>{
   const items={
-    ING1:{name:'Cup 22 oz Datar',unit:'pcs'},
+    ING1:{name:'Sedotan',unit:'pcs'},
     ING2:{name:'Sedotan',unit:'pcs'},
     ING3:{name:'Tutup Datar',unit:'pcs'}
   };
   assert.equal(summarizeProductStockComponents(
     {ING1:{stockItemId:'ING1',qtyPerUnit:1,active:true}},items
-  ),'Cup 22 oz Datar ×1');
+  ),'Sedotan ×1');
   assert.equal(summarizeProductStockComponents({
     ING1:{stockItemId:'ING1',qtyPerUnit:1,active:true},
     ING2:{stockItemId:'ING2',qtyPerUnit:1,active:true},
@@ -98,13 +98,13 @@ test('Owner can save multiple Item Stok rows only through dedicated writer',asyn
     document:null,
     inventoryRepository:{
       readProductStockComponents:async()=>({ING1:{stockItemId:'ING1',qtyPerUnit:1,active:true}}),
-      readStockItems:async()=>({ING1:{name:'Cup 22 oz Datar',unit:'pcs'},ING2:{name:'Sedotan',unit:'pcs'}})
+      readStockItems:async()=>({ING1:{name:'Sedotan',unit:'pcs'},ING2:{name:'Sedotan',unit:'pcs'}})
     },
     stockComponentWriter:{saveProductComponents:async input=>{writerCalls++;return input;}}
   });
   assert.equal(ui.management(),true);
   const model=await ui.openProduct('P1');
-  assert.equal(model.summary,'Cup 22 oz Datar ×1');
+  assert.equal(model.summary,'Sedotan ×1');
   const result=await ui.saveProduct('P1',[
     {stockItemId:'ING1',qtyPerUnit:1},{stockItemId:'ING2',qtyPerUnit:2}
   ]);

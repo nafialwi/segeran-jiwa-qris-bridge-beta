@@ -80,12 +80,12 @@ test('aggregateSaleComponents supports multiple components on one product',()=>{
   const result=aggregateSaleComponents(
     [{id:'P1',q:2}],
     {P1:{
-      STK_CUP:{qtyPerUnit:1,active:true},
+      STK_AWRAP:{qtyPerUnit:1,active:true},
       STK_LID:{qtyPerUnit:1,active:true},
       STK_STRAW:{qtyPerUnit:1,active:true}
     }},
     {
-      STK_CUP:{name:'Cup 22 oz Datar',unit:'pcs'},
+      STK_AWRAP:{name:'Kemasan Plastik',unit:'pcs'},
       STK_LID:{name:'Tutup Datar',unit:'pcs'},
       STK_STRAW:{name:'Sedotan',unit:'pcs'}
     }
@@ -99,7 +99,7 @@ test('aggregateSaleComponents supports multiple components on one product',()=>{
       appliedQty:x.appliedQty
     })),
     [
-      {stockItemId:'STK_CUP',stockItemName:'Cup 22 oz Datar',unit:'pcs',soldQty:2,appliedQty:2},
+      {stockItemId:'STK_AWRAP',stockItemName:'Kemasan Plastik',unit:'pcs',soldQty:2,appliedQty:2},
       {stockItemId:'STK_LID',stockItemName:'Tutup Datar',unit:'pcs',soldQty:2,appliedQty:2},
       {stockItemId:'STK_STRAW',stockItemName:'Sedotan',unit:'pcs',soldQty:2,appliedQty:2}
     ]

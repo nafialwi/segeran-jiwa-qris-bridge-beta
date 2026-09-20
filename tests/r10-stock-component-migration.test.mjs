@@ -176,14 +176,15 @@ test('source hash changes when products cup rows or existing mappings change',()
   assert.notEqual(a.sourceHash,d.sourceHash);
 });
 
-test('CLI live source reads legacy product master from global/menu and never global/products',()=>{
+test('CLI retirement contains no live Firebase access or mutation command',()=>{
   const source=readFileSync('scripts/r10-stock-components-migration.mjs','utf8');
-  assert.match(source,/\$\{base\}\/global\/menu/);
-  assert.doesNotMatch(source,/\$\{base\}\/global\/products/);
+  assert.match(source,/LEGACY_CUP_MIGRATION_RETIRED/);
+  assert.doesNotMatch(source,/firebase-tools|database:get|database:set|spawnSync/);
 });
 
-test('CLI offline dry-run reports zero master/balance writes and planned mapping writes only',()=>{
-  const dir=mkdtempSync(join(tmpdir(),'r10-stock-migration-'));
+
+test('CLI retired migration allows fixture-only historical audit with zero live access',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'r10-stock-migration-retired-'));
   try{
     const inputPath=join(dir,'input.json');
     writeFileSync(inputPath,JSON.stringify({
@@ -191,56 +192,27 @@ test('CLI offline dry-run reports zero master/balance writes and planned mapping
       cupRows:cupRows(),
       existingMappings:{}
     }));
-
     const result=spawnSync(
       process.execPath,
       ['scripts/r10-stock-components-migration.mjs','--dry-run','--input',inputPath],
       {encoding:'utf8'}
     );
     assert.equal(result.status,0,result.stderr||result.stdout);
-    assert.match(result.stdout,/MODE\s*: DRY_RUN/);
-    assert.match(result.stdout,/MASTER WRITES\s*: 0/);
-    assert.match(result.stdout,/BALANCE WRITES\s*: 0/);
-    assert.match(result.stdout,/DELETE WRITES\s*: 0/);
-    assert.match(result.stdout,/MAPPED PRODUCTS\s*: 6/);
-    assert.match(result.stdout,/PLANNED MAPPING WRITES\s*: 6/);
-    assert.match(result.stdout,/SOURCE HASH\s*: [0-9a-f]{64}/);
+    assert.match(result.stdout,/RETIRED \/ HISTORICAL AUDIT ONLY/);
+    assert.match(result.stdout,/LIVE FIREBASE READS\s*: 0/);
+    assert.match(result.stdout,/LIVE FIREBASE WRITES\s*: 0/);
+    assert.match(result.stdout,/WRITE\s*: NONE/);
   }finally{
     rmSync(dir,{recursive:true,force:true});
   }
 });
 
-test('CLI apply requires expected source hash and refuses fixture input apply',()=>{
-  const noHash=spawnSync(
+test('CLI legacy Cup migration refuses apply unconditionally',()=>{
+  const result=spawnSync(
     process.execPath,
     ['scripts/r10-stock-components-migration.mjs','--apply'],
     {encoding:'utf8'}
   );
-  assert.notEqual(noHash.status,0);
-  assert.match(`${noHash.stdout}\n${noHash.stderr}`,/EXPECTED_SOURCE_HASH_REQUIRED/);
-
-  const dir=mkdtempSync(join(tmpdir(),'r10-stock-migration-'));
-  try{
-    const inputPath=join(dir,'input.json');
-    writeFileSync(inputPath,JSON.stringify({
-      products:products(),
-      cupRows:cupRows(),
-      existingMappings:{}
-    }));
-
-    const result=spawnSync(
-      process.execPath,
-      [
-        'scripts/r10-stock-components-migration.mjs',
-        '--apply',
-        '--expected-source-hash','0'.repeat(64),
-        '--input',inputPath
-      ],
-      {encoding:'utf8'}
-    );
-    assert.notEqual(result.status,0);
-    assert.match(`${result.stdout}\n${result.stderr}`,/APPLY_REQUIRES_LIVE_SOURCE/);
-  }finally{
-    rmSync(dir,{recursive:true,force:true});
-  }
+  assert.notEqual(result.status,0);
+  assert.match((result.stdout||'')+'\n'+(result.stderr||''),/LEGACY_CUP_MIGRATION_RETIRED/);
 });

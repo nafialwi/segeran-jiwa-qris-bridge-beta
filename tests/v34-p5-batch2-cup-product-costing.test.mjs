@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderCategoryCupMappingV34, installCupProductCostingV34, cupSaleConsumptionV34 } from '../src/ui/cup-product-costing-v34.js';
 
-test('CUP-CONTROL-V1 category mapping uses cp codes, excludes Paper 10 Oz, and states Inventory decoupling',()=>{
+test('CUP-CONTROL-V1 category mapping uses cp codes, includes Paper 10 Oz, and states Inventory decoupling',()=>{
   const html=renderCategoryCupMappingV34(['ES TEH'],[{id:'P1',c:'ES TEH',cp:'c22d'}],{readOnly:true});
-  assert.match(html,/Mapping Cup per Kategori/);assert.match(html,/Cup 22 Oz Datar/);assert.doesNotMatch(html,/Cup Paper 10 Oz/);assert.doesNotMatch(html,/value="c10p"/);assert.match(html,/tidak mengurangi Inventory V2/);assert.match(html,/READ ONLY/);
+  assert.match(html,/Mapping Cup per Kategori/);assert.match(html,/Cup 22 Oz Datar/);assert.match(html,/Cup Paper 10 Oz/);assert.match(html,/value="c10p"/);assert.match(html,/tidak mengurangi Inventory V2/);assert.match(html,/READ ONLY/);
 });
 
 test('CUP-CONTROL-V1 sale usage is keyed by Cup Control codes and does not mutate recipe authority',async()=>{

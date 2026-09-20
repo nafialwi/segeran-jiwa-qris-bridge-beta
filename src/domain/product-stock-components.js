@@ -1,3 +1,5 @@
+import { isCupIngredientMasterV34 } from './packaging-cup-v34.js';
+
 const text=value=>String(value??'').trim();
 
 function domainError(code,detail=''){
@@ -22,10 +24,28 @@ function lineProductId(line={}){
   return text(line.baseProductId??line.productId??line.id);
 }
 
+function stockItemState(row){
+  if(!row||typeof row!=='object')return 'MISSING';
+  if(row.active===false||row.archived===true||text(row.status).toUpperCase()==='ARCHIVED')return 'INACTIVE';
+  if(isCupIngredientMasterV34(row))return 'CUP';
+  return 'ELIGIBLE';
+}
+
+export function isProductStockItemEligible(row){
+  return stockItemState(row)==='ELIGIBLE';
+}
+
+export function assertProductStockItemEligible(row,id=''){
+  const state=stockItemState(row);
+  if(state==='MISSING')throw domainError('STOCK_ITEM_NOT_FOUND',text(id));
+  if(state==='INACTIVE')throw domainError('STOCK_ITEM_INACTIVE',text(id));
+  if(state==='CUP')throw domainError('STOCK_COMPONENT_CUP_FORBIDDEN',text(id));
+  return row;
+}
+
 function stockItemMeta(stockItems,id){
   const row=stockItems&&typeof stockItems==='object'?stockItems[id]:null;
-  if(!row||typeof row!=='object')throw domainError('STOCK_ITEM_NOT_FOUND',id);
-  return row;
+  return assertProductStockItemEligible(row,id);
 }
 
 function freezeRows(rows){
