@@ -39,9 +39,21 @@ function stockRow(row,intent=''){
   const openAttrs=intent?`data-v32-inventory-action="${esc(intent)}" data-v32-ingredient-id="${esc(row.id)}"`:`data-v32-inventory-open-item="${esc(row.id)}"`;
   return `<article class="sj-v32-inv-stock-row ${statusClass(row.action)}" data-v32-inventory-row="${esc(row.id)}" data-action-state="${esc(row.action)}"><button type="button" class="sj-v32-inv-stock-open" ${openAttrs}><div class="sj-v32-inv-stock-head"><span><b>${esc(row.name)}</b><small>Bahan Baku${row.category?` · ${esc(row.category)}`:''}</small></span><em>${esc(row.actionLabel)}</em></div><div class="sj-v32-inv-split"><span><small>Gerai</small><strong>${esc(qty(row.outletQty,row.unit))}</strong></span><span><small>Gudang</small><strong>${esc(qty(row.warehouseQty,row.unit))}</strong></span><span><small>Total</small><strong>${esc(qty(row.totalQty,row.unit))}</strong></span></div><p>${esc(row.actionDetail||'')}</p><span class="sj-v32-inv-open-hint">${intent?'Pilih bahan ini':'Buka detail & atur'} →</span></button>${rowAction(row,intent)}</article>`;
 }
-function summaryHTML(rows=[]){
+function stockSyncHTML(health=null){
+  if(!health||typeof health!=='object')return '';
+  const enabled=health.enabled!==false,pending=Math.max(0,num(health.pendingCount)),shortages=Math.max(0,num(health.shortageCount)),attention=pending+shortages>0;
+  const state=enabled?(attention?'Perlu perhatian':'Sinkron stok sehat'):'Sinkron stok dihentikan';
+  const detail=enabled
+    ?`${pending} tertunda · ${shortages} stok kurang`
+    :`Pemakaian Stok tidak akan dijalankan untuk transaksi baru${health.controlReason?` · ${esc(health.controlReason)}`:''}.`;
+  const retry=enabled&&pending>0?'<button type="button" data-v32-stock-sync-retry>Coba Sinkron Ulang</button>':'';
+  const toggle=`<button type="button" class="${enabled?'danger':'primary'}" data-v32-stock-sync-toggle data-enabled="${enabled?'1':'0'}">${enabled?'Hentikan Sementara':'Aktifkan Kembali'}</button>`;
+  const error=health.lastErrorCode?`<small>Catatan terakhir: ${esc(health.lastErrorCode)}</small>`:'';
+  return `<aside class="sj-v32-stock-sync ${enabled?(attention?'warn':'ok'):'disabled'}" data-v32-stock-sync-state="${esc(health.state||'UNKNOWN')}"><div><span>Sinkronisasi Pemakaian Stok</span><b>${esc(state)}</b><p>${detail}</p>${error}</div><div class="sj-v32-stock-sync-actions">${retry}${toggle}</div></aside>`;
+}
+function summaryHTML(rows=[],stockSyncHealth=null){
   const s=summarizeIngredientInventory(rows),attention=rows.filter(x=>x.action!=='SAFE');
-  return `<section class="sj-v32-inv-overview"><div class="sj-v32-inv-kpis"><article><small>Bahan Aktif</small><strong>${s.total}</strong></article><article><small>Perlu Tindakan</small><strong>${s.needsAction}</strong></article><article><small>Perlu Transfer</small><strong>${s.transfer}</strong></article><article><small>Perlu Beli</small><strong>${s.buy}</strong></article></div><aside class="sj-v32-inv-principle"><b>Observe → Understand → Act</b><span>Klik item untuk melihat posisi stok, aturan, aktivitas, lalu proses dari satu tempat.</span></aside><section class="sj-v32-inv-section"><div class="sj-v32-inv-section-head"><h3>Perlu Tindakan</h3><span>${attention.length} item</span></div><div class="sj-v32-inv-action-list">${attention.length?attention.slice(0,10).map(x=>stockRow(x)).join(''):'<div class="sj-v32-inv-empty">Semua bahan dalam kondisi terkendali.</div>'}</div></section></section>`;
+  return `<section class="sj-v32-inv-overview"><div class="sj-v32-inv-kpis"><article><small>Bahan Aktif</small><strong>${s.total}</strong></article><article><small>Perlu Tindakan</small><strong>${s.needsAction}</strong></article><article><small>Perlu Transfer</small><strong>${s.transfer}</strong></article><article><small>Perlu Beli</small><strong>${s.buy}</strong></article></div>${stockSyncHTML(stockSyncHealth)}<aside class="sj-v32-inv-principle"><b>Observe → Understand → Act</b><span>Klik item untuk melihat posisi stok, aturan, aktivitas, lalu proses dari satu tempat.</span></aside><section class="sj-v32-inv-section"><div class="sj-v32-inv-section-head"><h3>Perlu Tindakan</h3><span>${attention.length} item</span></div><div class="sj-v32-inv-action-list">${attention.length?attention.slice(0,10).map(x=>stockRow(x)).join(''):'<div class="sj-v32-inv-empty">Semua bahan dalam kondisi terkendali.</div>'}</div></section></section>`;
 }
 function visibleStockRows(rows=[],query='',filter='ALL'){
   const q=String(query||'').trim().toLowerCase();let visible=rows.filter(r=>!q||`${r.name} ${r.id} ${r.category}`.toLowerCase().includes(q));
@@ -135,7 +147,7 @@ export function renderIngredientEditorV32({row=null}={}){
 
 function ingredientManagerHTML(rows=[]){return `<section class="sj-v32-inv-manager"><button type="button" class="sj-v32-inv-back" data-v32-manager-back>‹ Kembali ke Lainnya</button><div class="sj-v32-inv-section-head"><h3>Item Stok / Bahan Baku</h3><button type="button" data-v32-manager-add>+ Tambah Bahan</button></div><p class="sj-v32-manager-copy">Kelola item fisik yang dipakai operasional. Cup tetap dikelola melalui Cup Control.</p><div class="sj-v32-inv-stock-list">${rows.length?rows.map(x=>stockRow(x)).join(''):'<div class="sj-v32-inv-empty">Belum ada bahan baku.</div>'}</div></section>`}
 
-export function renderInventoryWorkspaceV32({tab='summary',rows=[],cupRows=[],readOnly=false,recentMovements=[],recentActivities=[],query='',filter='ALL',intent='',selectedItemId='',mode='',productRows=[],process=null,manager=false,editorRow=undefined,actionQuery='',actionType='ALL',cupSetupValues={}}={}){
+export function renderInventoryWorkspaceV32({tab='summary',rows=[],cupRows=[],readOnly=false,recentMovements=[],recentActivities=[],query='',filter='ALL',intent='',selectedItemId='',mode='',productRows=[],process=null,manager=false,editorRow=undefined,actionQuery='',actionType='ALL',cupSetupValues={},stockSyncHealth=null}={}){
   const activities=recentActivities.length?recentActivities:recentMovements,baseRows=(rows||[]).filter(row=>!isCupIngredientMasterV34(row?.master||row));
   if(mode==='cup-setup')return `<div class="sj-v32-inv-shell" data-v32-inventory-shell data-active-tab="cup-setup"><div class="sj-v32-inv-body">${renderCupInitialSetupV34(cupRows,{readOnly,values:cupSetupValues})}</div></div>`;
   if(mode==='action-picker')return `<div class="sj-v32-inv-shell" data-v32-inventory-shell data-active-tab="action-picker"><div class="sj-v32-inv-body">${renderInventoryActionPickerV32({action:process?.action,ingredientRows:rows,productRows,query:actionQuery,typeFilter:actionType})}</div></div>`;
@@ -145,7 +157,7 @@ export function renderInventoryWorkspaceV32({tab='summary',rows=[],cupRows=[],re
   const active=['summary','stock','activity','more'].includes(tab)?tab:'summary';
   if(selectedItemId){const row=rows.find(x=>String(x.id)===String(selectedItemId));return `<div class="sj-v32-inv-shell" data-v32-inventory-shell data-active-tab="detail"><div class="sj-v32-inv-body">${renderInventoryItemDetailV32({row,activities})}</div></div>`}
   const cupSection=(active==='summary'||active==='stock')?renderCupInventorySectionV34(cupRows,{readOnly}):'';
-  const body=cupSection+(active==='stock'?stockHTML(baseRows,query,filter,intent):active==='activity'?activityHTML(activities):active==='more'?moreHTML():summaryHTML(baseRows));
+  const body=cupSection+(active==='stock'?stockHTML(baseRows,query,filter,intent):active==='activity'?activityHTML(activities):active==='more'?moreHTML():summaryHTML(baseRows,stockSyncHealth));
   return `<div class="sj-v32-inv-shell" data-v32-inventory-shell data-active-tab="${active}">${nav(active)}<div class="sj-v32-inv-body">${body}</div></div>`;
 }
 
@@ -223,10 +235,12 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
     });
     document.body?.appendChild?.(host);return host;
   }
+  function stockSyncRuntime(){return runtime?.__SJ_LEGACY_STOCK_COMPONENTS_RUNTIME||null}
+  function stockSyncHealth(){try{return stockSyncRuntime()?.health?.()||null}catch(_){return null}}
   function render(host=ensureHost()){
     const content=host?.querySelector?.('[data-v32-inventory-content]');if(!content)return;
     const editorRow=state.editorId&&state.editorId!=='__new__'?contextRow(state.editorId):state.editorId==='__new__'?null:undefined;
-    content.innerHTML=renderInventoryWorkspaceV32({tab:state.tab,rows,cupRows,readOnly:runtime?.__SJ_LOCAL_QA_READ_ONLY===true,productRows,recentActivities:activities,query:state.query,filter:state.filter,intent:state.intent,selectedItemId:state.detailId,mode:state.mode,process:state.process,manager:state.manager,editorRow,actionQuery:state.actionQuery,actionType:state.actionType,cupSetupValues:localSimulation.masterConfig||{}});
+    content.innerHTML=renderInventoryWorkspaceV32({tab:state.tab,rows,cupRows,readOnly:runtime?.__SJ_LOCAL_QA_READ_ONLY===true,productRows,recentActivities:activities,query:state.query,filter:state.filter,intent:state.intent,selectedItemId:state.detailId,mode:state.mode,process:state.process,manager:state.manager,editorRow,actionQuery:state.actionQuery,actionType:state.actionType,cupSetupValues:localSimulation.masterConfig||{},stockSyncHealth:stockSyncHealth()});
   }
   function updateStockList(host=ensureHost()){
     const list=host?.querySelector?.('[data-v32-inventory-stock-list]');if(list)list.innerHTML=stockRowsHTML(rows,state.query,state.filter,state.intent);
@@ -312,6 +326,30 @@ export function installInventoryWorkspaceV32(runtime=globalThis){
 
   async function handleClick(event,host){
     if(event.target===host){closeWorkspace();return}
+    const retrySync=event.target?.closest?.('[data-v32-stock-sync-retry]');
+    if(retrySync){
+      const sync=stockSyncRuntime();if(typeof sync?.retryPending!=='function')return;
+      retrySync.disabled=true;const label=retrySync.textContent;retrySync.textContent='Mencoba…';
+      try{
+        await sync.retryPending();
+        render(host);
+        const health=stockSyncHealth();
+        runtime?.showToast?.(health?.pendingCount?`${health.pendingCount} sinkron stok masih perlu perhatian.`:'Sinkron stok tertunda sudah diperiksa.','info');
+      }catch(error){runtime?.showToast?.('Sinkron stok belum dapat dipulihkan. Coba lagi setelah koneksi stabil.','warning');runtime?.console?.warn?.('[R10-STOCK] manual retry failed',error)}
+      finally{if(retrySync.isConnected){retrySync.disabled=false;retrySync.textContent=label}}
+      return;
+    }
+    const toggleSync=event.target?.closest?.('[data-v32-stock-sync-toggle]');
+    if(toggleSync){
+      const sync=stockSyncRuntime();if(typeof sync?.setSyncEnabled!=='function')return;
+      const current=stockSyncHealth(),enable=current?.enabled===false;
+      if(!enable&&typeof runtime?.confirm==='function'&&!runtime.confirm('Hentikan sementara sinkronisasi Pemakaian Stok? Produk yang memakai komponen stok akan diblokir sampai diaktifkan kembali.'))return;
+      try{
+        sync.setSyncEnabled(enable,{reason:enable?'Diaktifkan kembali dari Bahan & Gudang':'Dihentikan Owner dari Bahan & Gudang'});
+        render(host);
+      }catch(error){runtime?.showToast?.('Kontrol sinkron stok hanya dapat diubah oleh Owner.','warning');runtime?.console?.warn?.('[R10-STOCK] sync control rejected',error)}
+      return;
+    }
     if(event.target?.closest?.('[data-v32-inventory-detail-back]')){state.detailId='';state.mode='';render(host);return}
     if(event.target?.closest?.('[data-v32-action-back]')){state.mode='';state.process=null;state.tab='activity';render(host);return}
     if(event.target?.closest?.('[data-v32-process-back],[data-v32-process-cancel]')){const p=state.process;state.mode='';state.process=null;if(p?.itemType==='ingredient'){state.detailId=p.row?.id||''}else{suspendWorkspacePresentation();runtime?.__SJ_V26_FINISHED_WAREHOUSE?.openProductDetail?.(p?.row?.id||'');return}render(host);return}
