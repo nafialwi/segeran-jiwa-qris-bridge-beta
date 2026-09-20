@@ -173,6 +173,118 @@ function patchPu02CupConvergence(legacy){
   return legacy;
 }
 
+function patchPu03DataBandwidthConvergence(legacy){
+  /* PU03_DATA_BANDWIDTH_CONVERGENCE:
+     Keep Recipe's canonical Inventory live authority, but remove duplicate
+     Costing ingredient/purchase subscriptions and high-frequency purchase UI polling. */
+  legacy=replaceOnce(
+    legacy,
+    "window.SJInventoryV2={version:'0.5.0',open:open,recipeForProduct:recipeForProduct,openVariantPicker:openVariantPicker,reserveRecipeConsumption:reserveRecipeConsumption,rollbackRecipeReservation:rollbackRecipeReservation,commitRecipeReservation:commitRecipeReservation,normalizeCommittedRecipeSale:normalizeCommittedRecipeSale,restoreVoidedRecipeTx:restoreVoidedRecipeTx,recoverVoidTransactions:recoverVoidTransactions,renderDashboardTiles:renderDashboardTiles,status:function(){return{started:started,ingredients:Object.keys(ingredients()).length,recipes:Object.keys(recipes()).length}}};",
+    "window.SJInventoryV2={version:'0.5.0',open:open,recipeForProduct:recipeForProduct,openVariantPicker:openVariantPicker,reserveRecipeConsumption:reserveRecipeConsumption,rollbackRecipeReservation:rollbackRecipeReservation,commitRecipeReservation:commitRecipeReservation,normalizeCommittedRecipeSale:normalizeCommittedRecipeSale,restoreVoidedRecipeTx:restoreVoidedRecipeTx,recoverVoidTransactions:recoverVoidTransactions,renderDashboardTiles:renderDashboardTiles,sharedSnapshot:function(){return{ingredients:ingredients(),balances:{ingredients:balances()},productWarehouse:obj(data.productWarehouse),recipes:recipes()}},status:function(){return{started:started,ingredients:Object.keys(ingredients()).length,recipes:Object.keys(recipes()).length}}};",
+    'PU03_INVENTORY_SHARED_SNAPSHOT'
+  );
+
+  legacy=replaceOnce(
+    legacy,
+    "function allCostChoices(){",
+    "function sharedIngredients(){try{var s=window.SJInventoryV2&&SJInventoryV2.sharedSnapshot?SJInventoryV2.sharedSnapshot():null;return obj(s&&s.ingredients)}catch(_){return obj(state.ingredients)}}function allCostChoices(){state.ingredients=sharedIngredients();/* PU03_COSTING_SHARED_INGREDIENTS */",
+    'PU03_COSTING_SHARED_INGREDIENTS'
+  );
+
+  legacy=replaceOnce(
+    legacy,
+    "function start(){if(started||!currentLoginId||typeof db==='undefined')return;started=true;listen('costs/ingredients',function(v){state.costs.ingredients=v});listen('costs/products',function(v){state.costs.products=v});listen('ingredients',function(v){state.ingredients=v});listen('purchases',function(v){state.purchases=v});ensureInitialModal();setTimeout(injectInitialButton,700)}",
+    "function start(){if(started||!currentLoginId||typeof db==='undefined')return;started=true;listen('costs/ingredients',function(v){state.costs.ingredients=v});listen('costs/products',function(v){state.costs.products=v});state.ingredients=sharedIngredients();/* PU03_COSTING_NO_PURCHASE_LISTENER */ensureInitialModal();setTimeout(injectInitialButton,700)}",
+    'PU03_COSTING_LISTENER_DEDUP'
+  );
+
+  legacy=replaceOnce(
+    legacy,
+    "var ing=obj(V.state&&V.state.ingredients);Object.keys(obj(costs.ingredients)).forEach(function(id){costs.ingredients[id]=Object.assign({},costs.ingredients[id],{name:(ing[id]||{}).name||id,unit:(ing[id]||{}).unit||''})});return{costs:costs,recipes:recipes}",
+    "var shared=window.SJInventoryV2&&SJInventoryV2.sharedSnapshot?SJInventoryV2.sharedSnapshot():{},ing=obj(shared.ingredients||V.state&&V.state.ingredients);Object.keys(obj(costs.ingredients)).forEach(function(id){costs.ingredients[id]=Object.assign({},costs.ingredients[id],{name:(ing[id]||{}).name||id,unit:(ing[id]||{}).unit||''})});return{costs:costs,recipes:recipes}",
+    'PU03_COSTING_SALE_SHARED_INGREDIENTS'
+  );
+
+  legacy=replaceOnce(
+    legacy,
+    "installPurchaseUi();\nsetInterval(function(){try{installPurchaseUi();renderPurchaseCosting()}catch(_){}},1000);",
+    "installPurchaseUi();window.__SJ_PU03_PURCHASE_UI_TIMER_1000=true;",
+    'PU03_PURCHASE_UI_TIMER_1000'
+  );
+
+  legacy=replaceOnce(
+    legacy,
+    "patchExpenseDelete();setInterval(patchExpenseDelete,2000);",
+    "patchExpenseDelete();window.__SJ_PU03_PURCHASE_GUARD_TIMER_2000=true;",
+    'PU03_PURCHASE_GUARD_TIMER_2000'
+  );
+
+  legacy=replaceOnce(
+    legacy,
+    "var V=window.SJCostingV1,recoveryBusy=false,lastAttempt={};",
+    "var V=window.SJCostingV1,INV=DB_PATH+'/global/inventoryV2',recoveryBusy=false,lastAttempt={};",
+    'PU03_PURCHASE_RECOVERY_PATH'
+  );
+
+  legacy=replaceOnce(
+    legacy,
+    "var now=Date.now(),rows=obj(V.state&&V.state.purchases),ids=pendingRecoveryIds(rows,now).filter(function(id){return now-n(lastAttempt[id])>=15000});",
+    "var now=Date.now(),sn=await db.ref(INV+'/purchases').orderByChild('createdTs').limitToLast(20).once('value'),rows=obj(sn.val()),ids=pendingRecoveryIds(rows,now).filter(function(id){return now-n(lastAttempt[id])>=15000});",
+    'PU03_PURCHASE_RECOVERY_BOUNDED_READ'
+  );
+
+  legacy=replaceOnce(
+    legacy,
+    "setInterval(function(){try{var p=recoverPendingPurchases();if(p&&typeof p.catch==='function')p.catch(function(e){if(typeof sjSaveError==='function')sjSaveError('WP_F03_PURCHASE_RECOVERY_SCAN',e)})}catch(e){if(typeof sjSaveError==='function')sjSaveError('WP_F03_PURCHASE_RECOVERY_SCAN',e)}},5000);",
+    "var pu03PriorPurchaseRecovery=SJReliability.afterLoginLifecycle.bind(SJReliability);SJReliability.afterLoginLifecycle=async()=>{await pu03PriorPurchaseRecovery();try{await recoverPendingPurchases()}catch(e){if(typeof sjSaveError==='function')sjSaveError('WP_F03_PURCHASE_RECOVERY_LOGIN',e)}};window.__SJ_PU03_PURCHASE_RECOVERY_TIMER_5000=true;",
+    'PU03_PURCHASE_RECOVERY_TIMER_5000'
+  );
+
+  legacy=replaceOnce(
+    legacy,
+    "function rows(){",
+    "async function rows(){",
+    'PU03_PURCHASE_HISTORY_ASYNC_ROWS'
+  );
+
+  legacy=replaceOnce(
+    legacy,
+    "var p=V.state&&V.state.purchases||{};",
+    "var sn=await db.ref(DB_PATH+'/global/inventoryV2/purchases').orderByChild('createdTs').limitToLast(30).once('value'),p=sn.val()||{};",
+    'PU03_PURCHASE_HISTORY_BOUNDED_READ'
+  );
+
+  legacy=replaceOnce(
+    legacy,
+    "function renderPurchaseHistory(){",
+    "async function renderPurchaseHistory(){",
+    'PU03_PURCHASE_HISTORY_ASYNC'
+  );
+
+  legacy=replaceOnce(
+    legacy,
+    "  var list=rows();",
+    "  var list=await rows();",
+    'PU03_PURCHASE_HISTORY_AWAIT'
+  );
+
+  legacy=replaceOnce(
+    legacy,
+    "setInterval(function(){try{renderPurchaseHistory()}catch(_){}},1200);",
+    "window.__SJ_PU03_PURCHASE_HISTORY_TIMER_1200=true;",
+    'PU03_PURCHASE_HISTORY_TIMER_1200'
+  );
+
+  legacy=replaceOnce(
+    legacy,
+    "  paintPurchasePreview();",
+    "  paintPurchasePreview();if(typeof V.renderPurchaseHistory==='function')setTimeout(function(){Promise.resolve(V.renderPurchaseHistory()).catch(function(e){if(typeof sjSaveError==='function')sjSaveError('PURCHASE_HISTORY_ON_OPEN',e)})},0);",
+    'PU03_PURCHASE_HISTORY_ON_OPEN'
+  );
+
+  return legacy;
+}
+
 function patchR9Lic01Uat7(legacy){
   legacy=replaceOnce(legacy,
     "}catch(e){if(reserved){try{await controlRef.transaction(cur=>{if(cur&&String(cur.currentSessionId||'')===String(sid)&&String(cur.status||'')==='CLOSING')return oldControl;return})}catch(_){}}sjSaveError('SHIFT_SESSION_CLOSE',e);if(e.code==='SHIFT_NOTE_REQUIRED')alert(e.message);else alert(sjFriendlyError(e))}finally{this.busy=false;sjSetBusy(btn,false)}",
@@ -260,7 +372,8 @@ try{
     const withBw02=patchBw02(withProductCup);
     const withR9=patchR9Lic01Uat7(withBw02);
     const withPu02=patchPu02CupConvergence(withR9);
-    const candidate=withPu02.replace(/<\/body>/i,`${PRODUCT_CUP_UI_ENTRY}\n${R9_CLOSING_ENTRY}\n${DASHBOARD_FAST_P1_ENTRY}\n${R6D_SALES_RECURSION_ENTRY}\n${STOCK_COMPONENT_CONTEXT_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n${BW02_ENTRY}\n${EMG_D1_P1_CONFIG_ENTRY}\n${EMG_D1_P1_ENTRY}\n</body>`);
+    const withPu03=patchPu03DataBandwidthConvergence(withPu02);
+    const candidate=withPu03.replace(/<\/body>/i,`${PRODUCT_CUP_UI_ENTRY}\n${R9_CLOSING_ENTRY}\n${DASHBOARD_FAST_P1_ENTRY}\n${R6D_SALES_RECURSION_ENTRY}\n${STOCK_COMPONENT_CONTEXT_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n${BW02_ENTRY}\n${EMG_D1_P1_CONFIG_ENTRY}\n${EMG_D1_P1_ENTRY}\n</body>`);
     writeFileSync(join(staging,'index.html'),candidate);
     writeFileSync(join(staging,'.ref01-build-fingerprint'),`${fp}\n`);
     rmSync(OUT,{recursive:true,force:true});
