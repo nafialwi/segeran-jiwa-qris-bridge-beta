@@ -66,7 +66,7 @@ test('P5 Batch-2 counts only physical transfer-in to outlet as cup inbound durin
 test('P5 Batch-2 reconciles manual opening + inbound - closing against theoretical sales usage',()=>{
   const r=reconcileCupShiftV34({opening:{c10:100},inbound:{c10:50},closing:{c10:70},theoretical:{c10:77}});
   const c=r.rows.find(x=>x.code==='c10');
-  assert.equal(c.physicalUsed,80);assert.equal(c.theoreticalUsed,77);assert.equal(c.variance,3);assert.equal(r.totalVariance,3);
+  assert.equal(c.physicalUsed,80);assert.equal(c.theoreticalUsed,77);assert.equal(c.variance,-3);assert.equal(r.totalVariance,3);
 });
 
 test('P5 Batch-2 decorates every active recipe variant with exactly one mapped registered cup ingredient',()=>{

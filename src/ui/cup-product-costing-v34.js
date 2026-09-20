@@ -1,10 +1,9 @@
-import { CUP_CATALOG_V34, buildCupInventoryRowsV34, decorateRecipeWithCupV34 } from '../domain/packaging-cup-v34.js';
+import { CUP_CATALOG_V34, buildCupInventoryRowsV34 } from '../domain/packaging-cup-v34.js';
 import { createInventoryRepository } from '../data/repositories/inventory-repository.js';
 
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const text=v=>String(v??'').trim();
 const upper=v=>text(v).toUpperCase();
-const MARK='__sjV34CupRecipeDecoration';
 
 function menuRows(runtime){
   try{
@@ -20,7 +19,6 @@ function categories(runtime){
     return Array.isArray(out)?out:[];
   }catch(_){return[]}
 }
-function productFor(menu,id){return (menu||[]).find(x=>String(x?.id)===String(id))||null}
 function categoryCode(menu,category){
   const values=(menu||[]).filter(x=>x&&x.archived!==true&&upper(x.c)===upper(category)).map(x=>text(x.cp).toLowerCase()).filter(Boolean);
   if(!values.length)return'';return values.every(x=>x===values[0])?values[0]:'';
@@ -70,14 +68,6 @@ export function installCupProductCostingV34(runtime=globalThis,{inventoryWorkspa
   const saleUsage=cart=>{const workspaceRows=inventoryWorkspace?.cupRows?.()||[],cupRows=workspaceRows.some(x=>x?.registered)?workspaceRows:cachedCupRows;return cupSaleConsumptionV34(cart,cupRows)};
   try{Object.defineProperty(runtime,'__SJ_V34_CUP_SALE_USAGE',{value:saleUsage,writable:false,configurable:false,enumerable:false})}catch(_){runtime.__SJ_V34_CUP_SALE_USAGE=saleUsage}
   try{Object.defineProperty(runtime,'__SJ_V34_CUP_SALE_READY',{value:ready,writable:false,configurable:false,enumerable:false})}catch(_){runtime.__SJ_V34_CUP_SALE_READY=ready}
-  if(!original?.[MARK]){
-    function wrapped(productId,...args){
-      const base=original.call(this,productId,...args),menu=menuRows(runtime),product=productFor(menu,productId),workspaceRows=inventoryWorkspace?.cupRows?.()||[],cupRows=workspaceRows.some(x=>x?.registered)?workspaceRows:cachedCupRows;
-      return decorateRecipeWithCupV34(base||{},product||{},cupRows);
-    }
-    try{Object.defineProperty(wrapped,MARK,{value:true,enumerable:false})}catch(_){wrapped[MARK]=true}
-    inv.recipeForProduct=wrapped;
-  }
   const readOnly=runtime?.__SJ_LOCAL_QA_READ_ONLY===true,document=runtime?.document;
   async function applyCategory(category,code){
     if(readOnly)throw new Error('LOCAL_QA_READ_ONLY');if(!runtime?.SJHarden?.menuTransaction)throw new Error('MENU_TRANSACTION_AUTHORITY_REQUIRED');

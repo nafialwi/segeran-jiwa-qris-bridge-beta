@@ -135,23 +135,54 @@ export function cupInboundFromMovementsV34(raw={},cupRows=[],shiftKey='',window=
   return Object.freeze(out);
 }
 
-export function reconcileCupShiftV34({opening={},inbound={},closing={},theoretical={},reasons={}}={}){
-  const rowsOut=CUP_CATALOG_V34.map(spec=>{
-    const open=num(opening?.[spec.code]),incoming=num(inbound?.[spec.code]),close=num(closing?.[spec.code]),expected=num(theoretical?.[spec.code]);
-    const physicalUsed=open+incoming-close,expectedClosing=open+incoming-expected,physicalClosing=close,variance=expectedClosing-physicalClosing;
-    return Object.freeze({code:spec.code,name:spec.name,unit:'pcs',opening:open,inbound:incoming,closing:close,expectedClosing,physicalClosing,physicalUsed,theoreticalUsed:expected,variance,reason:text(reasons?.[spec.code]||'')||null});
-  });
-  return Object.freeze({authority:'SHIFT_OPENING',openingKnown:true,rows:Object.freeze(rowsOut),totalVariance:rowsOut.reduce((sum,x)=>sum+Math.abs(x.variance),0)});
+export function cupStockComponentUsageV34(raw={},cupRows=[],shiftKey='',window={}){
+  const sales=Object.fromEntries(CUP_CATALOG_V34.map(x=>[x.code,0]));
+  const restores=Object.fromEntries(CUP_CATALOG_V34.map(x=>[x.code,0]));
+  const netUsage=Object.fromEntries(CUP_CATALOG_V34.map(x=>[x.code,0]));
+  const byIngredient=Object.fromEntries((cupRows||[]).filter(x=>x?.registered&&x.ingredientId).map(x=>[text(x.ingredientId),x.code]));
+  const applications=raw?.stockApplications&&typeof raw.stockApplications==='object'?raw.stockApplications:{};
+  const startTs=num(window?.startTs),endTs=num(window?.endTs)||Number.MAX_SAFE_INTEGER,targetShift=text(shiftKey);
+  for(const movement of rows(raw.movements)){
+    const type=upper(movement.type);
+    if(!['SALE_COMPONENT','REFUND_COMPONENT','VOID_COMPONENT'].includes(type))continue;
+    if(upper(movement.itemType)!=='INGREDIENT'||upper(movement.location)!=='OUTLET')continue;
+    const code=byIngredient[text(movement.itemId||movement.ingredientId)];if(!code)continue;
+    const movementShift=text(movement.shift||movement.shiftKey),movementTs=num(movement.ts);
+    if(movementShift){if(movementShift!==targetShift)continue}
+    else if(startTs>0){if(movementTs<startTs||movementTs>endTs)continue}
+    else continue;
+    const applicationId=text(movement.applicationId),application=applications[applicationId];
+    if(!applicationId||upper(application?.status)!=='COMPLETED')throw Object.assign(new Error('STOCK_COMPONENT_APPLICATION_EVIDENCE_REQUIRED:'+(applicationId||'missing')),{code:'STOCK_COMPONENT_APPLICATION_EVIDENCE_REQUIRED'});
+    const delta=num(movement.delta);
+    if(type==='SALE_COMPONENT'){
+      if(!(delta<0))throw Object.assign(new Error('STOCK_COMPONENT_MOVEMENT_INVALID:'+text(movement.id||movement._key)),{code:'STOCK_COMPONENT_MOVEMENT_INVALID'});
+      sales[code]+=-delta;
+    }else{
+      if(!(delta>0))throw Object.assign(new Error('STOCK_COMPONENT_MOVEMENT_INVALID:'+text(movement.id||movement._key)),{code:'STOCK_COMPONENT_MOVEMENT_INVALID'});
+      restores[code]+=delta;
+    }
+  }
+  for(const spec of CUP_CATALOG_V34)netUsage[spec.code]=sales[spec.code]-restores[spec.code];
+  return Object.freeze({authority:'PRODUCT_STOCK_COMPONENTS',sales:Object.freeze(sales),restores:Object.freeze(restores),netUsage:Object.freeze(netUsage)});
 }
 
-export function reconcileCupClosingAuthorityV34({openingKnown=true,opening={},inbound={},systemClosing={},closing={},theoretical={},reasons={}}={}){
-  if(openingKnown)return reconcileCupShiftV34({opening,inbound,closing,theoretical,reasons});
+export function reconcileCupShiftV34({opening={},inbound={},closing={},theoretical={},reasons={},usageAuthority='LEGACY_CP'}={}){
+  const rowsOut=CUP_CATALOG_V34.map(spec=>{
+    const open=num(opening?.[spec.code]),incoming=num(inbound?.[spec.code]),close=num(closing?.[spec.code]),expected=num(theoretical?.[spec.code]);
+    const physicalUsed=open+incoming-close,expectedClosing=open+incoming-expected,physicalClosing=close,variance=physicalClosing-expectedClosing;
+    return Object.freeze({code:spec.code,name:spec.name,unit:'pcs',opening:open,inbound:incoming,closing:close,expectedClosing,physicalClosing,physicalUsed,theoreticalUsed:expected,variance,reason:text(reasons?.[spec.code]||'')||null});
+  });
+  return Object.freeze({authority:'SHIFT_OPENING',usageAuthority:text(usageAuthority)||'LEGACY_CP',openingKnown:true,rows:Object.freeze(rowsOut),totalVariance:rowsOut.reduce((sum,x)=>sum+Math.abs(x.variance),0)});
+}
+
+export function reconcileCupClosingAuthorityV34({openingKnown=true,opening={},inbound={},systemClosing={},closing={},theoretical={},reasons={},usageAuthority='LEGACY_CP'}={}){
+  if(openingKnown)return reconcileCupShiftV34({opening,inbound,closing,theoretical,reasons,usageAuthority});
   const rowsOut=CUP_CATALOG_V34.map(spec=>{
     const rawPhysical=closing?.[spec.code],hasPhysical=rawPhysical!==null&&rawPhysical!==undefined&&String(rawPhysical).trim()!=='';
-    const expectedClosing=num(systemClosing?.[spec.code]),physicalClosing=hasPhysical?num(rawPhysical):null,variance=hasPhysical?expectedClosing-physicalClosing:null;
+    const expectedClosing=num(systemClosing?.[spec.code]),physicalClosing=hasPhysical?num(rawPhysical):null,variance=hasPhysical?physicalClosing-expectedClosing:null;
     return Object.freeze({code:spec.code,name:spec.name,unit:'pcs',opening:null,inbound:null,closing:physicalClosing,expectedClosing,physicalClosing,physicalUsed:null,theoreticalUsed:num(theoretical?.[spec.code]),variance,reason:text(reasons?.[spec.code]||'')||null});
   });
-  return Object.freeze({authority:'INVENTORY_FALLBACK',openingKnown:false,rows:Object.freeze(rowsOut),totalVariance:rowsOut.reduce((sum,x)=>sum+(x.variance==null?0:Math.abs(x.variance)),0)});
+  return Object.freeze({authority:'INVENTORY_FALLBACK',usageAuthority:text(usageAuthority)||'LEGACY_CP',openingKnown:false,rows:Object.freeze(rowsOut),totalVariance:rowsOut.reduce((sum,x)=>sum+(x.variance==null?0:Math.abs(x.variance)),0)});
 }
 
 export function buildCupOutletOpnameDraftsV34(cupRows=[],closing={}){

@@ -11,7 +11,7 @@ test('P5 Batch-2 category mapping UI uses existing cp codes and is read-only in 
   assert.match(html,/data-v34-cup-category="ES TEH"/);assert.match(html,/READ ONLY/);assert.match(html,/disabled/);
 });
 
-test('P5 Batch-2 costing installer decorates exposed recipeForProduct using existing product cp and registered Inventory V2 cup',async()=>{
+test('Task 10 costing installer keeps genuine Recipe unchanged; cup is no longer injected into Recipe',async()=>{
   const cups=buildCupInventoryRowsV34({ingredients:{ICUP:{name:'Cup 16 Oz',unit:'pcs'}},balances:{ingredients:{ICUP:{}}}});
   const runtime={
     SJInventoryV2:{recipeForProduct:id=>({productId:id,variants:{V:{active:true,components:{TEH:10}}}})},
@@ -20,10 +20,10 @@ test('P5 Batch-2 costing installer decorates exposed recipeForProduct using exis
   };
   const api=installCupProductCostingV34(runtime,{inventoryWorkspace:runtime.__SJ_V32_INVENTORY_WORKSPACE,autoEnhance:false});
   const recipe=runtime.SJInventoryV2.recipeForProduct('P1');
-  assert.equal(recipe.variants.V.components.ICUP,1);assert.equal(recipe._packagingV34.code,'c16');assert.equal(api.installed,true);
+  assert.equal(recipe.variants.V.components.TEH,10);assert.equal(recipe.variants.V.components.ICUP,undefined);assert.equal(recipe._packagingV34,undefined);assert.equal(api.installed,true);
 });
 
-test('P5 Batch-2 preloads cup inventory for costing even when Bahan & Gudang was never opened',async()=>{
+test('P5 Batch-2 still preloads cup inventory for legacy cp observability without mutating Recipe',async()=>{
   const runtime={
     SJInventoryV2:{recipeForProduct:id=>({productId:id,variants:{V:{active:true,components:{TEH:10}}}})},
     Function:()=>()=>[{id:'P1',cp:'c22d'}]
@@ -32,5 +32,6 @@ test('P5 Batch-2 preloads cup inventory for costing even when Bahan & Gudang was
   const api=installCupProductCostingV34(runtime,{inventoryWorkspace:{cupRows:()=>[]},repository,autoEnhance:false});
   await api.ready;
   const recipe=runtime.SJInventoryV2.recipeForProduct('P1');
-  assert.equal(recipe.variants.V.components.CUP,1);
+  assert.equal(recipe.variants.V.components.CUP,undefined);
+  assert.deepEqual({...runtime.__SJ_V34_CUP_SALE_USAGE([{id:'P1',cp:'c22d',q:2}])},{CUP:2});
 });
