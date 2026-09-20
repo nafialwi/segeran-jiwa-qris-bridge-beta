@@ -1,0 +1,111 @@
+{
+  "toko_segeranjiwa_v58": {
+    "global": {
+      "settings": {
+        "storeName": "SEGERAN JIWA UAT",
+        "namaToko": "SEGERAN JIWA UAT"
+      },
+      "security": {
+        "authMode": "LEGACY"
+      },
+      "schema": {
+        "version": "59.4"
+      },
+      "users": {
+        "owneruat": {
+          "nama": "OWNER UAT",
+          "role": "manajemen",
+          "pass": "2468",
+          "active": true
+        },
+        "kasiruat": {
+          "nama": "KASIR UAT",
+          "role": "transaksi",
+          "pass": "1357",
+          "active": true
+        }
+      },
+      "kategori": [
+        "MINUMAN",
+        "SNACK"
+      ],
+      "menu": [
+        {
+          "id": "UAT-RENT-4K",
+          "n": "RENTENGAN UAT",
+          "p": 4000,
+          "kategori": "SNACK",
+          "kat": "SNACK",
+          "active": true,
+          "trackStock": false,
+          "cp": ""
+        },
+        {
+          "id": "UAT-TEH-5K",
+          "n": "ES TEH UAT",
+          "p": 5000,
+          "kategori": "MINUMAN",
+          "kat": "MINUMAN",
+          "active": true,
+          "trackStock": false,
+          "cp": "c22p"
+        }
+      ],
+      "hutang": [],
+      "customers": [],
+      "kasbonKaryawan": [],
+      "employees": [],
+      "lockedMonths": [],
+      "inventory": {},
+      "inventoryV2": {
+        "ingredients": {
+          "UAT_SACHET": {
+            "id": "UAT_SACHET",
+            "name": "SACHET UAT",
+            "nama": "SACHET UAT",
+            "unit": "pcs",
+            "satuan": "pcs",
+            "active": true,
+            "category": "BAHAN UAT",
+            "criticalOutlet": 5,
+            "warningOutlet": 10,
+            "targetOutlet": 40,
+            "minWarehouse": 20,
+            "targetWarehouse": 100
+          }
+        },
+        "balances": {
+          "ingredients": {
+            "UAT_SACHET": {
+              "outlet": 40,
+              "warehouse": 100
+            }
+          }
+        },
+        "costs": {
+          "ingredients": {
+            "UAT_SACHET": {
+              "wac": 1000,
+              "unitCost": 1000,
+              "known": true,
+              "source": "UAT_SEED",
+              "updatedTs": 0
+            }
+          }
+        },
+        "productStockComponents": {
+          "UAT-RENT-4K": {
+            "UAT_SACHET": {
+              "stockItemId": "UAT_SACHET",
+              "qtyPerUnit": 1,
+              "active": true
+            }
+          }
+        },
+        "movements": {},
+        "stockApplications": {},
+        "recipes": {}
+      }
+    }
+  }
+}

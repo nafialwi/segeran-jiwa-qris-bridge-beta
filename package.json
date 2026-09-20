@@ -41,7 +41,9 @@
     "verify:rc01:s10c-r6a": "npm run verify:rc01:s10a2 && node scripts/verify-rc01-s10c.mjs && node scripts/verify-rc01-s10c-r1.mjs && node scripts/verify-rc01-s10c-r5.mjs && node scripts/verify-rc01-s10c-r6a.mjs",
     "verify:rc01:s10c-r6b": "npm run build:ref01 && npm run build:rc01 && node scripts/verify-rc01-s10c-r6a.mjs && node scripts/verify-rc01-s10c-r6b.mjs && npm test",
     "verify:rc01:s10c-r6c": "npm run build:ref01 && npm run build:rc01 && node scripts/verify-rc01-s10c-r6c.mjs && npm test",
-    "verify:rc01:s10c-r6d": "npm run build:ref01 && npm run build:rc01 && node scripts/verify-rc01-s10c-r6d.mjs && npm test"
+    "verify:rc01:s10c-r6d": "npm run build:ref01 && npm run build:rc01 && node scripts/verify-rc01-s10c-r6d.mjs && npm test",
+    "uat:local": "npm run build:ref01 && node scripts/uat-local.mjs",
+    "uat:emulator:smoke": "npx --yes firebase-tools@latest emulators:exec --only database,auth,storage --project demo-segeran-jiwa-uat --config firebase/uat/firebase.json \"node scripts/uat-seed-smoke.mjs\""
   },
   "engines": {
     "node": ">=20"
