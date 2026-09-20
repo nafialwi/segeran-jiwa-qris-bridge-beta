@@ -64,6 +64,36 @@ export function renderCupClosingPanelV34(_cupRows=[],{reconciliation={rows:[]},r
   return `<section class="sj-v34-cup-shift-panel" data-v34-cup-closing-panel><header><div><small>Cup Control · rekonsiliasi fisik</small><h4>Hitung Cup Akhir</h4><p>Expected = Opening + Restock − Expected Usage. Selisih = Physical − Expected. Nilai negatif tidak pernah disimpan sebagai stok.</p></div>${readOnly?'<em>LOCAL QA · READ ONLY</em>':''}</header>${simulationNote}${legacyNote}<div class="sj-v34-cup-close-grid">${fields}</div><aside class="sj-v34-cup-opname-note ok"><b>Authority Cup Control</b><span>Physical Closing menjadi Opening shift berikutnya. Tidak ada Opname atau decrement Cup ke Inventory V2.</span></aside></section>`;
 }
 
+
+function syncCupClosingPanelInPlaceV34(current,html,document){
+  if(!current||!document?.createElement)return false;
+  const shell=document.createElement('div');shell.innerHTML=html;
+  const fresh=shell.querySelector?.('[data-v34-cup-closing-panel]');if(!fresh)return false;
+  for(const spec of CUP_CATALOG_V34){
+    const selector=`[data-v34-cup-close-row="${spec.code}"]`,row=current.querySelector?.(selector),next=fresh.querySelector?.(selector);
+    if(!row||!next)continue;
+    const recon=row.querySelector?.('.sj-v34-cup-recon'),nextRecon=next.querySelector?.('.sj-v34-cup-recon');
+    if(recon&&nextRecon){recon.className=nextRecon.className;recon.innerHTML=nextRecon.innerHTML}
+    const warningSelector=`[data-v34-cup-uncovered="${spec.code}"]`,warning=row.querySelector?.(warningSelector),nextWarning=next.querySelector?.(warningSelector);
+    if(warning&&!nextWarning){
+      if(warning.parentNode)warning.parentNode.removeChild(warning);
+    }else if(!warning&&nextWarning){
+      const reason=row.querySelector?.('.sj-v34-cup-reason');
+      if(reason)reason.insertAdjacentElement?.('beforebegin',nextWarning.cloneNode(true));
+      else row.appendChild(nextWarning.cloneNode(true));
+    }else if(warning&&nextWarning){
+      warning.innerHTML=nextWarning.innerHTML;
+    }
+    const reason=row.querySelector?.('.sj-v34-cup-reason'),nextReason=next.querySelector?.('.sj-v34-cup-reason');
+    if(reason&&!nextReason){
+      if(reason.parentNode)reason.parentNode.removeChild(reason);
+    }else if(!reason&&nextReason){
+      row.appendChild(nextReason.cloneNode(true));
+    }
+  }
+  return true;
+}
+
 export function applyReadOnlyShiftActionStateV34(document,readOnly=false){
   if(!readOnly||!document)return 0;let changed=0;for(const [id,label] of [['sjshift-start-btn','🔒 MULAI SHIFT · READ ONLY'],['sjshift-close-save','🔒 TUTUP SHIFT · READ ONLY']]){const button=document.getElementById?.(id);if(!button)continue;button.disabled=true;button.setAttribute?.('aria-disabled','true');button.dataset.sjV34ReadOnly='true';button.classList?.add?.('sj-v34-readonly-shift-action');button.textContent=label;changed++}return changed;
 }
@@ -120,7 +150,7 @@ export function installCupShiftControlV34(runtime=globalThis){
   async function enhanceClosing(){try{
     closeContext=await computeClose();const modal=document.querySelector?.('#modal-sjshift-close .modal');if(!modal)return false;const oldPanel=modal.querySelector?.('[data-v34-cup-closing-panel]');if(oldPanel?.parentNode)oldPanel.parentNode.removeChild(oldPanel);const save=document.getElementById?.('sjshift-close-save');if(!save)return false;
     save.insertAdjacentHTML?.('beforebegin',renderCupClosingPanelV34(cupRows,{reconciliation:closeContext.reconciliation,readOnly,closingValues:{},openingKnown:closeContext.openingKnown,restockValues:closeContext.restock}));
-    if(!modal.__sjV34CupClosingBound){modal.__sjV34CupClosingBound=true;modal.addEventListener?.('input',async e=>{if(!e.target?.matches?.('[data-v34-cup-closing],[data-v34-cup-restock]'))return;try{const values=collectInputs(document,'data-v34-cup-closing'),restock=collectCupOptionalCountValuesV34(collectInputs(document,'data-v34-cup-restock'));if(readOnly)localSimulation.inboundCounts={...restock};closeContext=await computeClose(values,restock);const current=modal.querySelector?.('[data-v34-cup-closing-panel]');if(current)current.outerHTML=renderCupClosingPanelV34(cupRows,{reconciliation:closeContext.reconciliation,readOnly,closingValues:values,openingKnown:closeContext.openingKnown,restockValues:restock});}catch(_){}})}applyReadOnlyShiftActionStateV34(document,readOnly);return true
+    if(!modal.__sjV34CupClosingBound){modal.__sjV34CupClosingBound=true;modal.addEventListener?.('input',async e=>{if(!e.target?.matches?.('[data-v34-cup-closing],[data-v34-cup-restock]'))return;try{const values=collectInputs(document,'data-v34-cup-closing'),restock=collectCupOptionalCountValuesV34(collectInputs(document,'data-v34-cup-restock'));if(readOnly)localSimulation.inboundCounts={...restock};const seq=(modal.__sjV34CupClosingInputSeq||0)+1;modal.__sjV34CupClosingInputSeq=seq;const nextContext=await computeClose(values,restock);if(seq!==modal.__sjV34CupClosingInputSeq)return;closeContext=nextContext;const current=modal.querySelector?.('[data-v34-cup-closing-panel]');if(current)syncCupClosingPanelInPlaceV34(current,renderCupClosingPanelV34(cupRows,{reconciliation:closeContext.reconciliation,readOnly,closingValues:values,openingKnown:closeContext.openingKnown,restockValues:restock}),document);}catch(_){}})}applyReadOnlyShiftActionStateV34(document,readOnly);return true
   }catch(_){return false}}
 
   if(typeof shift.renderWithDay==='function')shift.renderWithDay=function(...args){dayRows=args?.[1]||{};const out=originals.renderWithDay(...args);Promise.resolve().then(enhanceOpening);return out};
