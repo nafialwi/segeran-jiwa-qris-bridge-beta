@@ -5,12 +5,12 @@ import { renderCupInventorySectionV34 } from '../src/ui/inventory-workspace-v32.
 import { renderCupOpeningPanelV34, renderCupClosingPanelV34 } from '../src/ui/cup-shift-control-v34.js';
 import { renderCategoryCupMappingV34 } from '../src/ui/cup-product-costing-v34.js';
 
-test('LEGACY-CUP-01A retains Cup Paper 10 Oz in Cup Control master but outside sale mapping',()=>{
+test('LEGACY-CUP-01A retains Cup Paper 10 Oz as valid per-product Cup Control packaging',()=>{
   assert.deepEqual(CUP_CATALOG_V34.map(x=>x.code),['c10','c10p','c16','c22p','c22d','c22o']);
   const paper=CUP_CATALOG_V34.find(x=>x.code==='c10p');
   assert.equal(paper?.name,'Cup Paper 10 Oz');
   assert.equal(paper?.unit,'pcs');
-  assert.equal(paper?.saleMapping,false);
+  assert.notEqual(paper?.saleMapping,false);
   assert.equal(isCupIngredientMasterV34({name:'Paper Cup 10 Oz'}),true);
   assert.equal(isCupIngredientMasterV34({name:'Gelas Paper 10 Oz'}),true);
 });

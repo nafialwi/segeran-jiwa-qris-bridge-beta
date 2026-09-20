@@ -80,12 +80,12 @@ test('Task 6 summary is compact for one or multiple components',()=>{
   };
   assert.equal(summarizeProductStockComponents(
     {ING1:{stockItemId:'ING1',qtyPerUnit:1,active:true}},items
-  ),'Sedotan ×1');
+  ),'Sedotan ×1 pcs');
   assert.equal(summarizeProductStockComponents({
     ING1:{stockItemId:'ING1',qtyPerUnit:1,active:true},
     ING2:{stockItemId:'ING2',qtyPerUnit:1,active:true},
     ING3:{stockItemId:'ING3',qtyPerUnit:1,active:true}
-  },items),'3 item stok');
+  },items),'3 komponen');
 });
 
 test('Owner can save multiple Item Stok rows only through dedicated writer',async()=>{
@@ -104,7 +104,7 @@ test('Owner can save multiple Item Stok rows only through dedicated writer',asyn
   });
   assert.equal(ui.management(),true);
   const model=await ui.openProduct('P1');
-  assert.equal(model.summary,'Sedotan ×1');
+  assert.equal(model.summary,'Sedotan ×1 pcs');
   const result=await ui.saveProduct('P1',[
     {stockItemId:'ING1',qtyPerUnit:1},{stockItemId:'ING2',qtyPerUnit:2}
   ]);
@@ -136,9 +136,10 @@ test('Cashier has no Product Stock Component configuration authority',async()=>{
 
 test('Task 6 UI source owns presentation but no direct Firebase mutation or bottom nav',()=>{
   const source=readFileSync(new URL('../src/ui/product-stock-components-ui.js',import.meta.url),'utf8');
-  for(const copy of ['data-sj-stock-components','PEMAKAIAN STOK','Atur Pemakaian Stok','Item Stok']){
+  for(const copy of ['data-sj-stock-components','PEMAKAIAN STOK','data-sj-stock-edit','Item Stok']){
     assert.match(source,new RegExp(copy));
   }
+  assert.match(source,/Atur komponen yang selalu terpakai saat produk terjual/);
   assert.doesNotMatch(source,/\.(?:set|update|transaction|remove)\s*\(/);
   assert.doesNotMatch(source,/bottom[-_ ]?nav/i);
 });

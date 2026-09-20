@@ -17,7 +17,7 @@ function selectBody(html,id){
 test('LEGACY-CUP-01B adds a safe product-cup UI compat entry without Firebase access',()=>{
  assert.equal(fs.existsSync(compatPath),true,'product cup UI compat source must exist');
  const src=read(compatPath);
- for(const token of ['SJLegacyCup01BProductCupUI','Cup Paper 10 Oz','Kemasan / Jenis Cup','Kategori Produk','Harga Jual','data-sj-product-cup-value'])assert.match(src,new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+ for(const token of ['SJLegacyCup01BProductCupUI','Cup Paper 10 Oz','Kemasan / Jenis Cup','Kategori Produk','Harga Jual','sj-product-cup-select','data-sj-product-cup-summary'])assert.match(src,new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
  assert.doesNotMatch(src,/\b(?:db|database|firebase)\s*\.\s*ref\s*\(/i);
  assert.doesNotMatch(src,/\.(?:set|update|remove|transaction)\s*\(/);
 });
