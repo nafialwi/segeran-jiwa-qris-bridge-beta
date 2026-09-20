@@ -5,9 +5,9 @@ import {
   cupInboundFromMovementsV34,reconcileCupShiftV34,decorateRecipeWithCupV34,buildCupOutletOpnameDraftsV34
 } from '../src/domain/packaging-cup-v34.js';
 
-test('CUP-CONTROL-V1 defines six sale packaging Cup types including Paper 10 Oz',()=>{
+test('CUP-CONTROL-V1 defines six Cup types while Paper 10 Oz stays per-product only for category defaults',()=>{
   assert.deepEqual(CUP_CATALOG_V34.map(x=>x.code),['c10','c10p','c16','c22p','c22d','c22o']);
-  assert.equal(cupSpecByCodeV34('c10p').name,'Cup Paper 10 Oz');assert.notEqual(cupSpecByCodeV34('c10p').saleMapping,false);assert.ok(CUP_CATALOG_V34.every(x=>x.unit==='pcs'));
+  assert.equal(cupSpecByCodeV34('c10p').name,'Cup Paper 10 Oz');assert.equal(cupSpecByCodeV34('c10p').categoryDefault,false);assert.ok(CUP_CATALOG_V34.every(x=>x.unit==='pcs'));
 });
 
 test('CUP-CONTROL-V1 can read legacy Cup master/cost metadata without making it quantity authority',()=>{

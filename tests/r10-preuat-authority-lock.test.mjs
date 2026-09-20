@@ -39,9 +39,10 @@ test('PU-01 archived/inactive Item Stok cannot become an active Product Stock Co
   );
 });
 
-test('PU-01 Cup Paper 10 Oz is a valid Cup Control sale packaging option',()=>{
+test('PU-01 Cup Paper 10 Oz remains valid per-product packaging but is excluded from broad category defaults',()=>{
   const paper=CUP_CATALOG_V34.find(row=>row.code==='c10p');
   assert.ok(paper);
+  assert.equal(paper.categoryDefault,false);
   assert.notEqual(paper.saleMapping,false);
 });
 

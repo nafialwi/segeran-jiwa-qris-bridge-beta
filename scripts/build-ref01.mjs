@@ -149,6 +149,30 @@ function patchBw02(legacy){
   legacy=patchBw02CostingRecoveryTimer(legacy);
   return legacy;
 }
+function patchPu02CupConvergence(legacy){
+  legacy=replaceOnce(
+    legacy,
+    "function sjRenderStockModule(tab){SJ_STOCK_TAB=tab||SJ_STOCK_TAB;",
+    "function sjRenderStockModule(tab){/* PU02_CUP_CONVERGENCE */if(tab==='gelas'){showToast('Cup dikelola melalui Buka/Tutup Shift.','info');tab='produk'}if(SJ_STOCK_TAB==='gelas')SJ_STOCK_TAB='produk';SJ_STOCK_TAB=tab||SJ_STOCK_TAB;",
+    'PU02_LEGACY_GELAS_REDIRECT'
+  );
+
+  const gelasLabel='🥤 GELAS</button>',gelasEnd=legacy.indexOf(gelasLabel);
+  if(gelasEnd<0)throw new Error('PU02_LEGACY_GELAS_TAB_ANCHOR_MISSING');
+  const gelasStart=legacy.lastIndexOf('<button',gelasEnd);
+  if(gelasStart<0)throw new Error('PU02_LEGACY_GELAS_TAB_START_MISSING');
+  legacy=legacy.slice(0,gelasStart)+legacy.slice(gelasEnd+gelasLabel.length);
+
+  const refundLedger=legacy.lastIndexOf("type:'REFUND',refId:refid");
+  if(refundLedger<0)throw new Error('PU02_REFUND_LEDGER_ANCHOR_MISSING');
+  const refundCounters=legacy.lastIndexOf("Object.keys(sdAgg).forEach",refundLedger);
+  const refundStock=legacy.indexOf("Object.values(stockAgg).forEach",refundCounters);
+  if(refundCounters<0||refundStock<0||refundStock>refundLedger)throw new Error('PU02_REFUND_CUP_CONSUMED_ANCHOR_MISSING');
+  const refundCounterReplacement="Object.keys(sdAgg).forEach(id=>u[activeDate+'/sd/'+id+'/q']=sjServerInc(-sdAgg[id]));/* PU02_REFUND_CUP_CONSUMED: refunded Cup tetap dianggap terpakai; CUP-CONTROL-V1 derives physical usage from transaction snapshots. */";
+  legacy=legacy.slice(0,refundCounters)+refundCounterReplacement+legacy.slice(refundStock);
+  return legacy;
+}
+
 function patchR9Lic01Uat7(legacy){
   legacy=replaceOnce(legacy,
     "}catch(e){if(reserved){try{await controlRef.transaction(cur=>{if(cur&&String(cur.currentSessionId||'')===String(sid)&&String(cur.status||'')==='CLOSING')return oldControl;return})}catch(_){}}sjSaveError('SHIFT_SESSION_CLOSE',e);if(e.code==='SHIFT_NOTE_REQUIRED')alert(e.message);else alert(sjFriendlyError(e))}finally{this.busy=false;sjSetBusy(btn,false)}",
@@ -235,7 +259,8 @@ try{
     const withProductCup=patchLegacyProductCupSelects(withSync);
     const withBw02=patchBw02(withProductCup);
     const withR9=patchR9Lic01Uat7(withBw02);
-    const candidate=withR9.replace(/<\/body>/i,`${PRODUCT_CUP_UI_ENTRY}\n${R9_CLOSING_ENTRY}\n${DASHBOARD_FAST_P1_ENTRY}\n${R6D_SALES_RECURSION_ENTRY}\n${STOCK_COMPONENT_CONTEXT_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n${BW02_ENTRY}\n${EMG_D1_P1_CONFIG_ENTRY}\n${EMG_D1_P1_ENTRY}\n</body>`);
+    const withPu02=patchPu02CupConvergence(withR9);
+    const candidate=withPu02.replace(/<\/body>/i,`${PRODUCT_CUP_UI_ENTRY}\n${R9_CLOSING_ENTRY}\n${DASHBOARD_FAST_P1_ENTRY}\n${R6D_SALES_RECURSION_ENTRY}\n${STOCK_COMPONENT_CONTEXT_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n${BW02_ENTRY}\n${EMG_D1_P1_CONFIG_ENTRY}\n${EMG_D1_P1_ENTRY}\n</body>`);
     writeFileSync(join(staging,'index.html'),candidate);
     writeFileSync(join(staging,'.ref01-build-fingerprint'),`${fp}\n`);
     rmSync(OUT,{recursive:true,force:true});
