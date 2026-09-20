@@ -20,8 +20,8 @@ This branch is the isolated pre-UAT stabilization line for Segeran Jiwa POS Lega
 | PU-04 Product UX Convergence | COMPLETE | `f2d20755c2f1` | Edit Product / Cup / Product Stock Components presentation convergence |
 | PU-05 Inventory Convergence | COMPLETE | `89763c004306` | Item Stok visible navigation converged to V3 presentation; legacy writer remains internal only |
 | PU-06 Presentation Convergence | COMPLETE | `a8ee91a75bd6` | modal hierarchy, z-index, focus restoration, scroll locking, mobile full-height consistency |
-| PU-07 Business Invariants | NEXT | - | partial refund, history/mapping invariants, shortage policy, overlap/stale editor |
-| PU-08 Observability & Recovery | PENDING | - | stock sync health, pending/shortage visibility, safe retry, kill switch |
+| PU-07 Business Invariants | COMPLETE | `1e09b8db1404` | transaction identity, refund identity, partial refund mapping, shortage terminality, inactive-item preflight, stale editor safety |
+| PU-08 Observability & Recovery | NEXT | - | stock sync health, pending/shortage visibility, safe retry, kill switch |
 | PU-09 Safe UAT Environment | PENDING | - | isolated backend, UAT banner, no production writes |
 | PU-10 Final Engineering Gate | PENDING | - | full regression, build, Rules emulator, SC02/SC04, frozen hashes, PR readiness |
 | PU-11 Human UAT | PENDING | - | mobile/desktop, Owner/Cashier, sale/refund/void/shift |
@@ -104,16 +104,62 @@ Frozen authorities:
 
 Generated dist-ref01 output was restored/cleaned after verification and is not part of the PU-06 source commit.
 
+## PU-07 result
+
+Business invariants are now explicitly fail-closed across sale application and correction recovery:
+
+- An existing Stock Application cannot silently accept a different sale-line fingerprint under the same shift/transaction identity.
+- A reused refund correction ID cannot silently accept a conflicting refund payload; new refund restores carry a deterministic request fingerprint.
+- Refund corrections without an original lineIndex preserve that absence so a unique product can be resolved against the immutable historical sale snapshot, while duplicate-product ambiguity still fails closed.
+- A refund that claims physical stock return but contains no refund lines cannot be recorded as a successful zero-effect stock restore.
+- Active Product Stock Component mappings now validate the mapped Item Stok master before the financial sale owner runs; archived/inactive/missing/Cup items are blocked before sale commit.
+- Shortage remains terminal for the historical sale application; later replenishment does not cause a delayed automatic deduction.
+- A full VOID after partial refund restores only the remaining historical allocation and never over-restores.
+- A stale Product Stock Components editor cannot save an Item Stok that was archived after the editor loaded because save re-reads and validates the current master.
+
+## PU-07 verification evidence
+
+Focused business-invariant contract:
+
+- 8 tests
+- 8 PASS
+- 0 FAIL
+
+Adjacent stock/runtime/correction regression:
+
+- 60 tests
+- 60 PASS
+- 0 FAIL
+
+Full serial regression:
+
+- 774 tests
+- 774 PASS
+- 0 FAIL
+
+Build:
+
+- npm run build:ref01 PASS
+- REF01 candidate SHA-256: 320412df473905ae59aa9fe9c85f1c8acae20e0a4be8471c572b3d2fc607c5cf
+
+Frozen authorities:
+
+- src/ref01-entry.js PASS
+- src/app/rc01-runtime-loading-hardening.js PASS
+- baseline/legacy-v1.0.40.html PASS
+
+Generated audit and dist outputs produced by the regression chain were restored/cleaned after verification and are not part of the PU-07 source commit.
+
 ## Engineering progress
 
 Mandatory engineering checkpoints before Human UAT: PU-01 through PU-10.
 
-- Completed: 6 / 10
-- Pre-UAT engineering progress: **60%**
+- Completed: 7 / 10
+- Pre-UAT engineering progress: **70%**
 - Human UAT: not started
 - Production cutover: not started
 
-The R10 transaction engine, exactly-once stock application, refund/void restoration, Firebase Rules candidate/emulator, Cup Control foundation, and prior core regression work remain completed from the R10 line. The remaining work is business-invariant hardening, operational observability/recovery, safe UAT isolation, and final release gating.
+The R10 transaction engine, exactly-once stock application, refund/void restoration, Firebase Rules candidate/emulator, Cup Control foundation, prior core regression work, and pre-UAT business-invariant hardening are complete. The remaining work is operational observability/recovery, safe UAT isolation, and final release gating.
 
 ## Safety contract
 
@@ -128,6 +174,6 @@ Until Human UAT is accepted and explicit production approval is given:
 
 ## Resume point
 
-Continue from **PU-07 — Business Invariants**.
+Continue from **PU-08 — Observability & Recovery**.
 
-Do not repeat PU-01 through PU-06 unless a regression test proves a defect in those completed checkpoints.
+Do not repeat PU-01 through PU-07 unless a regression test proves a defect in those completed checkpoints.
