@@ -21,8 +21,8 @@ This branch is the isolated pre-UAT stabilization line for Segeran Jiwa POS Lega
 | PU-05 Inventory Convergence | COMPLETE | `89763c004306` | Item Stok visible navigation converged to V3 presentation; legacy writer remains internal only |
 | PU-06 Presentation Convergence | COMPLETE | `a8ee91a75bd6` | modal hierarchy, z-index, focus restoration, scroll locking, mobile full-height consistency |
 | PU-07 Business Invariants | COMPLETE | `1e09b8db1404` | transaction identity, refund identity, partial refund mapping, shortage terminality, inactive-item preflight, stale editor safety |
-| PU-08 Observability & Recovery | NEXT | - | stock sync health, pending/shortage visibility, safe retry, kill switch |
-| PU-09 Safe UAT Environment | PENDING | - | isolated backend, UAT banner, no production writes |
+| PU-08 Observability & Recovery | COMPLETE | `bd7c08bfe8bf` | stock sync health, pending/shortage visibility, safe stock-only retry, device-local Owner kill switch |
+| PU-09 Safe UAT Environment | NEXT | - | isolated backend, UAT banner, no production writes |
 | PU-10 Final Engineering Gate | PENDING | - | full regression, build, Rules emulator, SC02/SC04, frozen hashes, PR readiness |
 | PU-11 Human UAT | PENDING | - | mobile/desktop, Owner/Cashier, sale/refund/void/shift |
 | PU-12 UAT Remediation | CONDITIONAL | - | only if Human UAT finds defects |
@@ -150,16 +150,64 @@ Frozen authorities:
 
 Generated audit and dist outputs produced by the regression chain were restored/cleaned after verification and are not part of the PU-07 source commit.
 
+## PU-08 result
+
+Stock-component synchronization now has explicit observable and recoverable operational state without introducing a second database authority:
+
+- The R10 stock runtime exposes a read-only health snapshot with enabled state, pending count, shortage count, pending kind totals, latest error code, and control reason.
+- Failed sale-component application persists recoverable stock-only work with attempt/error evidence; retry never reruns the financial sale owner.
+- Failed refund/VOID stock restoration remains recoverable after the financial correction has committed; retry invokes only the stock restore path and never repeats the financial mutation.
+- Shortage is visible as an attention condition but remains terminal/non-retryable, preserving the PU-07 shortage invariant.
+- An Owner/manajemen-only kill switch can stop new mapped Product Stock Component sales before the financial sale owner is invoked.
+- The kill switch does not block products that have no Product Stock Components mapping.
+- While the switch is disabled, already-committed financial corrections can queue their stock restoration safely for a later stock-only retry.
+- Inventory V3 Ringkasan displays Sinkronisasi Pemakaian Stok state, pending/stock-kurang counts, safe retry, and enable/disable controls without direct Firebase mutation from the UI.
+- Recovery state and the kill-switch control are persisted through the existing browser local-store boundary. The kill switch is intentionally **device-local**, not a global production/database switch.
+- No new polling loop, permanent transaction listener, production writer, or parallel stock authority was introduced.
+
+## PU-08 verification evidence
+
+Focused PU-08 observability/recovery contract:
+
+- 9 tests
+- 9 PASS
+- 0 FAIL
+
+Focused + adjacent regression:
+
+- 65 tests
+- 65 PASS
+- 0 FAIL
+
+Full serial regression:
+
+- 783 tests
+- 783 PASS
+- 0 FAIL
+
+Build:
+
+- npm run build:ref01 PASS
+- REF01 candidate SHA-256: 320412df473905ae59aa9fe9c85f1c8acae20e0a4be8471c572b3d2fc607c5cf
+
+Frozen authorities:
+
+- src/ref01-entry.js PASS
+- src/app/rc01-runtime-loading-hardening.js PASS
+- baseline/legacy-v1.0.40.html PASS
+
+Generated audit/dist outputs produced by verification were restored/cleaned before the checkpoint commit.
+
 ## Engineering progress
 
 Mandatory engineering checkpoints before Human UAT: PU-01 through PU-10.
 
-- Completed: 7 / 10
-- Pre-UAT engineering progress: **70%**
+- Completed: 8 / 10
+- Pre-UAT engineering progress: **80%**
 - Human UAT: not started
 - Production cutover: not started
 
-The R10 transaction engine, exactly-once stock application, refund/void restoration, Firebase Rules candidate/emulator, Cup Control foundation, prior core regression work, and pre-UAT business-invariant hardening are complete. The remaining work is operational observability/recovery, safe UAT isolation, and final release gating.
+The R10 transaction engine, exactly-once stock application, refund/void restoration, Firebase Rules candidate/emulator, Cup Control foundation, prior core regression work, business-invariant hardening, and stock-sync observability/recovery are complete. The remaining engineering work is safe UAT isolation and the final release gate.
 
 ## Safety contract
 
@@ -174,6 +222,6 @@ Until Human UAT is accepted and explicit production approval is given:
 
 ## Resume point
 
-Continue from **PU-08 — Observability & Recovery**.
+Continue from **PU-09 — Safe UAT Environment**.
 
-Do not repeat PU-01 through PU-07 unless a regression test proves a defect in those completed checkpoints.
+Do not repeat PU-01 through PU-08 unless a regression test proves a defect in those completed checkpoints.
