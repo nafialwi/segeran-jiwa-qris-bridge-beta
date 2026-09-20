@@ -95,6 +95,6 @@ test('INV01 workspace normal load no longer calls full inventoryV2 root',()=>{
   assert.equal(src.includes('repository.readInventoryV2()'),false);
   assert.match(src,/repository\.readWorkspaceState\(\)/);
   assert.match(src,/repository\.readRecentMovements\(\{limit:120\}\)/);
-  assert.match(src,/repository\.readMovements\(\)/);
+  assert.doesNotMatch(src,/repository\.readMovements\(\)/,'normal workspace no longer needs the full movements collection after CUP-CONTROL-V1 superseded the old reconciliation tab');
   assert.match(src,/__SJ_INV01_READ_DIAGNOSTICS/);
 });

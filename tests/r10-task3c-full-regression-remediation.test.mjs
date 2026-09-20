@@ -2,53 +2,46 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const read=rel=>fs.readFileSync(new URL(`../${rel}`,import.meta.url),'utf8');
+const read=rel=>fs.readFileSync(new URL('../'+rel,import.meta.url),'utf8');
 
-test('R10 reconciliation domain does not trip legacy RTDB mutation token gates',()=>{
-  const src=read('src/domain/cup-reconciliation-v1.js');
-
-  for(const token of ['.set(','.update(','.transaction(','.remove(']){
-    assert.equal(
-      src.includes(token),
-      false,
-      `reconciliation domain must not contain legacy mutation token ${token}`
-    );
-  }
-
-  assert.match(
-    src,
-    /Map\.prototype\.set\.call\(/,
-    'in-memory Map writes must remain explicit and non-RTDB'
-  );
-});
-
-test('R10 reconciliation date loading does not share the stock-search input listener',()=>{
-  const src=read('src/ui/inventory-workspace-v32.js');
-
-  const inputHandler=
-    src.match(/addEventListener\?\.\('input',[\s\S]{0,500}?\}\);/i)?.[0]||'';
-
-  assert.match(inputHandler,/data-v32-inventory-search/);
-  assert.match(inputHandler,/updateStockList\(/);
-  assert.doesNotMatch(inputHandler,/data-r10-load-date/);
-  assert.doesNotMatch(inputHandler,/render\(host\)/);
-
-  assert.match(
-    src,
-    /addEventListener\?\.\('change',[\s\S]{0,700}?data-r10-load-date/
-  );
-});
-
-test('R10 inventory navigation keeps five tabs on one mobile grid row',()=>{
+test('Checkpoint C removes superseded Inventory-backed Cup reconciliation runtime',()=>{
+  const workspace=read('src/ui/inventory-workspace-v32.js');
   const css=read('src/ui/ref01.css');
+  assert.doesNotMatch(workspace,/buildCupReconciliationGroups|renderCupReconciliationV1|data-r10-recon|data-r10-opname-ref/);
+  assert.doesNotMatch(css,/\.sj-r10-/);
+  assert.equal(fs.existsSync(new URL('../src/domain/cup-reconciliation-v1.js',import.meta.url)),false);
+  assert.equal(fs.existsSync(new URL('../src/ui/cup-reconciliation-v1.js',import.meta.url)),false);
+});
 
-  assert.match(
-    css,
-    /\.sj-v32-inv-nav\{[^}]*grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/
-  );
+test('Checkpoint C keeps Cup Control separate from Inventory V2 quantity authority',()=>{
+  const shift=read('src/ui/cup-shift-control-v34.js');
+  const packaging=read('src/domain/packaging-cup-v34.js');
+  assert.match(shift,/authority:'CUP_CONTROL'/);
+  assert.match(shift,/theoreticalCupUsageV34/);
+  assert.doesNotMatch(shift,/readInventoryV2|readIngredientBalances|cupStockComponentUsageV34/);
+  assert.match(packaging,/Inventory V2 movements are no longer Cup Control authority/);
+  assert.match(packaging,/never translated into an Inventory V2 Opname draft/);
+});
 
-  assert.match(
-    css,
-    /\.sj-v32-inv-nav button\{[^}]*min-width:0/
-  );
+test('Checkpoint C removes legacy cp from Recipe stock reservation while keeping Product Stock Components runtime',()=>{
+  const build=read('scripts/build-ref01.mjs');
+  const runtime=read('src/compat/legacy-stock-components-runtime.js');
+  const start=build.indexOf('function patchBw02RecipeSaleIdentity');
+  const end=build.indexOf('function patchBw02CostingSaleIdentity');
+  const recipeBlock=build.slice(start,end);
+  assert.ok(start>=0&&end>start);
+  assert.match(recipeBlock,/reserveRecipeConsumption\(snapshot\)/);
+  assert.doesNotMatch(recipeBlock,/cupUsage|__SJ_V34_CUP_SALE_USAGE|cpMapped/);
+  assert.match(runtime,/readProductStockComponents/);
+  assert.match(runtime,/applyCompletedSale/);
+  assert.match(runtime,/STOCK_COMPONENT_RECIPE_OVERLAP/);
+});
+
+test('Checkpoint C Inventory workspace normal load stays bandwidth-bounded',()=>{
+  const src=read('src/ui/inventory-workspace-v32.js');
+  assert.doesNotMatch(src,/repository\.readInventoryV2\(\)/);
+  assert.match(src,/repository\.readWorkspaceState\(\)/);
+  assert.match(src,/repository\.readRecentMovements\(\{limit:120\}\)/);
+  assert.doesNotMatch(src,/repository\.readMovements\(\)/);
+  assert.match(src,/__SJ_INV01_READ_DIAGNOSTICS/);
 });

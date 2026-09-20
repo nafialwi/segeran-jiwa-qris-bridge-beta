@@ -1,37 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCupInventoryRowsV34 } from '../src/domain/packaging-cup-v34.js';
-import { renderCategoryCupMappingV34, installCupProductCostingV34 } from '../src/ui/cup-product-costing-v34.js';
+import { renderCategoryCupMappingV34, installCupProductCostingV34, cupSaleConsumptionV34 } from '../src/ui/cup-product-costing-v34.js';
 
-test('P5 Batch-2 category mapping UI uses existing cp codes and is read-only in LOCAL QA',()=>{
-  const html=renderCategoryCupMappingV34(['ES TEH','ES KEKINIAN'],[{id:'P1',c:'ES TEH',cp:'c22d'}],{readOnly:true});
-  assert.match(html,/Mapping Cup per Kategori/);assert.match(html,/Cup 10 Oz/);assert.match(html,/Cup 22 Oz Datar Polos/);
-  assert.doesNotMatch(html,/Cup Paper 10 Oz/,'Cup Paper 10 Oz must stay outside sale mapping until explicitly mapped later');
-  assert.doesNotMatch(html,/value="c10p"/);
-  assert.match(html,/data-v34-cup-category="ES TEH"/);assert.match(html,/READ ONLY/);assert.match(html,/disabled/);
+test('CUP-CONTROL-V1 category mapping uses cp codes, excludes Paper 10 Oz, and states Inventory decoupling',()=>{
+  const html=renderCategoryCupMappingV34(['ES TEH'],[{id:'P1',c:'ES TEH',cp:'c22d'}],{readOnly:true});
+  assert.match(html,/Mapping Cup per Kategori/);assert.match(html,/Cup 22 Oz Datar/);assert.doesNotMatch(html,/Cup Paper 10 Oz/);assert.doesNotMatch(html,/value="c10p"/);assert.match(html,/tidak mengurangi Inventory V2/);assert.match(html,/READ ONLY/);
 });
 
-test('Task 10 costing installer keeps genuine Recipe unchanged; cup is no longer injected into Recipe',async()=>{
-  const cups=buildCupInventoryRowsV34({ingredients:{ICUP:{name:'Cup 16 Oz',unit:'pcs'}},balances:{ingredients:{ICUP:{}}}});
-  const runtime={
-    SJInventoryV2:{recipeForProduct:id=>({productId:id,variants:{V:{active:true,components:{TEH:10}}}})},
-    __SJ_V32_INVENTORY_WORKSPACE:{cupRows:()=>cups},
-    Function:()=>()=>[{id:'P1',n:'ES TEH',c:'MINUMAN',cp:'c16'}]
-  };
-  const api=installCupProductCostingV34(runtime,{inventoryWorkspace:runtime.__SJ_V32_INVENTORY_WORKSPACE,autoEnhance:false});
-  const recipe=runtime.SJInventoryV2.recipeForProduct('P1');
-  assert.equal(recipe.variants.V.components.TEH,10);assert.equal(recipe.variants.V.components.ICUP,undefined);assert.equal(recipe._packagingV34,undefined);assert.equal(api.installed,true);
+test('CUP-CONTROL-V1 sale usage is keyed by Cup Control codes and does not mutate recipe authority',async()=>{
+  const original=id=>({productId:id,variants:{V:{active:true,components:{TEH:10}}}});
+  const runtime={SJInventoryV2:{recipeForProduct:original},Function};
+  const repository={async readIngredientMasters(){return{ICUP:{id:'ICUP',name:'Cup 16 Oz'}}},async readIngredientCosts(){return{ICUP:{wac:450,source:'PURCHASE'}}}};
+  const api=installCupProductCostingV34(runtime,{repository,autoEnhance:false});await api.ready;
+  assert.equal(runtime.SJInventoryV2.recipeForProduct,original);
+  assert.deepEqual({...api.usage([{id:'P1',cp:'c16',q:3}])},{c10:0,c10p:0,c16:3,c22p:0,c22d:0,c22o:0});
+  assert.equal(api.costForCode('c16').unitCost,450);assert.equal(api.costForCode('c16').inventoryTracked,false);
 });
 
-test('P5 Batch-2 still preloads cup inventory for legacy cp observability without mutating Recipe',async()=>{
-  const runtime={
-    SJInventoryV2:{recipeForProduct:id=>({productId:id,variants:{V:{active:true,components:{TEH:10}}}})},
-    Function:()=>()=>[{id:'P1',cp:'c22d'}]
-  };
-  const repository={readInventoryV2:async()=>({ingredients:{CUP:{name:'Cup 22 Oz Datar',unit:'pcs'}},balances:{ingredients:{CUP:{}}}})};
-  const api=installCupProductCostingV34(runtime,{inventoryWorkspace:{cupRows:()=>[]},repository,autoEnhance:false});
-  await api.ready;
-  const recipe=runtime.SJInventoryV2.recipeForProduct('P1');
-  assert.equal(recipe.variants.V.components.CUP,undefined);
-  assert.deepEqual({...runtime.__SJ_V34_CUP_SALE_USAGE([{id:'P1',cp:'c22d',q:2}])},{CUP:2});
+test('CUP-CONTROL-V1 Cup costing reads only ingredient masters and costs, never full Inventory V2 balances',async()=>{
+  let masters=0,costs=0,full=0;
+  const runtime={Function};
+  const repository={async readIngredientMasters(){masters++;return{CUP:{id:'CUP',name:'Cup 22 Oz Datar'}}},async readIngredientCosts(){costs++;return{CUP:{wac:500,source:'PURCHASE'}}},async readInventoryV2(){full++;throw new Error('forbidden')}};
+  const api=installCupProductCostingV34(runtime,{repository,autoEnhance:false});await api.ready;
+  assert.equal(masters,1);assert.equal(costs,1);assert.equal(full,0);assert.equal(api.costForCode('c22d').unitCost,500);
+});
+
+test('CUP-CONTROL-V1 cart usage ignores unknown/non-cup mappings',()=>{
+  const usage=cupSaleConsumptionV34([{cp:'c16',q:2},{cp:'none',q:99},{q:2}]);assert.equal(usage.c16,2);assert.equal(Object.values(usage).reduce((a,b)=>a+b,0),2);
 });

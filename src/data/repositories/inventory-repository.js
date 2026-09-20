@@ -36,6 +36,7 @@ export function createInventoryRepository({db,diagnostics=null,consumer='invento
   function readInventoryV2(){return read('inventoryV2Full',posPath('global','inventoryV2'))}
   function readMovements(){return read('movementsFull',posPath('global','inventoryV2','movements'))}
   function readIngredients(){return read('ingredients',posPath('global','inventoryV2','ingredients'))}
+  function readIngredientMasters(){return read('ingredientMasters',posPath('global','inventoryV2','ingredients'))}
   function readIngredientBalances(){return read('ingredientBalances',posPath('global','inventoryV2','balances','ingredients'))}
   function readIngredientCosts(){return read('ingredientCosts',posPath('global','inventoryV2','costs','ingredients'))}
   function readProductWarehouse(){return read('productWarehouse',posPath('global','inventoryV2','productWarehouse'))}
