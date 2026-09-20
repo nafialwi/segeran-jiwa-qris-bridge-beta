@@ -152,8 +152,7 @@ export function installProductStockComponentsUi(runtime=globalThis,{document=run
   function openStockItems(){
     assertManager();
     const workspace=runtime?.__SJ_V32_INVENTORY_WORKSPACE;
-    if(typeof workspace?.legacyOpen==='function')return workspace.legacyOpen('ingredients');
-    if(typeof runtime?.SJInventoryV2?.open==='function')return runtime.SJInventoryV2.open('ingredients');
+    if(typeof workspace?.openStockItems==='function')return workspace.openStockItems();
     fail('STOCK_ITEM_MASTER_UNAVAILABLE');
   }
 

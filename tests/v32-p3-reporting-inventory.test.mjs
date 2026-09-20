@@ -81,7 +81,7 @@ test('P3 Bahan & Gudang workspace has four local tabs and action-oriented stock 
   const activity=mod.renderInventoryWorkspaceV32({tab:'activity',rows,recentMovements:[]});
   for(const label of ['Catat Pembelian','Pindahkan Stok','Cek Stok Fisik','Aktivitas Terakhir'])assert.match(activity,new RegExp(label));
   const more=mod.renderInventoryWorkspaceV32({tab:'more',rows,recentMovements:[]});
-  for(const label of ['Resep Produk','Riwayat Stok','Supplier','HPP','Pengaturan Inventori'])assert.match(more,new RegExp(label));
+  for(const label of ['Resep Produk','Riwayat Stok','Supplier','HPP','Kelola Item Stok'])assert.match(more,new RegExp(label));
 });
 
 test('P3 inventory workspace delegates mutations to existing Inventory V2 forms instead of new writer tokens',()=>{

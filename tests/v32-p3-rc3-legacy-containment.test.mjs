@@ -15,7 +15,7 @@ test('P3 RC3 routes visible Inventory V2 tabs into V3 presentation instead of le
   assert.deepEqual(routeLegacyInventoryTabV32('transfer'),{kind:'action',action:'transfer'});
   assert.deepEqual(routeLegacyInventoryTabV32('purchase'),{kind:'action',action:'purchase'});
   assert.deepEqual(routeLegacyInventoryTabV32('opname'),{kind:'action',action:'opname'});
-  assert.deepEqual(routeLegacyInventoryTabV32('ingredients'),{kind:'workspace',tab:'more'});
+  assert.deepEqual(routeLegacyInventoryTabV32('ingredients'),{kind:'stock-items'});
   assert.deepEqual(routeLegacyInventoryTabV32('recipes'),{kind:'advanced',tab:'recipes'});
 });
 

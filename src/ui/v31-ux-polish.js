@@ -33,9 +33,8 @@ export function ensureStockItemsShortcut(document,runtime,role,activities){
   button.addEventListener?.('click',()=>{
     try{
       const v3=runtime?.__SJ_V32_INVENTORY_WORKSPACE;
-      if(typeof v3?.legacyOpen==='function')return v3.legacyOpen('ingredients');
-      if(typeof runtime?.SJInventoryV2?.open==='function')return runtime.SJInventoryV2.open('ingredients');
-      runtime?.showToast?.('Item Stok belum siap. Buka Bahan & Gudang terlebih dahulu.','warning');
+      if(typeof v3?.openStockItems==='function')return v3.openStockItems();
+      runtime?.showToast?.('Item Stok belum siap. Buka Bahan & Gudang kembali sesaat lagi.','warning');
     }catch(_){}
   });
   activities.appendChild?.(button);return true;

@@ -93,7 +93,7 @@ test('Owner can save multiple Item Stok rows only through dedicated writer',asyn
   const opened=[];
   const ui=installProductStockComponentsUi({
     currentUserRole:'manajemen',currentLoginId:'owner-1',currentUserName:'Owner',
-    __SJ_V32_INVENTORY_WORKSPACE:{legacyOpen(tab){opened.push(tab);return true;}}
+    __SJ_V32_INVENTORY_WORKSPACE:{openStockItems(){opened.push('v3');return true;}}
   },{
     document:null,
     inventoryRepository:{
@@ -112,14 +112,14 @@ test('Owner can save multiple Item Stok rows only through dedicated writer',asyn
   assert.equal(result.actor.role,'manajemen');
   assert.deepEqual(Object.keys(result.components).sort(),['ING1','ING2']);
   assert.equal(ui.openStockItems(),true);
-  assert.deepEqual(opened,['ingredients']);
+  assert.deepEqual(opened,['v3']);
 });
 
 test('Cashier has no Product Stock Component configuration authority',async()=>{
   let reads=0,writes=0,masterOpens=0;
   const ui=installProductStockComponentsUi({
     currentUserRole:'transaksi',
-    __SJ_V32_INVENTORY_WORKSPACE:{legacyOpen(){masterOpens++;}}
+    __SJ_V32_INVENTORY_WORKSPACE:{openStockItems(){masterOpens++;}}
   },{
     document:null,
     inventoryRepository:{
@@ -144,11 +144,12 @@ test('Task 6 UI source owns presentation but no direct Firebase mutation or bott
   assert.doesNotMatch(source,/bottom[-_ ]?nav/i);
 });
 
-test('Task 6 V31 Item Stok shortcut delegates to existing Inventory V2 authority',()=>{
+test('Task 6 V31 Item Stok shortcut delegates to the V3 presentation authority',()=>{
   const source=readFileSync(new URL('../src/ui/v31-ux-polish.js',import.meta.url),'utf8');
   assert.match(source,/ensureStockItemsShortcut/);
   assert.match(source,/data-sj-v31-stock-items|sjV31StockItems/);
-  assert.match(source,/legacyOpen\(['"]ingredients['"]\)/);
+  assert.match(source,/openStockItems/);
+  assert.doesNotMatch(source,/legacyOpen\(['"']ingredients['"']\)/);
 });
 
 
