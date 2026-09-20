@@ -31,6 +31,28 @@ export function collectCupOptionalCountValuesV34(values={}){
   const out={};for(const spec of CUP_CATALOG_V34){const raw=values?.[spec.code];if(raw===null||raw===undefined||String(raw).trim()===''){out[spec.code]=0;continue}const n=Number(raw);if(!Number.isFinite(n)||n<0||!Number.isInteger(n))throw Object.assign(new Error(`CUP_COUNT_INVALID:${spec.code}`),{code:'CUP_COUNT_INVALID'});out[spec.code]=n}return Object.freeze(out);
 }
 
+
+export function addCupLiveRestockCountV34(counts={},code,qty){
+  const spec=CUP_CATALOG_V34.find(x=>x.code===String(code||''));const n=Number(qty);
+  if(!spec)throw Object.assign(new Error('CUP_RESTOCK_CODE_INVALID'),{code:'CUP_RESTOCK_CODE_INVALID'});
+  if(!Number.isFinite(n)||!Number.isInteger(n)||n<=0)throw Object.assign(new Error('CUP_RESTOCK_QTY_INVALID'),{code:'CUP_RESTOCK_QTY_INVALID'});
+  const out=Object.fromEntries(CUP_CATALOG_V34.map(x=>[x.code,Math.max(0,num(counts?.[x.code]))]));
+  out[spec.code]+=n;return Object.freeze(out);
+}
+
+export function buildCupLiveRestockUpdatesV34(shiftKey,sessionId,counts,code,qty,{capturedAt=new Date().toISOString(),capturedTs=Date.now()}={}){
+  const shift=text(shiftKey),sid=text(sessionId);if(!shift||!sid)throw Object.assign(new Error('CUP_RESTOCK_SESSION_REQUIRED'),{code:'CUP_RESTOCK_SESSION_REQUIRED'});
+  const next=addCupLiveRestockCountV34(counts,code,qty),restock={version:'CUP-CONTROL-V1',schemaVersion:1,counts:next,capturedAt,capturedTs,source:'SHIFT_LIVE_RESTOCK'};
+  return Object.freeze({counts:next,restock,updates:Object.freeze({[`${shift}/sessions/${sid}/cupControl/restock`]:clone(restock),[`${shift}/cupControl/restock`]:clone(restock)})});
+}
+
+export function renderCupLiveRestockPanelV34(counts={}, {readOnly=false}={}){
+  const total=CUP_CATALOG_V34.reduce((a,x)=>a+Math.max(0,num(counts?.[x.code])),0);
+  const summary=CUP_CATALOG_V34.filter(x=>num(counts?.[x.code])>0).map(x=>`${esc(x.name)} ${esc(num(counts[x.code]))}`).join(' · ')||'Belum ada restock tercatat pada shift ini.';
+  const options=CUP_CATALOG_V34.map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join('');
+  return `<section data-v34-cup-live-restock style="margin:10px 0;padding:12px;border:1px solid #bbf7d0;border-radius:13px;background:#f0fdf4"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div><b style="font-size:11px;color:#166534">Cup Control · Tambah Cup</b><div style="font-size:8px;color:#64748b;margin-top:2px">Restock tersimpan langsung ke shift aktif. Opening tidak berubah.</div></div><strong style="font-size:10px;color:#166534">Total ${esc(total)} pcs</strong></div><div style="display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:8px;margin-top:9px"><select data-v34-cup-live-restock-code style="width:100%;padding:10px;border:1px solid #dbe4ee;border-radius:10px;background:#fff">${options}</select><input data-v34-cup-live-restock-qty type="number" min="1" step="1" inputmode="numeric" placeholder="Jumlah" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe4ee;border-radius:10px;background:#fff"></div><button type="button" data-v34-cup-live-restock-save class="sjx-primary" style="width:100%;margin-top:8px"${readOnly?' disabled aria-disabled="true"':''}>+ TAMBAH CUP</button><div data-v34-cup-live-restock-summary style="font-size:8px;color:#475569;line-height:1.45;margin-top:7px">${summary}</div>${readOnly?'<div style="font-size:8px;color:#92400e;margin-top:5px">LOCAL QA · READ ONLY</div>':''}</section>`;
+}
+
 export function renderCupOpeningPanelV34(_cupRows=[],{readOnly=false,values={},previousClosing=null}={}){
   const previousCounts=previousClosing?.counts&&typeof previousClosing.counts==='object'?previousClosing.counts:null,previousLabel=SHIFT_LABEL_V34[previousClosing?.shift]||'shift sebelumnya';
   const fields=CUP_CATALOG_V34.map(spec=>{const previousKnown=!!previousCounts&&hasOwn(previousCounts,spec.code)&&Number.isFinite(Number(previousCounts[spec.code])),previousQty=previousKnown?num(previousCounts[spec.code]):null;const reference=previousKnown?`<small><b>Fisik akhir ${esc(previousLabel)}: ${esc(previousQty)} pcs</b> · dibawa sebagai opening</small>`:'<small>Hitung fisik awal shift ini.</small>';return `<label class="sj-v34-cup-count-row"><span><b>${esc(spec.name)}</b>${reference}</span><input type="number" min="0" step="1" inputmode="numeric" required data-v34-cup-opening="${esc(spec.code)}" value="${esc(values?.[spec.code]??(previousKnown?previousQty:''))}"></label>`}).join('');
@@ -153,7 +175,46 @@ export function installCupShiftControlV34(runtime=globalThis){
     if(!modal.__sjV34CupClosingBound){modal.__sjV34CupClosingBound=true;modal.addEventListener?.('input',async e=>{if(!e.target?.matches?.('[data-v34-cup-closing],[data-v34-cup-restock]'))return;try{const values=collectInputs(document,'data-v34-cup-closing'),restock=collectCupOptionalCountValuesV34(collectInputs(document,'data-v34-cup-restock'));if(readOnly)localSimulation.inboundCounts={...restock};const seq=(modal.__sjV34CupClosingInputSeq||0)+1;modal.__sjV34CupClosingInputSeq=seq;const nextContext=await computeClose(values,restock);if(seq!==modal.__sjV34CupClosingInputSeq)return;closeContext=nextContext;const current=modal.querySelector?.('[data-v34-cup-closing-panel]');if(current)syncCupClosingPanelInPlaceV34(current,renderCupClosingPanelV34(cupRows,{reconciliation:closeContext.reconciliation,readOnly,closingValues:values,openingKnown:closeContext.openingKnown,restockValues:restock}),document);}catch(_){}})}applyReadOnlyShiftActionStateV34(document,readOnly);return true
   }catch(_){return false}}
 
-  if(typeof shift.renderWithDay==='function')shift.renderWithDay=function(...args){dayRows=args?.[1]||{};const out=originals.renderWithDay(...args);Promise.resolve().then(enhanceOpening);return out};
+
+  async function enhanceLiveRestock(){
+    try{
+      const root=document.getElementById?.('sj-shift-session-root'),panel=root?.querySelector?.('.sjshift-panel.active');if(!panel)return false;
+      const canOperate=!!panel.querySelector?.('button[onclick*="SJShift.openCloseModal"]'),old=panel.querySelector?.('[data-v34-cup-live-restock]');
+      if(!canOperate){if(old?.parentNode)old.parentNode.removeChild(old);return false}
+      const shiftKey=currentShiftKey(runtime),suffix=String(shiftKey).slice(-3),d=dayRows?.[suffix]||shift.currentData?.()||{},sid=String(d.sessionControl?.currentSessionId||d.currentSessionId||''),session=d.sessions?.[sid]||{},counts=session?.cupControl?.restock?.counts||d?.cupControl?.restock?.counts||{};
+      const html=renderCupLiveRestockPanelV34(counts,{readOnly}),actions=panel.querySelector?.('.sjshift-actions');
+      if(old)old.outerHTML=html;else if(actions)actions.insertAdjacentHTML?.('beforebegin',html);else panel.insertAdjacentHTML?.('beforeend',html);
+      const card=panel.querySelector?.('[data-v34-cup-live-restock]'),btn=card?.querySelector?.('[data-v34-cup-live-restock-save]');
+      if(btn&&!btn.__sjCupRestockBound){btn.__sjCupRestockBound=true;btn.addEventListener?.('click',saveLiveRestock)}
+      return true
+    }catch(_){return false}
+  }
+
+  async function saveLiveRestock(){
+    const root=document.getElementById?.('sj-shift-session-root'),card=root?.querySelector?.('[data-v34-cup-live-restock]'),btn=card?.querySelector?.('[data-v34-cup-live-restock-save]');if(!card||!btn||readOnly)return false;
+    const code=text(card.querySelector?.('[data-v34-cup-live-restock-code]')?.value),qtyRaw=card.querySelector?.('[data-v34-cup-live-restock-qty]')?.value;
+    try{
+      const qty=Number(qtyRaw);if(!Number.isFinite(qty)||!Number.isInteger(qty)||qty<=0)throw Object.assign(new Error('Masukkan jumlah Cup lebih dari 0.'),{code:'CUP_RESTOCK_QTY_INVALID'});
+      btn.disabled=true;btn.textContent='MENYIMPAN...';
+      const shiftKey=currentShiftKey(runtime),date=String(shiftKey).slice(0,10),suffix=String(shiftKey).slice(-3),rows=await shift.loadDay(date),d=rows?.[suffix]||{};
+      if(shift.state?.(d)!=='ACTIVE')throw new Error('Shift sudah tidak aktif. Refresh halaman.');
+      const sid=String(d.sessionControl?.currentSessionId||d.currentSessionId||''),session=d.sessions?.[sid]||{};
+      if(!sid||String(session.status||'')!=='ACTIVE')throw new Error('Sesi aktif tidak ditemukan.');
+      const current=session?.cupControl?.restock?.counts||d?.cupControl?.restock?.counts||{},built=buildCupLiveRestockUpdatesV34(shiftKey,sid,current,code,qty);
+      await hardening.verifiedRootUpdate(built.updates,'CUP_RESTOCK_TIMEOUT',async()=>{
+        const verifyRows=await shift.loadDay(date),fresh=verifyRows?.[suffix]||{},freshSid=String(fresh.sessionControl?.currentSessionId||fresh.currentSessionId||''),freshSession=fresh.sessions?.[freshSid]||{},saved=freshSession?.cupControl?.restock?.counts||fresh?.cupControl?.restock?.counts||{};
+        return freshSid===sid&&CUP_CATALOG_V34.every(x=>num(saved?.[x.code])===num(built.counts?.[x.code]))
+      });
+      const qtyInput=card.querySelector?.('[data-v34-cup-live-restock-qty]');if(qtyInput)qtyInput.value='';
+      btn.textContent='TERSIMPAN';(runtime?.setTimeout||setTimeout)(()=>shift.render?.(),350);return true
+    }catch(e){
+      runtime?.alert?.(e?.message||'Restock Cup gagal disimpan.');return false
+    }finally{
+      if(btn?.isConnected){btn.disabled=false;if(btn.textContent==='MENYIMPAN...')btn.textContent='+ TAMBAH CUP'}
+    }
+  }
+
+if(typeof shift.renderWithDay==='function')shift.renderWithDay=function(...args){dayRows=args?.[1]||{};const out=originals.renderWithDay(...args);Promise.resolve().then(enhanceOpening);Promise.resolve().then(enhanceLiveRestock);return out};
   if(typeof shift.startShift==='function')shift.startShift=async function(...args){
     try{const counts=collectCupCountValuesV34(collectInputs(document,'data-v34-cup-opening')),previous=previousShiftCupClosingV34(dayRows,currentShiftSuffix(runtime)),same=previous?.counts&&CUP_CATALOG_V34.every(x=>num(previous.counts[x.code])===num(counts[x.code]));pendingStart={opening:{version:'CUP-CONTROL-V1',schemaVersion:1,counts,capturedAt:new Date().toISOString(),capturedTs:Date.now(),source:same?'PREVIOUS_PHYSICAL_CLOSING_VERIFIED':'MANUAL_PHYSICAL_COUNT'}}}catch(e){runtime?.alert?.(e.code==='CUP_COUNT_REQUIRED'?`Hitung semua ${CUP_CATALOG_V34.length} jenis cup sebelum membuka shift.`:'Jumlah cup awal tidak valid.');return false}
     return originals.startShift(...args);
@@ -165,7 +226,7 @@ export function installCupShiftControlV34(runtime=globalThis){
     return originals.submitClose(...args);
   };
   hardening.verifiedShiftWrite=async function(kind,shiftKey,sessionId,updates,...rest){let next=updates;if(String(kind).toUpperCase()==='START'&&pendingStart)next=augmentShiftUpdatesV34(kind,shiftKey,sessionId,updates,pendingStart);if(String(kind).toUpperCase()==='CLOSE'&&pendingClose)next=augmentShiftUpdatesV34(kind,shiftKey,sessionId,next,pendingClose);try{return await originals.verifiedShiftWrite(kind,shiftKey,sessionId,next,...rest)}finally{if(String(kind).toUpperCase()==='START')pendingStart=null;if(String(kind).toUpperCase()==='CLOSE')pendingClose=null}};
-  const api=Object.freeze({installed:true,refresh:refreshCupRows,enhanceOpening,enhanceClosing:ensureClosingPanel,cupRows:()=>cupRows.slice(),computeClose,readOnly,authority:'CUP_CONTROL'});
+  const api=Object.freeze({installed:true,refresh:refreshCupRows,enhanceOpening,enhanceClosing:ensureClosingPanel,enhanceLiveRestock,saveLiveRestock,cupRows:()=>cupRows.slice(),computeClose,readOnly,authority:'CUP_CONTROL'});
   try{Object.defineProperty(runtime,'__SJ_V34_CUP_SHIFT_CONTROL',{value:api,writable:false,configurable:false})}catch(_){}
   return api;
 }
