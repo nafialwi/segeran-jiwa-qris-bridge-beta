@@ -53,6 +53,16 @@ function snapshotValue(result){
   return result?.snapshot&&typeof result.snapshot.val==='function'?result.snapshot.val():null;
 }
 
+const snapshotSeal=snapshot=>stockComponentFingerprint(snapshot||{});
+
+function assertSnapshotSeal(application){
+  if(!application)return application;
+  const expected=text(application.snapshotSeal);
+  const actual=snapshotSeal(application.snapshot);
+  if(!expected||expected!==actual)fail('STOCK_COMPONENT_SNAPSHOT_INTEGRITY');
+  return application;
+}
+
 function linesFromTransaction(transaction={}){
   const lines=transaction.cartData??transaction.cart??transaction.items??transaction.lines??[];
   return Array.isArray(lines)?lines:[];
@@ -93,7 +103,8 @@ export function createStockComponentWriter({
   async function readApplication({shiftKey,txId}={}){
     const applicationId=stockApplicationId(shiftKey,txId);
     const snap=await db.ref(applicationPath(applicationId)).once('value');
-    return clone(typeof snap?.val==='function'?snap.val():null);
+    const application=clone(typeof snap?.val==='function'?snap.val():null);
+    return assertSnapshotSeal(application);
   }
 
   async function claimApplication({shiftKey,txId,snapshot,actor}){
@@ -109,12 +120,14 @@ export function createStockComponentWriter({
         shiftKey:text(shiftKey),
         txId:text(txId),
         snapshot:clone(snapshot),
+        snapshotSeal:snapshotSeal(snapshot),
         createdAt:now(),
         createdBy:text(actor?.id)
       };
     });
     const application=clone(snapshotValue(result));
     if(!application)fail('STOCK_COMPONENT_APPLICATION_CLAIM_FAILED',applicationId);
+    assertSnapshotSeal(application);
     return {applicationId,application,created};
   }
 
@@ -129,7 +142,7 @@ export function createStockComponentWriter({
       const markers=clone(next.stockComponentOps)||{};
       const existing=markers[op];
       if(existing?.state==='APPLIED'||existing?.state==='SHORTAGE'||existing?.state==='ROLLED_BACK'){
-        return next;
+        return;
       }
       const outlet=Number(next.outlet||0);
       if(outlet<requiredQty){
@@ -140,6 +153,7 @@ export function createStockComponentWriter({
           at:now()
         };
         next.stockComponentOps=markers;
+        next.lastOp=op;
         return next;
       }
       next.outlet=outlet-requiredQty;
@@ -154,9 +168,11 @@ export function createStockComponentWriter({
       return next;
     });
 
-    if(!result?.committed)fail('STOCK_COMPONENT_BALANCE_TRANSACTION_ABORTED',stockItemId);
     const row=clone(snapshotValue(result))||{};
     const marker=row.stockComponentOps?.[op]||null;
+    if(!result?.committed&&!['APPLIED','SHORTAGE','ROLLED_BACK'].includes(marker?.state)){
+      fail('STOCK_COMPONENT_BALANCE_TRANSACTION_ABORTED',stockItemId);
+    }
     return {stockItemId,operationId:op,state:marker?.state||'UNKNOWN',qty:requiredQty};
   }
 
@@ -167,8 +183,8 @@ export function createStockComponentWriter({
       const next=clone(current)||{outlet:0,warehouse:0};
       const markers=clone(next.stockComponentOps)||{};
       const marker=markers[op];
-      if(!marker||marker.state==='ROLLED_BACK'||marker.state==='SHORTAGE')return next;
-      if(marker.state!=='APPLIED')return next;
+      if(!marker||marker.state==='ROLLED_BACK'||marker.state==='SHORTAGE')return;
+      if(marker.state!=='APPLIED')return;
       next.outlet=Number(next.outlet||0)+Number(marker.qty||0);
       markers[op]={
         ...marker,
@@ -178,7 +194,7 @@ export function createStockComponentWriter({
       next.stockComponentOps=markers;
       return next;
     });
-    if(!result?.committed)fail('STOCK_COMPONENT_ROLLBACK_ABORTED',stockItemId);
+    if(!result?.committed)return;
   }
 
   function completionPatch(applicationId,application,components){
@@ -360,6 +376,7 @@ export function createStockComponentWriter({
         reason='STOCK_RESTORE_APPLICATION_NOT_COMPLETED';
         return;
       }
+      assertSnapshotSeal(current);
 
       const next=clone(current);
       next.restores=clone(next.restores)||{};
@@ -393,6 +410,7 @@ export function createStockComponentWriter({
     if(!result?.committed)fail(reason);
     const application=clone(snapshotValue(result));
     if(!application)fail(reason);
+    assertSnapshotSeal(application);
     const restore=clone(application.restores?.[restoreId]);
     if(!restore)fail('STOCK_RESTORE_CLAIM_MISSING',restoreId);
     return {applicationId,restoreId,application,restore,created};
@@ -408,7 +426,7 @@ export function createStockComponentWriter({
       const next=clone(current)||{outlet:0,warehouse:0};
       const markers=clone(next.stockComponentOps)||{};
       const existing=markers[op];
-      if(existing?.state==='APPLIED')return next;
+      if(existing?.state==='APPLIED')return;
 
       next.outlet=Number(next.outlet||0)+qty;
       markers[op]={
@@ -424,9 +442,9 @@ export function createStockComponentWriter({
       return next;
     });
 
-    if(!result?.committed)fail('STOCK_RESTORE_BALANCE_TRANSACTION_ABORTED',stockItemId);
     const row=clone(snapshotValue(result))||{};
     const marker=row.stockComponentOps?.[op];
+    if(!result?.committed&&marker?.state!=='APPLIED')fail('STOCK_RESTORE_BALANCE_TRANSACTION_ABORTED',stockItemId);
     if(marker?.state!=='APPLIED')fail('STOCK_RESTORE_MARKER_NOT_APPLIED',stockItemId);
   }
 
