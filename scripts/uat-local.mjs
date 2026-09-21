@@ -16,8 +16,8 @@ const MOBILE_LAN=process.env.SJ_UAT_MOBILE==='1';
 function isPrivateIpv4(value){
   const parts=String(value||'').trim().split('.');
   if(parts.length!==4)return false;
-  const oct=parts.map(value=>Number(value));
-  if(oct.some((n,i)=>!Number.isInteger(n)||n<0||n>255||String(n)!==String(parts[i]).replace(/^0+(?=\d)/,'')))return false;
+  const oct=parts.map(Number);
+  if(oct.some(n=>!Number.isInteger(n)||n<0||n>255))return false;
   return oct[0]===10||(oct[0]===172&&oct[1]>=16&&oct[1]<=31)||(oct[0]===192&&oct[1]===168);
 }
 function windowsLanHost(){
@@ -26,25 +26,26 @@ function windowsLanHost(){
     if(!isPrivateIpv4(explicit))throw new Error('UAT_MOBILE_HOST_PRIVATE_IPV4_REQUIRED');
     return explicit;
   }
-  const powershell='/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe';
-  const script=[
-    "$r=Get-NetRoute -AddressFamily IPv4 -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue",
-    "| Where-Object { $_.NextHop -ne '0.0.0.0' }",
-    "| Sort-Object RouteMetric,InterfaceMetric",
-    "| Select-Object -First 1;",
-    "if(-not $r){exit 3};",
-    "$ip=Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $r.InterfaceIndex -ErrorAction SilentlyContinue",
-    "| Where-Object { $_.IPAddress -notlike '169.254.*' }",
-    "| Select-Object -First 1;",
-    "if(-not $ip){exit 4};",
-    "Write-Output $ip.IPAddress"
-  ].join(' ');
-  const result=spawnSync(powershell,['-NoProfile','-NonInteractive','-Command',script],{
-    cwd:'/mnt/c/Windows',encoding:'utf8'
+  const routeExe='/mnt/c/Windows/System32/route.exe';
+  const result=spawnSync(routeExe,['print','-4','0.0.0.0'],{
+    cwd:'/mnt/c/Windows',
+    encoding:'utf8',
+    timeout:10000,
+    windowsHide:true
   });
-  const rows=String(result.stdout||'').trim().split(String.fromCharCode(10)).map(row=>row.replace(String.fromCharCode(13),'')).filter(Boolean);
-  const host=rows.length?rows[rows.length-1]:'';
-  if(result.status!==0||!isPrivateIpv4(host))throw new Error('UAT_WINDOWS_LAN_IP_NOT_FOUND');
+  if(result.error||result.status!==0)throw new Error('UAT_WINDOWS_ROUTE_QUERY_FAILED');
+  const rows=String(result.stdout||'').replaceAll(String.fromCharCode(13),'').split(String.fromCharCode(10));
+  const candidates=[];
+  for(const row of rows){
+    const cols=row.trim().split(/\s+/);
+    if(cols.length<5||cols[0]!=='0.0.0.0'||cols[1]!=='0.0.0.0')continue;
+    const host=cols[3];
+    const metric=Number(cols[4]);
+    if(isPrivateIpv4(host))candidates.push({host,metric:Number.isFinite(metric)?metric:Number.MAX_SAFE_INTEGER});
+  }
+  candidates.sort((a,b)=>a.metric-b.metric);
+  const host=candidates[0]?.host||'';
+  if(!isPrivateIpv4(host))throw new Error('UAT_WINDOWS_LAN_IP_NOT_FOUND');
   return host;
 }
 const MOBILE_HOST=MOBILE_LAN?windowsLanHost():'';

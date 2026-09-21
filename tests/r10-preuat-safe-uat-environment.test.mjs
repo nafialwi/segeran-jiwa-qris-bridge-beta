@@ -153,6 +153,7 @@ test('PU-11 Mobile UAT exposes only a private Windows bridge while Firebase emul
   assert.match(bridge,/isPrivateIpv4/);
   assert.match(local,/SJ_UAT_MOBILE/);
   assert.match(local,/SJ_UAT_MOBILE_HOST/);
+  assert.match(local,/route[.]exe/);
   assert.match(local,/uat-windows-lan-bridge.cjs/);
   assert.match(server,/SJ_UAT_MOBILE_HOST/);
 });
