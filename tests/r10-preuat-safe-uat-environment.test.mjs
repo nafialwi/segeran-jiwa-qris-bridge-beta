@@ -7,6 +7,7 @@ import {
   injectUatHtml,
   UAT_ROUTER_MARKER,
   UAT_ROUTER_SCRIPT,
+  buildUatRouterScript,
   UAT_PROJECT_ID,
   UAT_DATABASE_NAMESPACE
 } from '../scripts/uat-html.mjs';
@@ -19,9 +20,10 @@ test('PU-09 UAT injector routes every Firebase app to loopback emulators before 
   assert.match(output,/UAT TERISOLASI/);
   assert.match(output,new RegExp(UAT_ROUTER_MARKER));
   assert.ok(output.indexOf(UAT_ROUTER_MARKER)<output.indexOf('firebase.initializeApp'));
-  assert.match(output,/127\.0\.0\.1:9000/);
-  assert.match(output,/127\.0\.0\.1:9099/);
-  assert.match(output,/127\.0\.0\.1:9199/);
+  assert.ok(output.includes('const emulatorHost="127.0.0.1";'));
+  assert.ok(output.includes('db.useEmulator(emulatorHost,9000);'));
+  assert.ok(output.includes("auth.useEmulator('http://'+emulatorHost+':9099'"));
+  assert.ok(output.includes('storage.useEmulator(emulatorHost,9199);'));
 });
 
 test('PU-09 router rewrites production Firebase config to demo-only identity and binds database auth storage to emulators',()=>{
@@ -85,6 +87,76 @@ test('PU-09 router fails closed on a non-loopback host',()=>{
   assert.throws(()=>vm.runInNewContext(UAT_ROUTER_SCRIPT,context),/UAT_LOOPBACK_REQUIRED/);
 });
 
+
+test('PU-11 Mobile UAT routes an approved private LAN host to the same isolated emulators',async()=>{
+  const calls=[];
+  const makeService=(kind)=>({useEmulator(...args){calls.push([kind,...args])}});
+  const firebase={
+    initializeApp(config,name){
+      calls.push(['init',structuredClone(config),name||'']);
+      return {
+        database:()=>makeService('database'),
+        auth:()=>makeService('auth'),
+        storage:()=>makeService('storage')
+      };
+    }
+  };
+  const script=buildUatRouterScript('192.168.100.92');
+  const fetchCalls=[];
+  const context={
+    window:{firebase,fetch:async(input,options={})=>{fetchCalls.push([String(input),String(options.method||'GET')]);return{ok:true}}},
+    location:{hostname:'192.168.100.92',href:'http://192.168.100.92:4174/'},
+    document:{documentElement:{dataset:{}}},
+    console:{warn(){}},
+    Object,Error,Promise,URL
+  };
+  vm.runInNewContext(script,context);
+  context.window.firebase.initializeApp({projectId:'production-must-be-rewritten'});
+  assert.deepEqual(calls[1],['database','192.168.100.92',9000]);
+  assert.equal(calls[2][0],'auth');
+  assert.equal(calls[2][1],'http://192.168.100.92:9099');
+  assert.deepEqual(calls[3],['storage','192.168.100.92',9199]);
+  const local=await context.window.fetch('http://192.168.100.92:9000/.json',{method:'PUT'});
+  assert.equal(local.ok,true);
+  await assert.rejects(
+    context.window.fetch('https://example.com/write',{method:'POST'}),
+    error=>error?.code==='UAT_EXTERNAL_MUTATION_BLOCKED'
+  );
+  assert.equal(context.window.__SJ_UAT_MOBILE_LAN,true);
+});
+
+test('PU-11 Mobile UAT rejects public or unapproved browser hosts',()=>{
+  assert.throws(()=>buildUatRouterScript('8.8.8.8'),/UAT_BROWSER_HOST_NOT_PRIVATE/);
+  const script=buildUatRouterScript('192.168.100.92');
+  const context={
+    window:{firebase:{initializeApp(){throw new Error('must not initialize')}}},
+    location:{hostname:'192.168.100.93',href:'http://192.168.100.93:4174/'},
+    document:{documentElement:{dataset:{}}},
+    console:{warn(){}},
+    Object,Error,Promise,URL
+  };
+  assert.throws(()=>vm.runInNewContext(script,context),/UAT_HOST_NOT_ALLOWED/);
+});
+
+test('PU-11 Mobile UAT exposes only a private Windows bridge while Firebase emulators stay WSL-loopback-only',()=>{
+  const bridge=read('scripts/uat-windows-lan-bridge.cjs');
+  const local=read('scripts/uat-local.mjs');
+  const server=read('scripts/dev-server.mjs');
+  const pkg=JSON.parse(read('package.json'));
+  assert.equal(pkg.scripts['uat:mobile'],'npm run build:ref01 && SJ_UAT_MOBILE=1 node scripts/uat-local.mjs');
+  assert.match(bridge,/4174/);
+  assert.match(bridge,/9000/);
+  assert.match(bridge,/9099/);
+  assert.match(bridge,/9199/);
+  assert.doesNotMatch(bridge,/0.0.0.0/);
+  assert.match(bridge,/127.0.0.1/);
+  assert.match(bridge,/isPrivateIpv4/);
+  assert.match(local,/SJ_UAT_MOBILE/);
+  assert.match(local,/SJ_UAT_MOBILE_HOST/);
+  assert.match(local,/uat-windows-lan-bridge.cjs/);
+  assert.match(server,/SJ_UAT_MOBILE_HOST/);
+});
+
 test('PU-09 production HTML remains untouched unless the explicit UAT injector is used',()=>{
   const html='<html><body><main>production</main></body></html>';
   assert.equal(html.includes(UAT_ROUTER_MARKER),false);
@@ -99,7 +171,7 @@ test('PU-09 dev server exposes mutually exclusive LOCAL QA and isolated UAT mode
   assert.match(source,/x-segeran-jiwa-mode/);
 });
 
-test('PU-09 launcher is loopback-only, demo-project-only and contains no deployment or production mutation command',()=>{
+test('PU-09 launcher keeps Firebase emulators loopback-only, demo-project-only and contains no deployment or production mutation command',()=>{
   const source=read('scripts/uat-local.mjs');
   assert.match(source,/demo-segeran-jiwa-uat/);
   assert.match(source,/127\.0\.0\.1/);
@@ -153,7 +225,9 @@ test('PU-12 UAT browser RTDB bridge keeps Java emulator internal and browser pro
   assert.equal(cfg.emulators.database.host,'127.0.0.1');
   assert.equal(cfg.emulators.database.port,9001);
   assert.match(backend,/127\.0\.0\.1:9001/);
-  assert.match(router,/db\.useEmulator\('127\.0\.0\.1',9000\)/);
+  const loopbackRouter=buildUatRouterScript('127.0.0.1');
+  assert.ok(loopbackRouter.includes('const emulatorHost="127.0.0.1";'));
+  assert.ok(loopbackRouter.includes('db.useEmulator(emulatorHost,9000);'));
   assert.match(proxy,/createServer/);
   assert.match(proxy,/127\.0\.0\.1/);
   assert.match(proxy,/9000/);
