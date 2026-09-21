@@ -114,7 +114,7 @@ test('PU-09 launcher is loopback-only, demo-project-only and contains no deploym
 test('PU-09 emulator configuration is isolated and the deterministic seed contains only synthetic UAT identities',()=>{
   const cfg=JSON.parse(read('firebase/uat/firebase.json'));
   assert.equal(cfg.emulators.database.host,'127.0.0.1');
-  assert.equal(cfg.emulators.database.port,9000);
+  assert.equal(cfg.emulators.database.port,9001);
   assert.equal(cfg.emulators.auth.port,9099);
   assert.equal(cfg.emulators.storage.port,9199);
   assert.equal(cfg.emulators.ui.enabled,false);
@@ -138,10 +138,28 @@ test('PU-09 emulator-only rules are never referenced by a deploy script and smok
   assert.equal(dbRules.rules['.write'],true);
   const smoke=read('scripts/uat-seed-smoke.mjs');
   const backend=read('scripts/uat-backend.mjs');
-  assert.match(smoke,/127\.0\.0\.1:9000/);
+  assert.match(smoke,/127\.0\.0\.1:9001/);
   assert.match(smoke,/UAT_DATABASE_NAMESPACE/);
   assert.match(backend,/demo-segeran-jiwa-uat-default-rtdb/);
   assert.doesNotMatch(smoke+backend,/https:\/\/segeranjiwa-id|firebase\s+deploy|database:set/);
+});
+
+test('PU-12 UAT browser RTDB bridge keeps Java emulator internal and browser proxy loopback-only',()=>{
+  const cfg=JSON.parse(read('firebase/uat/firebase.json'));
+  const proxy=read('scripts/uat-rtdb-proxy.mjs');
+  const local=read('scripts/uat-local.mjs');
+  const backend=read('scripts/uat-backend.mjs');
+  const router=read('scripts/uat-html.mjs');
+  assert.equal(cfg.emulators.database.host,'127.0.0.1');
+  assert.equal(cfg.emulators.database.port,9001);
+  assert.match(backend,/127\.0\.0\.1:9001/);
+  assert.match(router,/db\.useEmulator\('127\.0\.0\.1',9000\)/);
+  assert.match(proxy,/createServer/);
+  assert.match(proxy,/127\.0\.0\.1/);
+  assert.match(proxy,/9000/);
+  assert.match(proxy,/9001/);
+  assert.doesNotMatch(proxy,/0\.0\.0\.0/);
+  assert.match(local,/uat-rtdb-proxy\.mjs/);
 });
 
 test('PU-09 UAT network firewall blocks external mutations and emergency backend access while allowing loopback emulator calls',async()=>{

@@ -69,6 +69,26 @@ try{
     console.log('SEED               : deterministic synthetic UAT seed restored');
   }
 
+  const rtdbProxy=launch(process.execPath,['scripts/uat-rtdb-proxy.mjs']);
+  rtdbProxy.once('exit',code=>{
+    if(!stopping){
+      console.error('UAT_RTDB_PROXY_EXITED:'+code);
+      stop(code||1);
+    }
+  });
+  const proxyDeadline=Date.now()+30000;
+  let proxyReady=false;
+  while(Date.now()<proxyDeadline){
+    try{
+      const proxyUrl='http://127.0.0.1:9000/.json?ns='+encodeURIComponent(UAT_DATABASE_NAMESPACE);
+      const response=await fetch(proxyUrl,{cache:'no-store'});
+      if(response.ok){proxyReady=true;break}
+    }catch(_){}
+    await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  if(!proxyReady)throw new Error('UAT_RTDB_BROWSER_PROXY_NOT_READY');
+  console.log('BROWSER DATABASE    : 127.0.0.1:9000 -> 127.0.0.1:9001 (loopback TCP proxy)');
+
   const app=launch(process.execPath,['scripts/dev-server.mjs','dist-ref01'],{
     env:{SJ_UAT:'1',SJ_LOCAL_QA:'0',PORT:String(APP_PORT)}
   });

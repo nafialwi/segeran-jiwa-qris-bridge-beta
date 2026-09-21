@@ -7,7 +7,7 @@ import {
 } from './uat-backend.mjs';
 
 if(UAT_PROJECT_ID!=='demo-segeran-jiwa-uat')throw new Error('UAT_DEMO_PROJECT_DRIFT');
-if(UAT_DATABASE_ORIGIN!=='http://127.0.0.1:9000')throw new Error('UAT_LOOPBACK_DATABASE_REQUIRED');
+if(UAT_DATABASE_ORIGIN!=='http://127.0.0.1:9001')throw new Error('UAT_LOOPBACK_DATABASE_REQUIRED');
 
 await waitForUatDatabase({timeoutMs:60000});
 await resetUatDatabase();

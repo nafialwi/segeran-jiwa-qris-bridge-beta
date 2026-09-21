@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 
 export const UAT_PROJECT_ID='demo-segeran-jiwa-uat';
 export const UAT_DATABASE_NAMESPACE='demo-segeran-jiwa-uat-default-rtdb';
-export const UAT_DATABASE_ORIGIN='http://127.0.0.1:9000';
+export const UAT_DATABASE_ORIGIN='http://127.0.0.1:9001';
 export const UAT_DATABASE_URL=`${UAT_DATABASE_ORIGIN}/.json?ns=${encodeURIComponent(UAT_DATABASE_NAMESPACE)}`;
 
 const ROOT=dirname(dirname(fileURLToPath(import.meta.url)));
