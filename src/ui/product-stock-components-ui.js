@@ -110,7 +110,7 @@ export function installProductStockComponentsUi(runtime=globalThis,{document=run
   let editorReturnFocus=null;
   let editorBodyOverflow='';
   let editorParentSurface=null;
-  let editorParentAriaHidden=null;
+  let editorParentInert=false;
   let editorPresentationLocked=false;
 
   const management=()=>isStockComponentManager(roleOf(runtime));
@@ -179,8 +179,12 @@ export function installProductStockComponentsUi(runtime=globalThis,{document=run
     }
     editorParentSurface=document?.querySelector?.('#modal-edit-master')||null;
     if(editorParentSurface){
-      editorParentAriaHidden=editorParentSurface.getAttribute?.('aria-hidden')??null;
-      editorParentSurface.setAttribute?.('aria-hidden','true');
+      editorParentInert=!!editorParentSurface.hasAttribute?.('inert');
+      const active=document?.activeElement;
+      if(active&&editorParentSurface.contains?.(active)){
+        try{active?.blur?.()}catch(_){}
+      }
+      editorParentSurface.setAttribute?.('inert','');
     }
   }
   function unlockEditorPresentation({restoreFocus=true}={}){
@@ -188,15 +192,15 @@ export function installProductStockComponentsUi(runtime=globalThis,{document=run
     const body=document?.body;
     if(body?.style)body.style.overflow=editorBodyOverflow;
     if(editorParentSurface){
-      if(editorParentAriaHidden==null)editorParentSurface.removeAttribute?.('aria-hidden');
-      else editorParentSurface.setAttribute?.('aria-hidden',editorParentAriaHidden);
+      if(!editorParentInert)editorParentSurface.removeAttribute?.('inert');
+      else editorParentSurface.setAttribute?.('inert','');
     }
     const focusTarget=editorReturnFocus;
     editorPresentationLocked=false;
     editorReturnFocus=null;
     editorBodyOverflow='';
     editorParentSurface=null;
-    editorParentAriaHidden=null;
+    editorParentInert=false;
     if(restoreFocus){try{focusTarget?.focus?.({preventScroll:true})}catch(_){focusTarget?.focus?.()}}
   }
   function focusEditor(editor){

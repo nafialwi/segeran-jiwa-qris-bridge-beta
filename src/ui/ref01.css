@@ -607,3 +607,48 @@ html[data-sj-v31="true"] .sj-v33-shift-audit>.sj-v33-fin-subhead>span{padding:4p
 .sj-v32-stock-sync.ok{border-color:rgba(5,150,105,.22);background:rgba(236,253,245,.72)}.sj-v32-stock-sync.warn{border-color:rgba(217,119,6,.28);background:rgba(255,251,235,.86)}.sj-v32-stock-sync.disabled{border-color:rgba(220,38,38,.22);background:rgba(254,242,242,.86)}
 .sj-v32-stock-sync-actions{display:flex;gap:8px;flex:0 0 auto}.sj-v32-stock-sync-actions button{min-height:40px;padding:0 12px;border:1px solid rgba(15,23,42,.12);border-radius:11px;background:#fff;font:inherit;font-weight:800;cursor:pointer}.sj-v32-stock-sync-actions button.danger{color:#b91c1c}.sj-v32-stock-sync-actions button.primary{color:#047857}
 @media(max-width:520px){.sj-v32-stock-sync{align-items:stretch;flex-direction:column}.sj-v32-stock-sync-actions{width:100%}.sj-v32-stock-sync-actions button{flex:1}}
+
+/* PU-11 Human UAT final responsive/focus presentation hardening.
+   Product Master mobile styling was scoped to <=767px in the frozen legacy layer,
+   leaving the 768px tablet boundary structurally unstyled. Keep this additive and
+   presentation-only; no business or persistence authority is changed. */
+@media(min-width:768px){
+  .sjmux-master-toolbar{display:flex;gap:8px;align-items:center;margin:0 0 12px;position:sticky;top:0;z-index:3;background:#fff;padding:6px 0}
+  .sjmux-master-toolbar input{flex:1;min-width:0;min-height:44px;padding:10px 12px;border:1px solid #dce7e0;border-radius:11px;font-size:14px;background:#fff;color:#24362b}
+  .sjmux-filter-btn{min-height:44px;padding:0 12px;border:1px solid #dce7e0;border-radius:11px;background:#fff;font-size:9px;font-weight:850;color:#456052}
+  .sjmux-filter-btn.active{background:#08783f;color:#fff;border-color:#08783f}
+  .sjmux-master-grid{display:grid;gap:10px;align-items:start}
+  .sjmux-product-master-card{min-width:0;overflow:hidden;position:relative;background:#fff;border:1px solid #dfe8e2;border-radius:15px;touch-action:manipulation}
+  .sjmux-product-master-card.archived{opacity:.62;background:#f8faf9}
+  .sjmux-product-master-img{height:108px;background:#f3f7f4;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+  .sjmux-product-master-img img{width:100%;height:100%;object-fit:cover}
+  .sjmux-product-master-img .sjx-icon{width:30px;height:30px;color:#7fa08d}
+  .sjmux-product-master-body{padding:10px}
+  .sjmux-product-master-name{display:block;min-height:28px;overflow:hidden;color:#24362b;font-size:10px;font-weight:850;line-height:1.3}
+  .sjmux-product-master-price{margin-top:4px;color:#08783f;font-size:12px;font-weight:900}
+  .sjmux-product-master-meta{margin-top:4px;color:#74857a;font-size:8px;line-height:1.35}
+  .sjmux-product-master-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:0 9px 9px}
+  .sjmux-icon-btn{min-width:0;min-height:44px;border:1px solid #dce7e0;border-radius:10px;background:#fff;color:#08783f;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900}
+  .sjmux-icon-btn:disabled{opacity:.3}
+  .sjmux-icon-btn.danger{color:#b42318}
+  .sjmux-icon-btn.warn{color:#b46a08}
+  .sjmux-longpress-hint{margin:6px 2px 11px;padding:8px 10px;border-radius:9px;background:#f2f8f4;color:#6e8175;font-size:8px;line-height:1.45}
+}
+@media(min-width:768px) and (max-width:1023px){
+  html[data-sj-ref01="true"] body .sjmux-master-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(min-width:1024px){
+  html[data-sj-ref01="true"] body .sjmux-master-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:390px){
+  #modal-edit-master>.modal.sj-product-form-v2{
+    max-height:calc(100dvh - 20px);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    padding-bottom:calc(18px + env(safe-area-inset-bottom));
+    scroll-padding-bottom:calc(72px + env(safe-area-inset-bottom));
+  }
+  #modal-edit-master>.modal.sj-product-form-v2>.btn-act:last-child{
+    margin-bottom:max(8px,env(safe-area-inset-bottom));
+  }
+}

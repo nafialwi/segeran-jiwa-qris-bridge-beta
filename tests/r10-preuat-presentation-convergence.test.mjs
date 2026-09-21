@@ -22,7 +22,8 @@ test('PU-06 Product Stock Components child dialog locks background, supports Esc
   assert.ok(psc.includes("event?.key==='Escape'"));
   assert.ok(psc.includes('editorReturnFocus'));
   assert.ok(psc.includes('focusEditor'));
-  assert.ok(psc.includes('aria-hidden'));
+  assert.ok(psc.includes("setAttribute?.('inert','')"));
+  assert.ok(psc.includes('active?.blur?.()'));
 });
 
 test('PU-06 Inventory workspace owns close lifecycle, background lock, Escape and focus restoration',()=>{
@@ -46,4 +47,18 @@ test('PU-06 new modal controls expose keyboard focus treatment',()=>{
   assert.ok(css.includes('focus-visible'));
   assert.ok(css.includes('sj-stock-components-editor-layer'));
   assert.ok(css.includes('sj-v32-inv-overlay'));
+});
+
+
+test('PU-11 final UAT responsive hardening keeps tablet Product Master styled and 360px edit actions reachable',()=>{
+  for(const selector of [
+    '.sjmux-master-toolbar',
+    '.sjmux-master-grid',
+    '.sjmux-product-master-card',
+    '.sjmux-product-master-actions',
+    '.sjmux-icon-btn'
+  ]) assert.ok(css.includes(selector),selector);
+  assert.ok(css.includes('@media(min-width:768px) and (max-width:1023px)'));
+  assert.ok(css.includes('#modal-edit-master>.modal.sj-product-form-v2'));
+  assert.ok(css.includes('safe-area-inset-bottom'));
 });
