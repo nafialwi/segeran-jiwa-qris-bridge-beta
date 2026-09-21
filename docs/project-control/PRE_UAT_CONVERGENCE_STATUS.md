@@ -1,6 +1,6 @@
 # PRE-UAT Convergence Status
 
-Last updated: 2026-09-20  
+Last updated: 2026-09-21
 Branch: `work/r10-preuat-convergence`  
 Production/live: **UNTOUCHED**  
 Firebase Rules live: **UNTOUCHED**  
@@ -23,7 +23,7 @@ This branch is the isolated pre-UAT stabilization line for Segeran Jiwa POS Lega
 | PU-07 Business Invariants | COMPLETE | `1e09b8db1404` | transaction identity, refund identity, partial refund mapping, shortage terminality, inactive-item preflight, stale editor safety |
 | PU-08 Observability & Recovery | COMPLETE | `bd7c08bfe8bf` | stock sync health, pending/shortage visibility, safe stock-only retry, device-local Owner kill switch |
 | PU-09 Safe UAT Environment | COMPLETE | `ba692458280b` | loopback-only Firebase Emulator UAT, synthetic seed, isolation banner, external-write firewall |
-| PU-10 Final Engineering Gate | NEXT | - | full regression, build, Rules emulator, SC02/SC04, frozen hashes, PR readiness |
+| PU-10 Final Engineering Gate | COMPLETE | `25c3ab473cc7` | 793/793 serial regression, build/verifiers, Rules emulator, frozen hashes, UAT smoke, draft PR #6 |
 | PU-11 Human UAT | PENDING | - | mobile/desktop, Owner/Cashier, sale/refund/void/shift |
 | PU-12 UAT Remediation | CONDITIONAL | - | only if Human UAT finds defects |
 
@@ -270,16 +270,34 @@ Additional safety audit:
 - exact intended source scope PASS
 - generated audit/dist/debug artifacts restored or removed before commit
 
+## PU-10 result
+
+Final pre-UAT engineering verification is complete on the PC through `pc-sj-legacy`.
+
+- Full serial regression: 793 / 793 PASS, 0 FAIL.
+- Bandwidth/loading focused gate: 17 / 17 PASS.
+- `npm run build:ref01`: PASS with candidate SHA-256 `320412df473905ae59aa9fe9c85f1c8acae20e0a4be8471c572b3d2fc607c5cf`.
+- SC-02, SC-03, SC-04, contract, inline-script, and REF-01 verifiers: PASS.
+- R10 Product Stock Components static Rules contract: 5 / 5 PASS.
+- Firebase Database Rules emulator gate: PASS across Owner/Cashier authorization, exactly-once sale application, shortage, refund, VOID, and manipulation-denial cases.
+- Isolated Database/Auth/Storage UAT smoke: PASS using `demo-segeran-jiwa-uat`; production writes: 0.
+- Frozen REF01, R6B, and legacy baseline hashes: PASS.
+- Branch parity: current `origin/main` is contained in the convergence branch; 0 commits behind and no merge-tree conflict markers.
+- Draft GitHub PR #6 is open from `work/r10-preuat-convergence` to `main` and is intentionally not merge-ready until Human UAT acceptance.
+- Detailed evidence is recorded in `docs/project-control/PU10_FINAL_ENGINEERING_GATE.md`.
+
+The PC Firebase CLI is not currently authenticated for a fresh production Rules read. PU-10 therefore does not claim a new production Rules export. This does not block isolated Human UAT. A fresh read-only production Rules export/canonical comparison remains mandatory at the later production cutover gate before any Rules publication.
+
 ## Engineering progress
 
 Mandatory engineering checkpoints before Human UAT: PU-01 through PU-10.
 
-- Completed: 9 / 10
-- Pre-UAT engineering progress: **90%**
-- Human UAT: not started
+- Completed: 10 / 10
+- Pre-UAT engineering progress: **100%**
+- Human UAT: READY / not started
 - Production cutover: not started
 
-The R10 transaction engine, exactly-once stock application, refund/void restoration, Firebase Rules candidate/emulator, Cup Control foundation, prior core regression work, business-invariant hardening, stock-sync observability/recovery, and an isolated writable UAT environment are complete. The remaining engineering checkpoint before Human UAT is the final engineering gate.
+The mandatory pre-UAT engineering checkpoints PU-01 through PU-10 are complete. The release candidate is now frozen at the Human UAT boundary; the next phase is PU-11 Human UAT in the isolated emulator environment. Production cutover remains blocked until Human UAT acceptance and a separate explicit production approval.
 
 ## Safety contract
 
@@ -294,6 +312,6 @@ Until Human UAT is accepted and explicit production approval is given:
 
 ## Resume point
 
-Continue from **PU-10 — Final Engineering Gate**.
+Continue from **PU-11 — Human UAT**.
 
-Do not repeat PU-01 through PU-09 unless a regression test proves a defect in those completed checkpoints.
+Do not repeat PU-01 through PU-10 unless Human UAT or a regression test proves a defect in those completed checkpoints.
