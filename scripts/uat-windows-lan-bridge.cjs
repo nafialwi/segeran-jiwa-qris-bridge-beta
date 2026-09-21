@@ -10,10 +10,10 @@ function normalizeIpv4(value){
 }
 function isPrivateIpv4(value){
   const host=normalizeIpv4(value);
-  const m=host.match(/^(d{1,3}).(d{1,3}).(d{1,3}).(d{1,3})$/);
-  if(!m)return false;
-  const oct=m.slice(1).map(Number);
-  if(oct.some(n=>n<0||n>255))return false;
+  const parts=host.split('.');
+  if(parts.length!==4)return false;
+  const oct=parts.map(Number);
+  if(oct.some(n=>!Number.isInteger(n)||n<0||n>255))return false;
   return oct[0]===10
     ||(oct[0]===172&&oct[1]>=16&&oct[1]<=31)
     ||(oct[0]===192&&oct[1]===168);
