@@ -24,8 +24,8 @@ This branch is the isolated pre-UAT stabilization line for Segeran Jiwa POS Lega
 | PU-08 Observability & Recovery | COMPLETE | `bd7c08bfe8bf` | stock sync health, pending/shortage visibility, safe stock-only retry, device-local Owner kill switch |
 | PU-09 Safe UAT Environment | COMPLETE | `ba692458280b` | loopback-only Firebase Emulator UAT, synthetic seed, isolation banner, external-write firewall |
 | PU-10 Final Engineering Gate | COMPLETE | `25c3ab473cc7` | 793/793 serial regression, build/verifiers, Rules emulator, frozen hashes, UAT smoke, draft PR #6 |
-| PU-11 Human UAT | PENDING | - | mobile/desktop, Owner/Cashier, sale/refund/void/shift |
-| PU-12 UAT Remediation | CONDITIONAL | - | only if Human UAT finds defects |
+| PU-11 Human UAT | IN PROGRESS | c5504a34e932 | resumed after isolated Windows/WSL RTDB transport remediation; mobile/desktop, Owner/Cashier, sale/refund/void/shift remain human acceptance scope |
+| PU-12 UAT Remediation | COMPLETE | c5504a34e932 | loopback-only Node RTDB proxy on 9000 -> internal Java emulator 9001; Windows login path restored; 794/794 regression PASS |
 
 ## PU-05 result
 
@@ -294,10 +294,10 @@ Mandatory engineering checkpoints before Human UAT: PU-01 through PU-10.
 
 - Completed: 10 / 10
 - Pre-UAT engineering progress: **100%**
-- Human UAT: READY / not started
+- Human UAT: **IN PROGRESS** / Owner login blocker remediated; resume interactive acceptance
 - Production cutover: not started
 
-The mandatory pre-UAT engineering checkpoints PU-01 through PU-10 are complete. The release candidate is now frozen at the Human UAT boundary; the next phase is PU-11 Human UAT in the isolated emulator environment. Production cutover remains blocked until Human UAT acceptance and a separate explicit production approval.
+The mandatory pre-UAT engineering checkpoints PU-01 through PU-10 are complete. PU-11 Human UAT started and exposed one isolated Windows/WSL RTDB transport blocker. PU-12 remediated that blocker at c5504a34e932 by keeping Java RTDB internal on loopback port 9001 and adding a loopback-only Node TCP proxy on browser-facing port 9000. Serial regression is 794/794 PASS and the Windows browser path can now reach the synthetic Owner record. PU-11 is resumed. Production cutover remains blocked until Human UAT acceptance and a separate explicit production approval.
 
 ## Safety contract
 
@@ -312,6 +312,8 @@ Until Human UAT is accepted and explicit production approval is given:
 
 ## Resume point
 
-Continue from **PU-11 — Human UAT**.
+Continue from **PU-11 — Human UAT**, starting with Owner login and **Owner -> Edit Produk**.
+
+The first PU-11 blocker is already remediated by PU-12 at c5504a34e932; do not repeat that remediation unless the Windows RTDB proxy evidence regresses.
 
 Do not repeat PU-01 through PU-10 unless Human UAT or a regression test proves a defect in those completed checkpoints.
