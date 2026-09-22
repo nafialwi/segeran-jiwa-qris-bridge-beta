@@ -56,15 +56,31 @@ The fresh export must then be passed to:
 
     node firebase/r10/build-stock-components-rules.mjs --live <fresh-export> --out-dir <cutover-evidence-dir>
 
-Current PC credential state:
-- FIREBASE_TOKEN: absent
-- GOOGLE_APPLICATION_CREDENTIALS: absent
-- Firebase configstore user: absent
-- firebase projects:list: authentication failed
+Firebase CLI authentication:
+- authenticated interactively on 2026-09-22;
+- project segeranjiwa-id is visible to the authenticated account;
+- no service-account credential was introduced.
 
-Therefore:
-- fresh production Rules export: BLOCKED ON FIREBASE LOGIN
-- fresh live-vs-candidate canonical comparison: BLOCKED ON THE SAME LOGIN
+Fresh production Rules evidence:
+- exact deployed Rules export: COMPLETE
+- raw export SHA-256:
+  d1c51aac70f89cf07062d2546fe9eec86f360c9e12ed8f8df1734d5cb9be1a2e
+- live canonical SHA-256:
+  43f183db9c18b3a89cdfad209cbce7332c3966b57a0793fd340aa0915c0b1b83
+- generated candidate canonical SHA-256:
+  204ae8df27b398b7cde420064f5a1f9cfa1a50e46d550f9cfb5682168ad492a2
+- candidate file SHA-256:
+  39d5e4665f8a7b66483aa044aaee0532fafbe6141b5b10867e8194be94292cf1
+- generated rollback file SHA-256:
+  3173e62493c84254bd0dea6abb236aae94e4224bf0c3b980a1121c51afdcc2de
+- rollback canonical content matches the fresh live export: YES
+- changed Rules paths reported by generator: 8
+- unexpected changed paths: 0
+- semantic changes outside rules/toko_segeranjiwa_v58/global/inventoryV2/: 0
+- Rules contract test: 5 / 5 PASS
+- production-derived Rules emulator lifecycle gate: PASS
+- deploy command count during generation/testing: 0
+- production mutation count during generation/testing: 0
 - Rules publication: NOT AUTHORIZED and NOT ATTEMPTED
 
 ## Rollback snapshot
@@ -95,36 +111,39 @@ AppMint/WebView is DEFERRED / N-A for the Web Release and is not W-PASS. Therefo
 1. current origin/main exact commit — COMPLETE
 2. current production Git/tag/deployment identity — COMPLETE
 3. current Cloudflare production deployment identity and rollback target — COMPLETE
-4. fresh read-only Firebase production Rules export — BLOCKED: FIREBASE LOGIN
-5. canonical comparison live Rules vs approved R10 candidate — BLOCKED: depends on item 4
+4. fresh read-only Firebase production Rules export — COMPLETE
+5. canonical comparison live Rules vs approved R10 candidate — COMPLETE
 6. current production Firebase project/database/storage identities — COMPLETE
 7. pre-cutover backup/export evidence — COMPLETE
 8. APK/AppMint signing identity — N/A FOR WEB-FIRST CUTOVER
 9. rollback procedure using actual pre-cutover identities — COMPLETE
 10. final branch/tag/RC artifact checksums — COMPLETE
 
-Evidence completion: 8 / 10 = 80%
+Evidence completion: 10 / 10 = 100%
 
 ## Mandatory approval gates
 
 - Final RC tag resolves to expected commit — PASS
 - RC source verification green — PASS
-- live production Rules freshly read and reviewed — BLOCKED
+- live production Rules freshly read and reviewed — PASS
 - unexplained main/deployment divergence — NONE FOUND
 - rollback target proven and reachable — PASS
-- production credential path ready — FIREBASE AUTH BLOCKED
-- explicit Owner approval for production mutation — NOT YET REQUESTED / NOT YET GIVEN
+- production credential path ready — PASS
+- explicit Owner approval for production mutation — NOT YET GIVEN
 
 ## Planned cutover order after the two blocked evidence items are cleared
 
 No step below is authorized yet.
 
-1. authenticate Firebase CLI on the PC through the Owner-approved Google account;
-2. export current live Rules read-only and immediately checksum the exact rollback copy;
-3. generate R10 candidate Rules from that exact live export;
-4. run contract + emulator verification against the generated candidate;
-5. review exact Rules diff and prove changes are limited to R10 Inventory V2 stock-component paths;
-6. refresh main / Cloudflare live fingerprint and rollback tag evidence if anything changed;
+Completed before approval:
+1. Firebase CLI authenticated on the Owner-approved account;
+2. current live Rules exported read-only and exact rollback copy checksummed;
+3. R10 candidate Rules generated from that exact live export;
+4. contract + emulator verification completed;
+5. exact Rules diff reviewed and limited to R10 Inventory V2 stock-component paths;
+6. main / Cloudflare live fingerprint and rollback tag evidence captured.
+
+Remaining controlled sequence:
 7. present final go/no-go evidence to Owner and request explicit production-cutover approval;
 8. only after approval, execute the separately controlled production mutation sequence;
 9. verify production smoke and exactly-once stock behavior;
@@ -133,8 +152,10 @@ No step below is authorized yet.
 ## Safety status
 
 At this evidence checkpoint:
+- evidence completeness: 100%
 - main merge: 0
 - production deployment: 0
 - Firebase Rules publication: 0
 - production database/storage writes: 0
 - migration/backfill: 0
+- next gate: explicit Owner production-cutover approval
