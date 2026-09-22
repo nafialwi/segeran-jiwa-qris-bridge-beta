@@ -317,3 +317,21 @@ Continue from **PU-11 — Human UAT**, starting with Owner login and **Owner -> 
 The first PU-11 blocker is already remediated by PU-12 at c5504a34e932; do not repeat that remediation unless the Windows RTDB proxy evidence regresses.
 
 Do not repeat PU-01 through PU-10 unless Human UAT or a regression test proves a defect in those completed checkpoints.
+
+## Final RC acceptance — 2026-09-22
+
+PU-11 Human UAT is COMPLETE and accepted across desktop and real mobile UAT. PU-12 remediation is COMPLETE.
+
+Final evidence:
+
+- desktop Human UAT: PASS / accepted;
+- mobile Human UAT over the permanent private-LAN harness: PASS / accepted;
+- final mobile UAT targeted contract: 14 / 14 PASS;
+- final serial regression: 798 / 798 PASS;
+- REF01 candidate SHA-256: 320412df473905ae59aa9fe9c85f1c8acae20e0a4be8471c572b3d2fc607c5cf;
+- production writes/deploy/rules publication/main merge during UAT: 0;
+- immutable legacy rollback SHA-256 remains 877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f.
+
+The R10 branch is accepted as the Final Release Candidate. Human UAT is no longer the resume point.
+
+Resume from docs/project-control/R10_RC_FINAL_LOCK.md. The only next milestone is the separately approved Production Cutover Gate. A fresh read-only production Firebase Rules export and canonical comparison remains mandatory before any production Rules publication.

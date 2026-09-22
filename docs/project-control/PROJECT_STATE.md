@@ -1,45 +1,60 @@
 # Segeran Jiwa Legacy — Project State
 
-Updated: 2026-09-15
-
-## Production authority
-
-- Branch: `main`
-- Production baseline: `8018c40ae74f`
-- Production tag: `r9-cup01-prod-20260914`
-- Production deployment is unchanged by INV01 work.
-
-## Development checkpoint
-
-- R10 pre-performance checkpoint: `d3d6725b5ce4`
-- Safety tag: `r10-pre-inv01`
-- Active branch: `work/r10-inventory-read-hardening`
-- Last verified implementation commit: `ed8d5e048112`
+Updated: 2026-09-22
 
 ## Current milestone
 
-`R10-PERF-INV01 — Inventory V2 Read Architecture Hardening`
+R10 FINAL RELEASE CANDIDATE LOCK
 
-- INV01-1 Audit & Read Foundation: **DONE**
-- INV01-2 Shared Read Engine & Fast Workspace: **NEXT**
-- INV01-3 Consumer Migration: PENDING
-- INV01-4 Verification & Release Gate: PENDING
+Engineering convergence and Human UAT are complete. The project is stopped before production cutover.
 
-## INV01-1 verified state
+## Active authority
 
-- Normal Bahan & Gudang no longer calls the full `global/inventoryV2` root.
-- Current workspace state is composed from targeted child paths.
-- Activity movements use `orderByChild('ts').limitToLast(120)`.
-- Inventory read diagnostics are memory-only and available from the Inventory Workspace/runtime diagnostic object.
-- Historical reconciliation movements remain a lazy full movements read for correctness; optimization is deferred to INV01-3.
-- Dedicated writer files are unchanged.
-- Frozen R6B loading-hardening source is unchanged.
-- Full serial tests and SC02/SC03/SC04/V3.2/REF01/RC01 gates passed before this checkpoint.
+- Development/RC branch: work/r10-preuat-convergence
+- Verified runtime source before RC documentation lock:
+  1fa3b79ee5b33c7d1ee449fdc66871f12c73caf4
+- Final RC documentation:
+  docs/project-control/R10_RC_FINAL_LOCK.md
+- Production cutover gate:
+  docs/project-control/R10_PRODUCTION_CUTOVER_GATE.md
+- Draft PR: GitHub PR #6
 
-## R10 feature state
+## Verification state
 
-Cup Reconciliation feature implementation and LOCAL QA containment are complete. Final visual UAT remains paused until Inventory V2 performance hardening reaches the appropriate verification point.
+- PU-01 through PU-10: COMPLETE
+- PU-11 Human UAT desktop/mobile: ACCEPTED
+- PU-12 remediation: COMPLETE
+- Final serial regression: 798 / 798 PASS
+- Final Mobile UAT targeted contract: 14 / 14 PASS
+- REF01 candidate SHA-256:
+  320412df473905ae59aa9fe9c85f1c8acae20e0a4be8471c572b3d2fc607c5cf
+- Mobile UAT command: npm run uat:mobile
+
+## Production authority
+
+Production remains untouched by the R10 Final RC lock.
+
+- origin/main at lock preparation:
+  4b32e91111fa2e78b34ff80ba0f432971b3c24fa
+- Production tag: r9-cup01-prod-20260914
+- Production tag commit:
+  8018c40ae74f0b01d8b31d558828d26cd867bca2
+
+Fresh production evidence is mandatory at the cutover gate.
+
+## Rollback authority
+
+- baseline/legacy-v1.0.40.html
+- dist/index.html
+- SHA-256 for both:
+  877dd5d80ad3cfbae9c8ded35ea37c426bf795392240adb96c38e62fc556154f
 
 ## Next action
 
-Execute **INV01-2 — Shared Read Engine & Fast Workspace**. Do not merge or deploy production yet.
+Do not repeat ordinary engineering or PU-01 through PU-12.
+
+Next authorized workflow is Production Cutover Gate, and only after explicit Owner approval. Until then:
+- no main merge;
+- no production deployment;
+- no Firebase production Rules publish;
+- no production migration/write.
