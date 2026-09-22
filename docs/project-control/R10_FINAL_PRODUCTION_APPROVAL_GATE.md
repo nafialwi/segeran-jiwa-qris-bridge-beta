@@ -1,6 +1,6 @@
 # R10 Final Production Approval Gate
 
-Status: READY FOR OWNER DECISION
+Status: TECHNICALLY READY; WAITING FOR NO-ACTIVE-SHIFT WINDOW
 Date: 2026-09-22
 
 No production mutation has occurred.
@@ -51,3 +51,16 @@ Fresh production Rules were exported read-only from project segeranjiwa-id.
 The next step is production mutation and therefore must not run without explicit Owner approval in the active session.
 
 An approval must be specific enough to authorize the production cutover. A request to continue analysis, inspect evidence, or prepare commands is not production approval.
+
+
+## Operational window gate
+
+Production Data Readiness audit is complete and requires zero bulk database migration.
+
+Cutover must not execute while any shift is ACTIVE.
+
+At the 2026-09-22 audit snapshot, S1 was ACTIVE, so production mutation remains blocked operationally even though technical evidence is complete.
+
+Immediately before requesting/using Owner cutover approval, perform a fresh read-only shift-status check and require no ACTIVE shift.
+
+See docs/project-control/R10_PRODUCTION_DATA_READINESS_20260922.md.
