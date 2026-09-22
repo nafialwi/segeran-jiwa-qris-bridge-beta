@@ -1,6 +1,6 @@
 # R10 Final Production Approval Gate
 
-Status: TECHNICALLY READY; WAITING FOR NO-ACTIVE-SHIFT WINDOW
+Status: CUTOVER WINDOW OPEN; READY FOR EXPLICIT OWNER PRODUCTION APPROVAL
 Date: 2026-09-22
 
 No production mutation has occurred.
@@ -64,3 +64,48 @@ At the 2026-09-22 audit snapshot, S1 was ACTIVE, so production mutation remains 
 Immediately before requesting/using Owner cutover approval, perform a fresh read-only shift-status check and require no ACTIVE shift.
 
 See docs/project-control/R10_PRODUCTION_DATA_READINESS_20260922.md.
+
+## Fresh operational window verification — 2026-09-22 23:56 WIB
+
+Production was re-read after the Owner reported the shift closed.
+
+Shift gate:
+- 2026-09-22-S1: CLOSED
+- S1 locked: true
+- S1 closedAt: 23.56
+- S1 Cup Control: opening + restock + closing + ledger + reconciliation present
+- S1 closingSnapshot: present
+- 2026-09-22-S2: NOT_STARTED
+- 2026-09-22-S3: NOT_STARTED
+- ACTIVE_SHIFT_COUNT: 0
+- closing issue count: 0
+- NO_ACTIVE_SHIFT_GATE: PASS
+
+Fresh production identity:
+- origin/main: 4b32e91111fa2e78b34ff80ba0f432971b3c24fa
+- live Cloudflare SHA-256:
+  06fffea689f26dc0aeed7c2c58dc82122e80425808570243d7e619e0c2d067e1
+- clean origin/main rebuild SHA-256:
+  06fffea689f26dc0aeed7c2c58dc82122e80425808570243d7e619e0c2d067e1
+- live matches main exactly: YES
+
+Fresh Firebase Rules:
+- raw live export SHA-256:
+  d1c51aac70f89cf07062d2546fe9eec86f360c9e12ed8f8df1734d5cb9be1a2e
+- generated candidate file SHA-256:
+  39d5e4665f8a7b66483aa044aaee0532fafbe6141b5b10867e8194be94292cf1
+- generated rollback file SHA-256:
+  3173e62493c84254bd0dea6abb236aae94e4224bf0c3b980a1121c51afdcc2de
+- candidate changed Rules paths: 8
+- unexpected changed paths: 0
+- deploy command count during generation: 0
+- fresh Rules contract: 5 / 5 PASS
+- fresh candidate equals previously emulator-verified candidate: YES
+
+Production mutation counters remain:
+- main merge: 0
+- production deployment: 0
+- Firebase Rules publish: 0
+- production database/storage writes: 0
+
+The operational window is now OPEN. The only remaining precondition is explicit Owner authorization for the production cutover.

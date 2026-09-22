@@ -183,3 +183,18 @@ Production DATA is ready for R10 without a bulk sync or migration.
 Production CUTOVER is not currently authorized merely by this document. At audit time an active shift exists, so the operational window gate is closed.
 
 Next action: wait for a no-active-shift window, refresh the read-only gate, then request explicit Owner production-cutover approval.
+
+## Window refresh — 2026-09-22 23:56 WIB
+
+The previously active S1 has now been verified CLOSED and locked.
+
+- ACTIVE_SHIFT_COUNT: 0
+- S1 Cup closing/reconciliation: present
+- S1 closing snapshot: present
+- S2/S3: NOT_STARTED
+- no-active-shift operational gate: PASS
+- bulk sync remains unnecessary
+- database backfill remains unnecessary
+- production mutations performed by this verification: 0
+
+Production cutover window is now OPEN, pending explicit Owner production-cutover approval.
