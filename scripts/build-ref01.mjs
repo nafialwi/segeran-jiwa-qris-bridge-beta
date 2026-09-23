@@ -9,6 +9,7 @@ const SOURCE=join(ROOT,'src');
 const OUT=join(ROOT,'dist-ref01');
 const LOCK=join(ROOT,'.ref01-build.lock');
 const STAMP=join(OUT,'.ref01-build-fingerprint');
+const PWA_SOURCE=join(SOURCE,'pwa');
 const S10A1_EARLY_ENTRY='<script src="./src/compat/rc01-qris-event-sync-shield.js" data-sj-rc01-s10a1-event-shield="true"></script>';
 const S10C_R2_EARLY_ENTRY='<script src="./src/compat/rc01-qris-evaluation-convergence.js" data-sj-rc01-s10c-r2-qris-convergence="true"></script>';
 const CLASSIC_ENTRY='<script src="./src/compat/ref01-production-sales-compat.js" data-sj-ref01-production-sales-compat="true"></script>';
@@ -29,6 +30,8 @@ const DASHBOARD_FAST_P1_ENTRY='<script src="./src/compat/emg-d1-p1-dashboard-fas
 const EMG_D1_P1_CONFIG_ENTRY='<script src="./src/compat/emg-d1-p1-config.js" data-sj-emg-d1-p1-config="true"></script>';
 const EMG_D1_P1_ENTRY='<script src="./src/compat/emg-d1-p1-emergency.js" data-sj-emg-d1-p1="true"></script>';
 const ENTRY='<script type="module" src="./src/ref01-entry.js" data-sj-ref01-entry="true"></script>';
+const PWA_HEAD='\n<link rel="manifest" href="./pwa/manifest.webmanifest">\n<link rel="icon" href="./pwa/icon.svg" type="image/svg+xml">\n<link rel="apple-touch-icon" href="./pwa/icon.svg">\n<meta name="application-name" content="Segeran Jiwa POS">\n<meta name="mobile-web-app-capable" content="yes">\n<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="apple-mobile-web-app-status-bar-style" content="default">\n';
+const PWA_REGISTER='<script src="./pwa/register-pwa.js" defer data-sj-pwa-register="true"></script>';
 
 function injectBeforeQrisBeta(legacy){
   const marker=legacy.indexOf(QRIS_BETA_MARKER);if(marker<0)throw new Error('REF01_QRIS_BETA_MARKER_MISSING');
@@ -366,6 +369,8 @@ try{
     rmSync(staging,{recursive:true,force:true});
     mkdirSync(staging,{recursive:true});
     cpSync(SOURCE,join(staging,'src'),{recursive:true});
+    cpSync(PWA_SOURCE,join(staging,'pwa'),{recursive:true});
+    cpSync(join(PWA_SOURCE,'sw.js'),join(staging,'sw.js'));
     const legacy=readFileSync(BASE,'utf8');
     if((legacy.match(/<\/body>/gi)||[]).length!==1)throw new Error('REF01_BUILD_BODY_ANCHOR_INVALID');
     const converged=patchQrisEvaluationConvergence(legacy);
@@ -378,7 +383,8 @@ try{
     const withR9=patchR9Lic01Uat7(withBw02);
     const withPu02=patchPu02CupConvergence(withR9);
     const withPu03=patchPu03DataBandwidthConvergence(withPu02);
-    const candidate=withPu03.replace(/<\/body>/i,`${PRODUCT_CUP_UI_ENTRY}\n${R9_CLOSING_ENTRY}\n${DASHBOARD_FAST_P1_ENTRY}\n${R6D_SALES_RECURSION_ENTRY}\n${STOCK_COMPONENT_CONTEXT_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n${BW02_ENTRY}\n${EMG_D1_P1_CONFIG_ENTRY}\n${EMG_D1_P1_ENTRY}\n</body>`);
+    const withPwaHead=withPu03.replace(/<\/head>/i,`${PWA_HEAD}</head>`);
+    const candidate=withPwaHead.replace(/<\/body>/i,`${PRODUCT_CUP_UI_ENTRY}\n${R9_CLOSING_ENTRY}\n${DASHBOARD_FAST_P1_ENTRY}\n${R6D_SALES_RECURSION_ENTRY}\n${STOCK_COMPONENT_CONTEXT_ENTRY}\n${CLASSIC_ENTRY}\n${S10A_CLASSIC_ENTRY}\n${QRIS_MANUAL_ENTRY}\n${ENTRY}\n${BW02_ENTRY}\n${EMG_D1_P1_CONFIG_ENTRY}\n${EMG_D1_P1_ENTRY}\n${PWA_REGISTER}\n</body>`);
     writeFileSync(join(staging,'index.html'),candidate);
     writeFileSync(join(staging,'.ref01-build-fingerprint'),`${fp}\n`);
     rmSync(OUT,{recursive:true,force:true});
