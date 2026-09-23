@@ -32,6 +32,7 @@ import { installR8DailyUxRefinement } from '../ui/r8-daily-ux-refinement.js';
 import { installR8InventorySafetyRefinement } from '../ui/r8-inventory-safety-refinement.js';
 import { installR8ShiftClosingIntegrity } from '../ui/r8-shift-closing-integrity.js';
 import { installShiftEvidenceV1 } from '../ui/shift-evidence-v1.js';
+import { installUiConvergenceV1 } from '../ui/ui-convergence-v1.js';
 import { installCupCatalogRuntimeV1 } from './cup-catalog-runtime-v1.js';
 import { installCupCatalogSettingsV1 } from '../ui/cup-catalog-settings-v1.js';
 
@@ -329,6 +330,7 @@ export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_
   const r8InventorySafety=installR8InventorySafetyRefinement(runtime,{inventoryWorkspace,financeWorkspace,notify:(message,kind)=>notify(runtime,message,kind)});
   const r8ShiftClosing=installR8ShiftClosingIntegrity(runtime,{cupShiftControl:p5Packaging?.shiftControl});
   const shiftEvidence=installShiftEvidenceV1(runtime);
+  const uiConvergence=installUiConvergenceV1(runtime,{cupShiftControl:p5Packaging?.shiftControl});
   const transactionSurfaceAuthority=installTransactionSurfaceAuthority(runtime,{reconcile:()=>reconcileTransactionSurfaces(document)});
   function ensureInventoryWorkspaceV32(){if(!inventoryWorkspace?.installed)inventoryWorkspace=installInventoryWorkspaceV32(runtime);return inventoryWorkspace}
   let salesGridPresentation=null;
@@ -365,7 +367,7 @@ export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_
     }catch(_){}
   }});
   const unsubscribeState=typeof sc03?.state?.subscribe==='function'?sc03.state.subscribe(snapshot=>presentationLifecycle.schedule(`state:${snapshot?.primary||'unknown'}`)):(()=>{});
-  const api=Object.freeze({phase:'REF-01',owner:OWNER,sc03,sc04,media,shift,legacyShiftClose,salesShiftUx,ownerDashboardHybrid,productionSales,manualSync,salesHistory,finishedWarehouse,inventoryWorkspace,productStockComponentsUi,p5Packaging,financeWorkspace,qrisCashOutUi,r8DailyUx,r8InventorySafety,r8ShiftClosing,shiftEvidence,transactionSurfaceAuthority,presentationLifecycle,salesGridPresentation,localQaLayout,operationalPresentation,settingsPresentation,backupActions,openFeature,enhance,scheduleEnhance,stop:()=>{legacyStockComponentsRuntime?.stop?.();unsubscribeState();localQaLayout.stop();salesGridPresentation?.stop?.();operationalPresentation.stop();settingsPresentation.stop();presentationLifecycle.stop()},snapshot:()=>Object.freeze({phase:'REF-01',owner:OWNER,familyCount:SCREEN_FAMILIES.length,families:SCREEN_FAMILIES,implicitCapabilities:IMPLICIT_CAPABILITIES,referenceCoverage:Object.keys(REFERENCE_MATRIX),route:currentRoute(sc03),presentation:presentationLifecycle.snapshot()})});
+  const api=Object.freeze({phase:'REF-01',owner:OWNER,sc03,sc04,media,shift,legacyShiftClose,salesShiftUx,ownerDashboardHybrid,productionSales,manualSync,salesHistory,finishedWarehouse,inventoryWorkspace,productStockComponentsUi,p5Packaging,financeWorkspace,qrisCashOutUi,r8DailyUx,r8InventorySafety,r8ShiftClosing,shiftEvidence,uiConvergence,transactionSurfaceAuthority,presentationLifecycle,salesGridPresentation,localQaLayout,operationalPresentation,settingsPresentation,backupActions,openFeature,enhance,scheduleEnhance,stop:()=>{uiConvergence?.stop?.();legacyStockComponentsRuntime?.stop?.();unsubscribeState();localQaLayout.stop();salesGridPresentation?.stop?.();operationalPresentation.stop();settingsPresentation.stop();presentationLifecycle.stop()},snapshot:()=>Object.freeze({phase:'REF-01',owner:OWNER,familyCount:SCREEN_FAMILIES.length,families:SCREEN_FAMILIES,implicitCapabilities:IMPLICIT_CAPABILITIES,referenceCoverage:Object.keys(REFERENCE_MATRIX),route:currentRoute(sc03),presentation:presentationLifecycle.snapshot()})});
   Object.defineProperty(runtime,'__SJ_REF01_RUNTIME',{value:api,writable:false,configurable:false,enumerable:false});
   try{enhance()}catch(error){runtime?.console?.warn?.('[REF01] initial enhancement skipped',error)}
   return api;
