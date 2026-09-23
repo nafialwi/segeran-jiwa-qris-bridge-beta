@@ -1,0 +1,8 @@
+{
+  "appId": "id.segeranjiwa.pos",
+  "appName": "Segeran Jiwa POS",
+  "webDir": "dist-ref01",
+  "server": {
+    "androidScheme": "https"
+  }
+}
