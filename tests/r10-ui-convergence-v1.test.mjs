@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {
   convergePaymentDomV1,
   resetCompletedSaleVisualStateV1,
-  installUiConvergenceV1
+  installUiConvergenceV1,
+  hardenLoginCredentialFieldsV1
 } from '../src/ui/ui-convergence-v1.js';
 
 function classList(){
@@ -112,4 +113,39 @@ test('install wraps final shift render and stop restores wrapped authorities',()
   api.stop();
   assert.equal(shift.renderWithDay,baseRender);
   assert.equal(runtime.processTransaction,baseTx);
+});
+
+test('receipt Selesai is the final authoritative sales convergence boundary',()=>{
+  const d=paymentDoc();let closed=0,renders=0,updates=0;
+  const final={closeSuccess(){closed++},setCustomer(){}};
+  const checkout={method:'Kasbon'};
+  const runtime={
+    document:d,
+    SJFinalRefinementVC01A1:final,
+    SJRefinementCheckoutV100:checkout,
+    SJCommercialFinalV5961:{cartMethod:'Kasbon',saleCustomer:'BUDI',openPayment:()=>{}},
+    SJRefinementSalesV100:{renderSales(){renders++}},
+    updateCartUI(){updates++},
+    requestAnimationFrame:fn=>fn()
+  };
+  const api=installUiConvergenceV1(runtime);
+  final.closeSuccess();
+  assert.equal(closed,1);
+  assert.equal(checkout.method,'Tunai');
+  assert.equal(runtime.SJCommercialFinalV5961.cartMethod,'Tunai');
+  assert.equal(runtime.SJCommercialFinalV5961.saleCustomer,'');
+  assert.equal(renders,1);
+  assert.equal(updates,1);
+  assert.equal(api.snapshot().receiptWrap,true);
+});
+
+test('login PIN is marked as one-time credential to reduce native password-save interception',()=>{
+  const attrs={};
+  const user={setAttribute(k,v){attrs['u:'+k]=v}};
+  const pin={setAttribute(k,v){attrs['p:'+k]=v}};
+  const document={getElementById(id){return id==='login-username'?user:id==='login-password'?pin:null}};
+  assert.equal(hardenLoginCredentialFieldsV1(document),true);
+  assert.equal(attrs['u:autocomplete'],'off');
+  assert.equal(attrs['p:autocomplete'],'one-time-code');
+  assert.equal(attrs['p:data-lpignore'],'true');
 });

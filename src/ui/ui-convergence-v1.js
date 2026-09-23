@@ -39,9 +39,11 @@ export function forceUiRepaintV1(runtime=globalThis,nodes=[]){
 }
 
 export function resetCompletedSaleVisualStateV1(runtime=globalThis){
-  const document=runtime?.document,commercial=runtime?.SJCommercialFinalV5961;
+  const document=runtime?.document,commercial=runtime?.SJCommercialFinalV5961,checkout=runtime?.SJRefinementCheckoutV100,final=runtime?.SJFinalRefinementVC01A1;
   try{if(commercial){commercial.cartMethod='Tunai';commercial.saleCustomer=''}}catch(_){}
+  try{if(checkout)checkout.method='Tunai'}catch(_){}
   try{if(runtime?.SJCommercialVisualV5955)runtime.SJCommercialVisualV5955.saleCustomer=''}catch(_){}
+  try{final?.setCustomer?.('')}catch(_){}
   try{commercial?.selectCartMethod?.('Tunai')}catch(_){}
   try{runtime?.selMet?.('Tunai')}catch(_){}
   try{
@@ -56,12 +58,25 @@ export function resetCompletedSaleVisualStateV1(runtime=globalThis){
   return true;
 }
 
+export function hardenLoginCredentialFieldsV1(document){
+  const user=document?.getElementById?.('login-username'),pin=document?.getElementById?.('login-password');
+  try{user?.setAttribute?.('autocomplete','off')}catch(_){}
+  try{user?.setAttribute?.('autocapitalize','none')}catch(_){}
+  try{pin?.setAttribute?.('autocomplete','one-time-code')}catch(_){}
+  try{pin?.setAttribute?.('autocapitalize','none')}catch(_){}
+  try{pin?.setAttribute?.('autocorrect','off')}catch(_){}
+  try{pin?.setAttribute?.('data-lpignore','true')}catch(_){}
+  try{pin?.setAttribute?.('data-1p-ignore','true')}catch(_){}
+  return Boolean(user||pin);
+}
+
 export function installUiConvergenceV1(runtime=globalThis,{cupShiftControl=runtime?.__SJ_V34_CUP_SHIFT_CONTROL}={}){
   if(runtime?.__SJ_UI_CONVERGENCE_V1)return runtime.__SJ_UI_CONVERGENCE_V1;
-  const document=runtime?.document,shift=runtime?.SJShift,context=runtime?.__SJ_LEGACY_STOCK_COMPONENT_CONTEXT;
-  const bases={selectShift:shift?.selectShift,openCloseModal:shift?.openCloseModal,renderWithDay:shift?.renderWithDay,processTransaction:runtime?.processTransaction,openPayment:runtime?.SJCommercialFinalV5961?.openPayment};
+  const document=runtime?.document,shift=runtime?.SJShift,context=runtime?.__SJ_LEGACY_STOCK_COMPONENT_CONTEXT,receipt=runtime?.SJFinalRefinementVC01A1;
+  hardenLoginCredentialFieldsV1(document);
+  const bases={selectShift:shift?.selectShift,openCloseModal:shift?.openCloseModal,renderWithDay:shift?.renderWithDay,processTransaction:runtime?.processTransaction,openPayment:runtime?.SJCommercialFinalV5961?.openPayment,closeSuccess:receipt?.closeSuccess};
   const wrappedRefs={};
-  const state={lastShiftKey:'',lastSessionId:'',saleWrap:false,shiftWrap:false,paymentWrap:false,renderWrap:false};
+  const state={lastShiftKey:'',lastSessionId:'',saleWrap:false,shiftWrap:false,paymentWrap:false,renderWrap:false,receiptWrap:false};
 
   const schedule=(reason='')=>{
     const ctx=shiftUiContextKeyV1(runtime);
@@ -123,6 +138,18 @@ export function installUiConvergenceV1(runtime=globalThis,{cupShiftControl=runti
     runtime.processTransaction=wrapped;wrappedRefs.processTransaction=wrapped;state.saleWrap=true;
   }
 
+  if(receipt&&typeof receipt.closeSuccess==='function'&&!receipt.closeSuccess.__sjUiConvergenceV1){
+    const base=receipt.closeSuccess;
+    const wrapped=function(...args){
+      const out=base.apply(this,args);
+      resetCompletedSaleVisualStateV1(runtime);
+      forceUiRepaintV1(runtime,['#view1','#kasir-scroll','#floating-cart','#modal-cart','#modal-bayar']);
+      return out;
+    };
+    try{Object.defineProperty(wrapped,'__sjUiConvergenceV1',{value:true})}catch(_){wrapped.__sjUiConvergenceV1=true}
+    receipt.closeSuccess=wrapped;wrappedRefs.closeSuccess=wrapped;state.receiptWrap=true;
+  }
+
   const commercial=runtime?.SJCommercialFinalV5961;
   if(commercial&&typeof commercial.openPayment==='function'&&!commercial.openPayment.__sjUiConvergenceV1){
     const base=commercial.openPayment;
@@ -142,6 +169,7 @@ export function installUiConvergenceV1(runtime=globalThis,{cupShiftControl=runti
     try{if(shift&&wrappedRefs.selectShift&&shift.selectShift===wrappedRefs.selectShift)shift.selectShift=bases.selectShift}catch(_){}
     try{if(shift&&wrappedRefs.openCloseModal&&shift.openCloseModal===wrappedRefs.openCloseModal)shift.openCloseModal=bases.openCloseModal}catch(_){}
     try{if(wrappedRefs.processTransaction&&runtime.processTransaction===wrappedRefs.processTransaction)runtime.processTransaction=bases.processTransaction}catch(_){}
+    try{if(receipt&&wrappedRefs.closeSuccess&&receipt.closeSuccess===wrappedRefs.closeSuccess)receipt.closeSuccess=bases.closeSuccess}catch(_){}
     try{if(commercial&&wrappedRefs.openPayment&&commercial.openPayment===wrappedRefs.openPayment)commercial.openPayment=bases.openPayment}catch(_){}
   }
   const api=Object.freeze({installed:true,schedule,resetCompletedSale:()=>resetCompletedSaleVisualStateV1(runtime),stop,snapshot:()=>Object.freeze({...state,...shiftUiContextKeyV1(runtime)})});
