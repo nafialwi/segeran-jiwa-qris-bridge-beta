@@ -20,7 +20,7 @@ test('Cup detail keeps transaction usage, physical usage, closing and variance v
 
 test('stock detail clearly separates non-sale changes from sold units',()=>{
   const html=renderStockShiftEvidenceDetail({rows:{P1:{productId:'P1',name:'Bakaran',openingQty:20,soldQty:8,returnedQty:1,nonSaleNetChange:3,closingSystemQty:16,status:'NON_SALE_CHANGE'}}});
-  assert.match(html,/Terjual/);assert.match(html,/Retur ke stok/);assert.match(html,/Perubahan lain/);assert.match(html,/Akhir sistem/);assert.match(html,/Ada perubahan non-penjualan/);
+  assert.match(html,/Terjual/);assert.match(html,/Retur ke stok/);assert.match(html,/Perubahan lain/);assert.match(html,/Akhir sistem/);assert.match(html,/Ada perubahan lain \+3/);
 });
 
 test('historical shift without stock snapshot explains that evidence starts on later shifts',()=>{
@@ -60,4 +60,41 @@ test('Cup closing in-place refresh updates the usage header as well as reconcili
   const source=fs.readFileSync(new URL('../src/ui/cup-shift-control-v34.js',import.meta.url),'utf8');
   assert.match(source,/nextHeader/);
   assert.match(source,/header\.innerHTML=nextHeader\.innerHTML/);
+});
+
+test('mobile stock history uses the same card hierarchy as Cup and exposes primary metrics first',()=>{
+  const html=renderStockShiftEvidenceDetail({
+    trackedCount:1,soldTotal:10,returnedTotal:0,attentionCount:1,
+    rows:{P1:{productId:'P1',name:'RENTENGAN UAT',openingQty:40,soldQty:10,returnedQty:0,nonSaleNetChange:2,closingSystemQty:32,status:'NON_SALE_CHANGE'}}
+  });
+  assert.match(html,/sj-shift-stock-mobile-list/);
+  assert.match(html,/Terjual/);
+  assert.match(html,/10 unit/);
+  assert.match(html,/Perubahan lain/);
+  assert.match(html,/\+2 unit/);
+  assert.match(html,/Awal/);
+  assert.match(html,/Akhir sistem/);
+  assert.match(html,/sj-shift-evidence-summary/);
+});
+
+test('Cup history exposes a top summary before item cards',()=>{
+  const html=renderCupShiftEvidenceDetail({cupControl:{reconciliation:{rows:[
+    {name:'Cup 22',status:'MATCH',opening:10,restock:0,transactionUsage:10,physicalUsed:10,physicalClosing:0,variance:0},
+    {name:'Cup 16',status:'MATCH',opening:10,restock:0,transactionUsage:0,physicalUsed:0,physicalClosing:10,variance:0}
+  ]}}});
+  assert.match(html,/sj-shift-evidence-summary/);
+  assert.match(html,/10 pcs/);
+  assert.match(html,/Dipakai transaksi/);
+  assert.match(html,/Dipakai fisik/);
+  assert.match(html,/Semua sesuai/);
+});
+
+test('mobile evidence modal is full-screen and removes horizontal-table dependency',()=>{
+  const css=fs.readFileSync(new URL('../src/ui/ref01.css',import.meta.url),'utf8');
+  assert.match(css,/@media\(max-width:640px\)/);
+  assert.match(css,/height:100dvh/);
+  assert.match(css,/width:100vw/);
+  assert.match(css,/border-radius:0/);
+  assert.match(css,/sj-shift-stock-mobile-list/);
+  assert.match(css,/sj-shift-cup-mobile-list/);
 });

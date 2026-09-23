@@ -45,16 +45,52 @@ function cupStatusLabel(status,variance){
 export function renderCupShiftEvidenceDetail(row={}){
   const evidence=cupEvidenceFromShift(row),rows=evidence.reconciliation?.rows||[];
   if(!rows.length)return '<div class="sj-shift-evidence-empty">Riwayat Cup belum tersedia untuk shift ini.</div>';
+  const transactionUsed=rows.reduce((a,x)=>a+Math.max(0,num(x.transactionUsage)),0);
+  const physicalUsed=rows.reduce((a,x)=>a+Math.max(0,num(x.physicalUsed)),0);
+  const physicalClosing=rows.reduce((a,x)=>a+Math.max(0,num(x.physicalClosing??x.closing)),0);
+  const attention=rows.filter(x=>text(x.status).toUpperCase()!=='MATCH').length;
+  const summary=`<section class="sj-shift-evidence-summary sj-shift-evidence-summary--cup">
+    <span><small>Dipakai transaksi</small><b>${qty(transactionUsed)} pcs</b></span>
+    <span><small>Dipakai fisik</small><b>${qty(physicalUsed)} pcs</b></span>
+    <span><small>Sisa fisik</small><b>${qty(physicalClosing)} pcs</b></span>
+    <span class="${attention?'warn':'ok'}"><small>Status</small><b>${attention?`${attention} perlu perhatian`:'Semua sesuai'}</b></span>
+  </section>`;
   const body=rows.map(x=>`<tr><td><b>${esc(x.name||x.code)}</b><small data-status="${esc(x.status||'')}">${esc(cupStatusLabel(x.status,num(x.variance)))}</small></td><td>${qty(x.opening)}</td><td>+${qty(x.restock)}</td><td>${qty(x.transactionUsage)}</td><td>${qty(x.physicalUsed)}</td><td>${qty(x.physicalClosing??x.closing)}</td><td class="${num(x.variance)===0?'ok':'warn'}">${num(x.variance)>0?'+':''}${qty(x.variance)}</td></tr>`).join('');
-  const mobile=rows.map(x=>`<article class="sj-shift-cup-mobile-card"><header><div><b>${esc(x.name||x.code)}</b><small data-status="${esc(x.status||'')}">${esc(cupStatusLabel(x.status,num(x.variance)))}</small></div><strong class="${num(x.variance)===0?'ok':'warn'}">Selisih ${num(x.variance)>0?'+':''}${qty(x.variance)}</strong></header><div class="sj-shift-cup-usage"><span><small>Dipakai transaksi</small><b>${qty(x.transactionUsage)} pcs</b></span><span><small>Dipakai fisik</small><b>${qty(x.physicalUsed)} pcs</b></span></div><div class="sj-shift-cup-meta"><span><small>Awal</small><b>${qty(x.opening)}</b></span><span><small>Masuk</small><b>+${qty(x.restock)}</b></span><span><small>Akhir fisik</small><b>${qty(x.physicalClosing??x.closing)}</b></span><span><small>Selisih</small><b class="${num(x.variance)===0?'ok':'warn'}">${num(x.variance)>0?'+':''}${qty(x.variance)}</b></span></div></article>`).join('');
-  return `<div class="sj-shift-evidence-note">Cup Control adalah authority fisik. <b>Dipakai transaksi</b> dan <b>dipakai fisik</b> ditampilkan terpisah agar selisih tidak disamarkan.</div><div class="sj-shift-cup-mobile-list">${mobile}</div><div class="sj-shift-evidence-table-wrap sj-shift-cup-desktop-table"><table class="sj-shift-evidence-table"><thead><tr><th>Cup</th><th>Awal</th><th>Masuk</th><th>Transaksi</th><th>Fisik terpakai</th><th>Akhir fisik</th><th>Selisih</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  const mobile=rows.map(x=>{
+    const reason=text(x.reason);
+    return `<article class="sj-shift-cup-mobile-card"><header><div><b>${esc(x.name||x.code)}</b><small data-status="${esc(x.status||'')}">${esc(cupStatusLabel(x.status,num(x.variance)))}</small></div><strong class="${num(x.variance)===0?'ok':'warn'}">Selisih ${num(x.variance)>0?'+':''}${qty(x.variance)}</strong></header><div class="sj-shift-cup-usage"><span><small>Dipakai transaksi</small><b>${qty(x.transactionUsage)} pcs</b></span><span><small>Dipakai fisik</small><b>${qty(x.physicalUsed)} pcs</b></span></div><div class="sj-shift-cup-meta"><span><small>Awal</small><b>${qty(x.opening)}</b></span><span><small>Masuk</small><b>+${qty(x.restock)}</b></span><span><small>Akhir fisik</small><b>${qty(x.physicalClosing??x.closing)}</b></span><span><small>Selisih</small><b class="${num(x.variance)===0?'ok':'warn'}">${num(x.variance)>0?'+':''}${qty(x.variance)}</b></span></div>${reason?`<div class="sj-shift-evidence-reason"><small>Catatan selisih</small><b>${esc(reason)}</b></div>`:''}</article>`;
+  }).join('');
+  return `${summary}<div class="sj-shift-evidence-note">Cup Control adalah authority fisik. <b>Dipakai transaksi</b> dan <b>dipakai fisik</b> ditampilkan terpisah agar selisih tidak disamarkan.</div><div class="sj-shift-cup-mobile-list">${mobile}</div><div class="sj-shift-evidence-table-wrap sj-shift-cup-desktop-table"><table class="sj-shift-evidence-table"><thead><tr><th>Cup</th><th>Awal</th><th>Masuk</th><th>Transaksi</th><th>Fisik terpakai</th><th>Akhir fisik</th><th>Selisih</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 export function renderStockShiftEvidenceDetail(summary=null){
   const rows=Object.values(summary?.rows||{});
-  if(!rows.length)return '<div class="sj-shift-evidence-empty">Evidence stok barang jadi belum tersedia. Snapshot mulai tersimpan pada shift yang dibuka setelah fitur ini aktif.</div>';
-  const body=rows.map(x=>`<tr><td><b>${esc(x.name||x.productId)}</b><small>${esc(x.status==='NON_SALE_CHANGE'?'Ada perubahan non-penjualan':x.status==='PARTIAL'?'Evidence sebagian':'Sesuai penjualan')}</small></td><td>${qty(x.openingQty)}</td><td>-${qty(x.soldQty)}</td><td>+${qty(x.returnedQty)}</td><td class="${num(x.nonSaleNetChange)===0?'ok':'warn'}">${x.nonSaleNetChange===null?'—':`${num(x.nonSaleNetChange)>0?'+':''}${qty(x.nonSaleNetChange)}`}</td><td>${qty(x.closingSystemQty)}</td></tr>`).join('');
-  return `<div class="sj-shift-evidence-note">Stok awal/akhir adalah snapshot sistem, bukan authority baru. “Perubahan lain” memisahkan transfer/opname/koreksi dari penjualan agar jumlah terjual tidak dipalsukan.</div><div class="sj-shift-evidence-table-wrap"><table class="sj-shift-evidence-table"><thead><tr><th>Produk</th><th>Awal</th><th>Terjual</th><th>Retur ke stok</th><th>Perubahan lain</th><th>Akhir sistem</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  if(!rows.length)return '<div class="sj-shift-evidence-empty">Evidence stok barang jadi belum tersedia untuk shift ini. Pencatatan otomatis dimulai pada shift yang dibuka setelah fitur ini aktif. Data stok utama tidak hilang.</div>';
+  const trackedCount=Number.isFinite(Number(summary?.trackedCount))?num(summary.trackedCount):rows.length;
+  const soldTotal=Number.isFinite(Number(summary?.soldTotal))?num(summary.soldTotal):rows.reduce((a,x)=>a+Math.max(0,num(x.soldQty)),0);
+  const returnedTotal=Number.isFinite(Number(summary?.returnedTotal))?num(summary.returnedTotal):rows.reduce((a,x)=>a+Math.max(0,num(x.returnedQty)),0);
+  const attentionCount=Number.isFinite(Number(summary?.attentionCount))?num(summary.attentionCount):rows.filter(x=>x.status!=='MATCH_SALES_ONLY').length;
+  const topSummary=`<section class="sj-shift-evidence-summary sj-shift-evidence-summary--stock">
+    <span><small>Produk dilacak</small><b>${qty(trackedCount)}</b></span>
+    <span><small>Terjual</small><b>${qty(soldTotal)} unit</b></span>
+    <span><small>Retur ke stok</small><b>${qty(returnedTotal)} unit</b></span>
+    <span class="${attentionCount?'warn':'ok'}"><small>Status</small><b>${attentionCount?`${qty(attentionCount)} ada perubahan lain`:'Semua sesuai'}</b></span>
+  </section>`;
+  const statusLabel=x=>{
+    if(x.status==='NON_SALE_CHANGE'){
+      const delta=num(x.nonSaleNetChange);
+      return `Ada perubahan lain ${delta>0?'+':''}${qty(delta)}`;
+    }
+    if(x.status==='PARTIAL')return 'Data sebagian';
+    return 'Sesuai penjualan';
+  };
+  const body=rows.map(x=>`<tr><td><b>${esc(x.name||x.productId)}</b><small>${esc(statusLabel(x))}</small></td><td>${qty(x.openingQty)}</td><td>-${qty(x.soldQty)}</td><td>+${qty(x.returnedQty)}</td><td class="${num(x.nonSaleNetChange)===0?'ok':'warn'}">${x.nonSaleNetChange===null?'—':`${num(x.nonSaleNetChange)>0?'+':''}${qty(x.nonSaleNetChange)}`}</td><td>${qty(x.closingSystemQty)}</td></tr>`).join('');
+  const mobile=rows.map(x=>{
+    const delta=x.nonSaleNetChange===null?null:num(x.nonSaleNetChange);
+    const deltaText=delta===null?'—':`${delta>0?'+':''}${qty(delta)} unit`;
+    return `<article class="sj-shift-stock-mobile-card"><header><div><b>${esc(x.name||x.productId)}</b><small class="${x.status==='NON_SALE_CHANGE'?'warn':x.status==='PARTIAL'?'muted':'ok'}">${esc(statusLabel(x))}</small></div></header><div class="sj-shift-stock-primary"><span><small>Terjual</small><b>${qty(x.soldQty)} unit</b></span><span class="${delta===0?'':'attention'}"><small>Perubahan lain</small><b>${deltaText}</b></span></div><div class="sj-shift-stock-meta"><span><small>Awal</small><b>${qty(x.openingQty)}</b></span><span><small>Retur ke stok</small><b>+${qty(x.returnedQty)}</b></span><span><small>Akhir sistem</small><b>${qty(x.closingSystemQty)}</b></span></div>${x.status==='NON_SALE_CHANGE'?'<div class="sj-shift-stock-explainer">Perubahan lain bukan penjualan. Lihat Pergerakan untuk audit transfer, opname, atau koreksi.</div>':''}</article>`;
+  }).join('');
+  return `${topSummary}<div class="sj-shift-evidence-note">Stok awal/akhir adalah snapshot sistem, bukan authority baru. <b>Perubahan lain</b> memisahkan transfer/opname/koreksi dari penjualan agar jumlah terjual tidak dipalsukan.</div><div class="sj-shift-stock-mobile-list">${mobile}</div><div class="sj-shift-evidence-table-wrap sj-shift-stock-desktop-table"><table class="sj-shift-evidence-table"><thead><tr><th>Produk</th><th>Awal</th><th>Terjual</th><th>Retur ke stok</th><th>Perubahan lain</th><th>Akhir sistem</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 export function renderClosedShiftEvidenceCards(row={}){
