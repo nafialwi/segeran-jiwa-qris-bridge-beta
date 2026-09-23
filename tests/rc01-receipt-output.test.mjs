@@ -60,4 +60,5 @@ test('RC01 receipt enhancement adds exactly one Simpan PDF / Cetak action and is
   assert.equal(buttons.length,1);
   assert.equal(buttons[0].textContent,'Simpan PDF / Cetak');
   assert.equal(buttons[0].dataset.rc01ReceiptPdf,'true');
+  assert.equal(buttons[0].className,'sjvc011-success-pdf');
 });

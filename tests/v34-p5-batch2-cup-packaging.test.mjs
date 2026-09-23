@@ -21,8 +21,22 @@ test('CUP-CONTROL-V1 derives expected usage from transaction cup snapshots, excl
   const out=theoreticalCupUsageV34(txs,[]);assert.equal(out.c16,3);assert.equal(out.c22d,1);assert.equal(out.c22o,3);assert.equal(out.c10,0);
 });
 
-test('CUP-CONTROL-V1 falls back to current product mapping only when historical line lacks cup snapshot',()=>{
+test('CUP-CONTROL-V1 falls back to current product mapping only when historical line truly lacks cup snapshot field',()=>{
   const out=theoreticalCupUsageV34([{status:'DONE',items:[{id:'P1',q:2}]}],[{id:'P1',cp:'c10'}]);assert.equal(out.c10,2);
+});
+
+test('CUP-CONTROL-V1 never rewrites an explicit empty historical cup snapshot after product mapping changes',()=>{
+  const txs=[
+    {id:'OLD',status:'DONE',items:[{id:'P1',q:4,cp:''}]},
+    {id:'NEW',status:'DONE',items:[{id:'P1',q:2,cp:'c10'}]}
+  ];
+  const out=theoreticalCupUsageV34(txs,[{id:'P1',cp:'c10'}]);
+  assert.equal(out.c10,2);
+});
+
+test('CUP-CONTROL-V1 preserves a historical cup snapshot even when current product mapping differs',()=>{
+  const out=theoreticalCupUsageV34([{status:'DONE',items:[{id:'P1',q:3,cp:'c16'}]}],[{id:'P1',cp:'c22p'}]);
+  assert.equal(out.c16,3);assert.equal(out.c22p,0);
 });
 
 test('CUP-CONTROL-V1 ignores Inventory V2 transfer movements as Cup restock authority',()=>{

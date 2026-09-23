@@ -115,8 +115,12 @@ export function theoreticalCupUsageV34(transactions=[],menu=[],catalog=CUP_CATAL
       // Refund does not restore a disposable cup. A committed sale keeps its original
       // packaging usage; only a VOID/CANCELLED transaction is excluded above.
       const qty=Math.max(0,num(line?.q??line?.qty??line?.quantity));if(qty<=0)continue;
+      const hasCupSnapshot=Object.prototype.hasOwnProperty.call(line||{},'cp');
       let code=text(line?.cp).toLowerCase();
-      if(!isCupCodeV34(code,specs)){
+      // An explicit `cp` field is immutable transaction evidence. In particular,
+      // cp:"" means the product had no Cup mapping when the sale was committed.
+      // Only truly legacy lines without the snapshot field may use current mapping.
+      if(!hasCupSnapshot&&!isCupCodeV34(code,specs)){
         const id=text(line?.baseProductId||line?.productId||line?.id||line?._key),product=products[id];
         code=text(product?.cp).toLowerCase();
       }

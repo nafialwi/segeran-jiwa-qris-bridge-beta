@@ -286,6 +286,11 @@ function patchPu03DataBandwidthConvergence(legacy){
 }
 
 function patchR9Lic01Uat7(legacy){
+  /* R10_UAT_CLOSE_SHIFT_AUTHORITY: the visible final drawer/shift difference is the close-note authority. */
+  legacy=replaceOnce(legacy,
+    "if((sessionDiff!==0||shiftDiff!==0)&&!note)throw Object.assign(new Error('Ada selisih kas. Catatan wajib diisi.'),{code:'SHIFT_NOTE_REQUIRED'});",
+    "if(shiftDiff!==0&&!note)throw Object.assign(new Error('Ada selisih kas. Catatan wajib diisi.'),{code:'SHIFT_NOTE_REQUIRED'});",
+    'R10_UAT_CLOSE_SHIFT_AUTHORITY');
   legacy=replaceOnce(legacy,
     "}catch(e){if(reserved){try{await controlRef.transaction(cur=>{if(cur&&String(cur.currentSessionId||'')===String(sid)&&String(cur.status||'')==='CLOSING')return oldControl;return})}catch(_){}}sjSaveError('SHIFT_SESSION_CLOSE',e);if(e.code==='SHIFT_NOTE_REQUIRED')alert(e.message);else alert(sjFriendlyError(e))}finally{this.busy=false;sjSetBusy(btn,false)}",
     "}catch(e){if(reserved&&e.code!=='UNKNOWN_COMMIT_STATE'){try{await controlRef.transaction(cur=>{if(cur&&String(cur.currentSessionId||'')===String(sid)&&String(cur.status||'')==='CLOSING')return oldControl;return})}catch(_){}}sjSaveError('SHIFT_SESSION_CLOSE',e);if(e.code==='SHIFT_NOTE_REQUIRED')alert(e.message);else if(e.code==='UNKNOWN_COMMIT_STATE')alert('Status penutupan belum dapat dipastikan. Jangan menutup ulang shift sampai status terverifikasi.');else alert(sjFriendlyError(e))}finally{this.busy=false;sjSetBusy(btn,false)}",

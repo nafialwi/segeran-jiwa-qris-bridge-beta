@@ -98,3 +98,10 @@ test('mobile evidence modal is full-screen and removes horizontal-table dependen
   assert.match(css,/sj-shift-stock-mobile-list/);
   assert.match(css,/sj-shift-cup-mobile-list/);
 });
+
+test('mobile Cup and stock history visibility override comes after the base hidden rule',()=>{
+  const css=fs.readFileSync(new URL('../src/ui/ref01.css',import.meta.url),'utf8');
+  const hidden=Math.max(css.lastIndexOf('.sj-shift-cup-mobile-list{display:none}'),css.lastIndexOf('.sj-shift-stock-mobile-list{display:none}'));
+  const visible=css.lastIndexOf('.sj-shift-cup-mobile-list,.sj-shift-stock-mobile-list{display:grid;gap:12px}');
+  assert.ok(hidden>=0);assert.ok(visible>hidden,'mobile visibility rule must win the CSS cascade');
+});

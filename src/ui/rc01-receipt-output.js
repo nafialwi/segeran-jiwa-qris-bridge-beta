@@ -41,7 +41,7 @@ export function createRc01ReceiptOutput(runtime=globalThis){
     const host=document?.querySelector?.('.sjvc011-success-actions');
     if(!host||host.querySelector?.('[data-rc01-receipt-pdf]'))return false;
     const button=document.createElement('button');
-    button.type='button';button.textContent='Simpan PDF / Cetak';button.setAttribute?.('data-rc01-receipt-pdf','true');
+    button.type='button';button.textContent='Simpan PDF / Cetak';button.className='sjvc011-success-pdf';button.setAttribute?.('data-rc01-receipt-pdf','true');
     button.addEventListener?.('click',()=>{void printOrSavePdf()});
     host.appendChild?.(button);
     return true;
