@@ -33,11 +33,21 @@ export function cupEvidenceFromShift(row={}){
   return {opening,restock,closing,reconciliation};
 }
 
+function cupStatusLabel(status,variance){
+  const s=text(status).toUpperCase();
+  if(s==='MATCH')return 'Sesuai';
+  if(s==='SHORTAGE')return 'Kurang';
+  if(s==='MORE')return 'Lebih';
+  if(s==='NEEDS_ATTENTION')return 'Perlu perhatian';
+  return variance===0?'Sesuai':'Perlu perhatian';
+}
+
 export function renderCupShiftEvidenceDetail(row={}){
   const evidence=cupEvidenceFromShift(row),rows=evidence.reconciliation?.rows||[];
   if(!rows.length)return '<div class="sj-shift-evidence-empty">Riwayat Cup belum tersedia untuk shift ini.</div>';
-  const body=rows.map(x=>`<tr><td><b>${esc(x.name||x.code)}</b><small>${esc(x.status||'')}</small></td><td>${qty(x.opening)}</td><td>+${qty(x.restock)}</td><td>${qty(x.transactionUsage)}</td><td>${qty(x.physicalUsed)}</td><td>${qty(x.physicalClosing??x.closing)}</td><td class="${num(x.variance)===0?'ok':'warn'}">${num(x.variance)>0?'+':''}${qty(x.variance)}</td></tr>`).join('');
-  return `<div class="sj-shift-evidence-note">Cup Control adalah authority fisik. Terpakai transaksi dan fisik ditampilkan terpisah agar selisih tidak disamarkan.</div><div class="sj-shift-evidence-table-wrap"><table class="sj-shift-evidence-table"><thead><tr><th>Cup</th><th>Awal</th><th>Masuk</th><th>Transaksi</th><th>Fisik terpakai</th><th>Akhir fisik</th><th>Selisih</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  const body=rows.map(x=>`<tr><td><b>${esc(x.name||x.code)}</b><small data-status="${esc(x.status||'')}">${esc(cupStatusLabel(x.status,num(x.variance)))}</small></td><td>${qty(x.opening)}</td><td>+${qty(x.restock)}</td><td>${qty(x.transactionUsage)}</td><td>${qty(x.physicalUsed)}</td><td>${qty(x.physicalClosing??x.closing)}</td><td class="${num(x.variance)===0?'ok':'warn'}">${num(x.variance)>0?'+':''}${qty(x.variance)}</td></tr>`).join('');
+  const mobile=rows.map(x=>`<article class="sj-shift-cup-mobile-card"><header><div><b>${esc(x.name||x.code)}</b><small data-status="${esc(x.status||'')}">${esc(cupStatusLabel(x.status,num(x.variance)))}</small></div><strong class="${num(x.variance)===0?'ok':'warn'}">Selisih ${num(x.variance)>0?'+':''}${qty(x.variance)}</strong></header><div class="sj-shift-cup-usage"><span><small>Dipakai transaksi</small><b>${qty(x.transactionUsage)} pcs</b></span><span><small>Dipakai fisik</small><b>${qty(x.physicalUsed)} pcs</b></span></div><div class="sj-shift-cup-meta"><span><small>Awal</small><b>${qty(x.opening)}</b></span><span><small>Masuk</small><b>+${qty(x.restock)}</b></span><span><small>Akhir fisik</small><b>${qty(x.physicalClosing??x.closing)}</b></span><span><small>Selisih</small><b class="${num(x.variance)===0?'ok':'warn'}">${num(x.variance)>0?'+':''}${qty(x.variance)}</b></span></div></article>`).join('');
+  return `<div class="sj-shift-evidence-note">Cup Control adalah authority fisik. <b>Dipakai transaksi</b> dan <b>dipakai fisik</b> ditampilkan terpisah agar selisih tidak disamarkan.</div><div class="sj-shift-cup-mobile-list">${mobile}</div><div class="sj-shift-evidence-table-wrap sj-shift-cup-desktop-table"><table class="sj-shift-evidence-table"><thead><tr><th>Cup</th><th>Awal</th><th>Masuk</th><th>Transaksi</th><th>Fisik terpakai</th><th>Akhir fisik</th><th>Selisih</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 export function renderStockShiftEvidenceDetail(summary=null){

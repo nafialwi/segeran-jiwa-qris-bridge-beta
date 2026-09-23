@@ -34,3 +34,18 @@ test('shift augmentation stores evidence beside existing shift authority and in 
   const closed=augmentShiftStockEvidenceUpdates('CLOSE','2026-09-22-S1','SES1',{'2026-09-22-S1/closingSnapshot':{cash:{actual:100}}},{closing,summary});
   assert.equal(closed['2026-09-22-S1/sessions/SES1/stockEvidence/closing'].rows.P1.qty,7);assert.equal(closed['2026-09-22-S1/stockEvidence/summary'].rows.P1.closingSystemQty,7);assert.equal(closed['2026-09-22-S1/closingSnapshot'].cash.actual,100);assert.equal(closed['2026-09-22-S1/closingSnapshot'].stockEvidence.summary.rows.P1.closingSystemQty,7);
 });
+
+test('summary ignores non-trackStock transactions outside opening/closing evidence scope',()=>{
+  const opening={rows:{P1:{productId:'P1',name:'Tracked',qty:10}}};
+  const closing={rows:{P1:{productId:'P1',name:'Tracked',qty:8}}};
+  const txs=[
+    {id:'T1',status:'COMPLETED',items:[{id:'P1',q:2,trackStock:true}]},
+    {id:'T2',status:'COMPLETED',items:[{id:'P2',q:10,trackStock:false}]}
+  ];
+  const summary=buildFinishedGoodsShiftSummary({opening,closing,transactions:txs,refunds:[],shiftKey:'2026-09-23-S2'});
+  assert.deepEqual(Object.keys(summary.rows),['P1']);
+  assert.equal(summary.trackedCount,1);
+  assert.equal(summary.soldTotal,2);
+  assert.equal(summary.attentionCount,0);
+  assert.equal(summary.rows.P1.status,'MATCH_SALES_ONLY');
+});

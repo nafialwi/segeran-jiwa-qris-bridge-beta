@@ -684,3 +684,26 @@ html[data-sj-v31="true"] .sj-v33-shift-audit>.sj-v33-fin-subhead>span{padding:4p
   .sj-shift-evidence-modal{width:100%;max-height:92dvh;border-radius:22px 22px 0 0;padding:14px 12px calc(16px + env(safe-area-inset-bottom))}
   .sj-shift-evidence-modal>header{top:-14px;margin:-14px -12px 10px;padding:12px}
 }
+
+ /* R10 UAT refinement — Cup usage visibility */
+.sj-v34-cup-usage-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:min(390px,100%);margin-top:8px}
+.sj-v34-cup-usage-summary>span{padding:7px 8px;border:1px solid #e3ebe6;border-radius:10px;background:#f8fbf9}
+.sj-v34-cup-usage-summary small{display:block;font-size:8px;line-height:1.25;color:#728278}
+.sj-v34-cup-usage-summary strong{display:block;margin-top:2px;font-size:12px;color:#1d3427}
+.sj-v34-cup-usage-summary>span.primary{border-color:#b8dfc9;background:#edf9f2}
+.sj-v34-cup-usage-summary>span.primary small,.sj-v34-cup-usage-summary>span.primary strong{color:#08783f}
+.sj-shift-cup-mobile-list{display:none}
+.sj-shift-cup-mobile-card{border:1px solid #e2ebe5;border-radius:14px;background:#fff;padding:12px}
+.sj-shift-cup-mobile-card>header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.sj-shift-cup-mobile-card>header b{display:block;color:#1d3427;font-size:12px}
+.sj-shift-cup-mobile-card>header small{display:block;margin-top:2px;color:#728278;font-size:8px;font-weight:800}
+.sj-shift-cup-mobile-card>header strong{font-size:9px;white-space:nowrap}
+.sj-shift-cup-mobile-card .ok{color:#08783f}.sj-shift-cup-mobile-card .warn{color:#b45309}
+.sj-shift-cup-usage{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.sj-shift-cup-usage>span{padding:10px;border-radius:11px;background:#eef8f2}
+.sj-shift-cup-usage small,.sj-shift-cup-meta small{display:block;color:#607268;font-size:8px}
+.sj-shift-cup-usage b{display:block;margin-top:3px;color:#08783f;font-size:16px}
+.sj-shift-cup-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}
+.sj-shift-cup-meta>span{padding:8px;border-radius:10px;background:#f7faf8}
+.sj-shift-cup-meta b{display:block;margin-top:2px;color:#263b2f;font-size:10px}
+@media(max-width:520px){.sj-shift-cup-mobile-list{display:grid;gap:10px}.sj-shift-cup-desktop-table{display:none}.sj-v34-cup-close-row>header{align-items:flex-start;flex-direction:column}.sj-v34-cup-usage-summary{width:100%}}

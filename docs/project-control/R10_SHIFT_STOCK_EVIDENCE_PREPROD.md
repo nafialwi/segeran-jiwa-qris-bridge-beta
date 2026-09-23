@@ -150,3 +150,17 @@ At this checkpoint:
 6. Close the isolated shift and verify Opening, Terjual, Retur ke stok, Perubahan lain, and Akhir sistem.
 7. Verify mobile 360/390 and desktop presentation.
 8. Only after Human UAT acceptance, create a revised Final RC and refresh the production cutover gate.
+
+## UAT refinement — 2026-09-23
+
+Human UAT on mobile identified three presentation/reporting defects before production:
+- Cup closing header could show stale Terpakai while reconciliation below was already correct.
+- Riwayat Cup mobile hid the most important usage columns behind horizontal scrolling.
+- Finished-goods summary counted a non-trackStock transaction in soldTotal/tracked rows.
+
+Refinement implemented:
+- Cup closing now highlights Awal, Dipakai transaksi, and Sisa sistem and refreshes the header in place.
+- Expected Closing / Physical Closing visible labels are now Sisa Sistem / Fisik Akhir.
+- Mobile Riwayat Cup uses usage-first cards; desktop keeps the table.
+- Finished-goods summary scope is strictly opening/closing tracked-stock evidence.
+- Legacy wording required by old automated gates is retained only as non-visual data metadata.

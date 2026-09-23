@@ -58,7 +58,7 @@ export function buildFinishedGoodsShiftSnapshot({products=[],balances={},include
 
 export function buildFinishedGoodsShiftSummary({opening=null,closing=null,transactions=[],refunds=[],shiftKey='',capturedTs=Date.now(),capturedAt=new Date(capturedTs).toISOString()}={}){
   const sales=soldUnitsByProduct(transactions),returns=returnedUnitsByProduct(refunds,shiftKey);
-  const openingRows=opening?.rows||{},closingRows=closing?.rows||{},ids=new Set([...Object.keys(openingRows),...Object.keys(closingRows),...Object.keys(sales),...Object.keys(returns)]);
+  const openingRows=opening?.rows||{},closingRows=closing?.rows||{},ids=new Set([...Object.keys(openingRows),...Object.keys(closingRows)]);
   const rows={};let soldTotal=0,returnedTotal=0,attentionCount=0;
   for(const id of [...ids].sort()){
     const o=openingRows[id],c=closingRows[id],openingKnown=!!o,closingKnown=!!c;
