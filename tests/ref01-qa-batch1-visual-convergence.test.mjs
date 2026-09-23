@@ -34,7 +34,7 @@ test('REF_02 bottom navigation uses dedicated locked active SVG and locked outli
 test('REF_01 settings responsibility icons use locked B01-B05 production authority',()=>{
   const html=renderSettingsMarkup({name:'Owner Utama',roleLabel:'Owner / Pemilik'});
   const settingsIcons=[...html.matchAll(/sjr01-setting-icon[^>]*>(<svg[\s\S]*?<\/svg>)/g)].map(m=>m[1]);
-  assert.equal(settingsIcons.length,17);
+  assert.equal(settingsIcons.length,18);
   assert.ok(settingsIcons.every(svg=>/data-sj-icon-authority="B01-B05"/.test(svg)));
   assert.ok(settingsIcons.every(svg=>!/data-sj-icon-variant="solid"/.test(svg)), 'Settings must not revive the local synthetic-filled icon family');
 });

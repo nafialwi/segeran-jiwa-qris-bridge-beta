@@ -5,6 +5,7 @@ import { validateMutationSource, APPROVED_MUTATION_FILES } from '../scripts/sc04
 
 test('RC01 S10A mutation policy exact-allows the three P4 writers plus the approved QRIS deferred-settlement writer',()=>{
   assert.deepEqual([...APPROVED_MUTATION_FILES].sort(),[
+    'src/data/writers/cup-catalog-writer.js',
     'src/data/writers/finance-writer.js',
     'src/data/writers/purchase-reconciliation-writer.js',
     'src/data/writers/qris-cash-out-coordinator.js',
@@ -55,4 +56,14 @@ const balancePath=stockItemId=>posPath('global','inventoryV2','balances','ingred
 export async function bad(db){await db.ref(mappingPath('P1')).set({x:1})}`;
   const violations=validateMutationSource(rel,source);
   assert.ok(violations.some(x=>x.code==='STOCK_COMPONENT_WRITER_METHOD_CONTRACT'));
+});
+
+test('R10 Cup Catalog writer is constrained to global/settings/cupCatalogV1 transaction only',()=>{
+  const rel='src/data/writers/cup-catalog-writer.js';
+  const valid="import {posPath} from '../firebase-client.js';\nconst cupCatalogPath=()=>posPath('global','settings','cupCatalogV1');\nexport async function ok(db){await db.ref(cupCatalogPath()).transaction(x=>x)}";
+  assert.deepEqual(validateMutationSource(rel,valid),[]);
+  const badPath="import {posPath} from '../firebase-client.js';\nconst cupCatalogPath=()=>posPath('global','users');\nexport async function bad(db){await db.ref(cupCatalogPath()).transaction(x=>x)}";
+  assert.ok(validateMutationSource(rel,badPath).some(x=>x.code==='CUP_CATALOG_WRITER_PATH_CONTRACT'));
+  const badMethod="import {posPath} from '../firebase-client.js';\nconst cupCatalogPath=()=>posPath('global','settings','cupCatalogV1');\nexport async function bad(db){await db.ref(cupCatalogPath()).set({x:1})}";
+  assert.ok(validateMutationSource(rel,badMethod).some(x=>x.code==='CUP_CATALOG_WRITER_METHOD_CONTRACT'));
 });

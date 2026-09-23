@@ -13,15 +13,14 @@ export const CUP_CATALOG_V34=Object.freeze([
   Object.freeze({code:'c22o',name:'Cup 22 Oz Oval',unit:'pcs',aliases:Object.freeze(['CUP 22 OZ OVAL','GELAS 22 OZ OVAL','CUP 22 OVAL','GELAS 22 OVAL'])})
 ]);
 
-const CODE_SET=new Set(CUP_CATALOG_V34.map(x=>x.code));
 const normName=v=>upper(v).replace(/[^A-Z0-9]+/g,' ').replace(/\s+/g,' ').trim();
 const rows=v=>Array.isArray(v)?v.filter(Boolean):v&&typeof v==='object'?Object.entries(v).filter(([,x])=>x!=null).map(([id,x])=>({...x,_key:x?._key??id})) : [];
 
-export function cupSpecByCodeV34(code=''){
-  return CUP_CATALOG_V34.find(x=>x.code===text(code).toLowerCase())||null;
+export function cupSpecByCodeV34(code='',catalog=CUP_CATALOG_V34){
+  return (Array.isArray(catalog)?catalog:CUP_CATALOG_V34).find(x=>x.code===text(code).toLowerCase())||null;
 }
 
-export function isCupCodeV34(code=''){return CODE_SET.has(text(code).toLowerCase())}
+export function isCupCodeV34(code='',catalog=CUP_CATALOG_V34){return (Array.isArray(catalog)?catalog:CUP_CATALOG_V34).some(x=>x.code===text(code).toLowerCase())}
 
 export function isCupIngredientMasterV34(master={}){
   const direct=text(master.cpCode||master.cupCode||master.packagingCode).toLowerCase();
@@ -103,8 +102,9 @@ export function ensureCupLocalSimulationStoreV34(runtime=globalThis){
   return store;
 }
 
-export function theoreticalCupUsageV34(transactions=[],menu=[]){
-  const out=Object.fromEntries(CUP_CATALOG_V34.map(x=>[x.code,0]));
+export function theoreticalCupUsageV34(transactions=[],menu=[],catalog=CUP_CATALOG_V34){
+  const specs=Array.isArray(catalog)&&catalog.length?catalog:CUP_CATALOG_V34;
+  const out=Object.fromEntries(specs.map(x=>[x.code,0]));
   const products=productMap(menu),seenTransactions=new Set();
   for(const tx of transactions||[]){
     const identity=text(tx?.id??tx?._key??tx?.transactionId??tx?.txId);
@@ -116,11 +116,11 @@ export function theoreticalCupUsageV34(transactions=[],menu=[]){
       // packaging usage; only a VOID/CANCELLED transaction is excluded above.
       const qty=Math.max(0,num(line?.q??line?.qty??line?.quantity));if(qty<=0)continue;
       let code=text(line?.cp).toLowerCase();
-      if(!isCupCodeV34(code)){
+      if(!isCupCodeV34(code,specs)){
         const id=text(line?.baseProductId||line?.productId||line?.id||line?._key),product=products[id];
         code=text(product?.cp).toLowerCase();
       }
-      if(isCupCodeV34(code))out[code]+=qty;
+      if(isCupCodeV34(code,specs))out[code]+=qty;
     }
   }
   return Object.freeze(out);
@@ -131,12 +131,12 @@ export function cupInboundFromMovementsV34(){
   return Object.freeze(Object.fromEntries(CUP_CATALOG_V34.map(x=>[x.code,0])));
 }
 
-export function reconcileCupShiftV34({opening={},inbound={},closing={},theoretical={},reasons={},manualUsage={},waste={},adjustment={}}={}){
-  return reconcileCupControlV1({catalog:CUP_CATALOG_V34,opening,restock:inbound,transactionUsage:theoretical,manualUsage,waste,adjustment,physical:closing,reasons,openingKnown:true});
+export function reconcileCupShiftV34({opening={},inbound={},closing={},theoretical={},reasons={},manualUsage={},waste={},adjustment={},catalog=CUP_CATALOG_V34}={}){
+  return reconcileCupControlV1({catalog,opening,restock:inbound,transactionUsage:theoretical,manualUsage,waste,adjustment,physical:closing,reasons,openingKnown:true});
 }
 
-export function reconcileCupClosingAuthorityV34({openingKnown=true,opening={},inbound={},closing={},theoretical={},reasons={},manualUsage={},waste={},adjustment={}}={}){
-  return reconcileCupControlV1({catalog:CUP_CATALOG_V34,opening,restock:inbound,transactionUsage:theoretical,manualUsage,waste,adjustment,physical:closing,reasons,openingKnown:!!openingKnown});
+export function reconcileCupClosingAuthorityV34({openingKnown=true,opening={},inbound={},closing={},theoretical={},reasons={},manualUsage={},waste={},adjustment={},catalog=CUP_CATALOG_V34}={}){
+  return reconcileCupControlV1({catalog,opening,restock:inbound,transactionUsage:theoretical,manualUsage,waste,adjustment,physical:closing,reasons,openingKnown:!!openingKnown});
 }
 
 export function buildCupOutletOpnameDraftsV34(){
@@ -145,8 +145,8 @@ export function buildCupOutletOpnameDraftsV34(){
   return Object.freeze([]);
 }
 
-export function decorateRecipeWithCupV34(recipe={},product={},cupRows=[]){
-  const code=text(product?.cp).toLowerCase(),spec=cupSpecByCodeV34(code),out=clone(recipe)||{};
+export function decorateRecipeWithCupV34(recipe={},product={},cupRows=[],catalog=CUP_CATALOG_V34){
+  const code=text(product?.cp).toLowerCase(),spec=cupSpecByCodeV34(code,catalog),out=clone(recipe)||{};
   if(!spec)return out;
   const legacy=(cupRows||[]).find(x=>x?.code===code)||null;
   // Keep packaging metadata for immutable costing/audit evidence only. Do not inject

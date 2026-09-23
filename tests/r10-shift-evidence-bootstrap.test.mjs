@@ -7,10 +7,10 @@ const ui=fs.readFileSync(new URL('../src/ui/shift-evidence-v1.js',import.meta.ur
 const domain=fs.readFileSync(new URL('../src/domain/shift-stock-evidence-v1.js',import.meta.url),'utf8');
 
 test('shift evidence installs after Cup and R8 closing wrappers so augmentation remains additive',()=>{
-  const p5=bootstrap.indexOf('installP5PackagingV34(runtime,{inventoryWorkspace})');
+  const p5=bootstrap.indexOf('installP5PackagingV34(runtime,{inventoryWorkspace,catalogService:cupCatalog})');
   const r8=bootstrap.indexOf('installR8ShiftClosingIntegrity(runtime,{cupShiftControl:p5Packaging?.shiftControl})');
   const evidence=bootstrap.indexOf('installShiftEvidenceV1(runtime)');
-  assert.ok(p5>=0 && r8>p5 && evidence>r8,{p5,r8,evidence});
+  assert.ok(p5>=0 && r8>p5 && evidence>r8,'bootstrap order p5='+p5+' r8='+r8+' evidence='+evidence);
   assert.match(bootstrap,/r8ShiftClosing\?\.enhance\?\.\(\);shiftEvidence\?\.enhance\?\.\(\)/);
 });
 

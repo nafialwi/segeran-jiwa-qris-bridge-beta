@@ -2,6 +2,7 @@ const MUTATION_RE=/\.(set|update|transaction|remove)\s*\(/g;
 const REMOVE_RE=/\.remove\s*\(/g;
 
 export const APPROVED_MUTATION_FILES=Object.freeze([
+  'src/data/writers/cup-catalog-writer.js',
   'src/data/writers/finance-writer.js',
   'src/data/writers/qris-cash-out-coordinator.js',
   'src/data/writers/purchase-reconciliation-writer.js',
@@ -11,6 +12,21 @@ export const APPROVED_MUTATION_FILES=Object.freeze([
 const APPROVED=new Set(APPROVED_MUTATION_FILES);
 const add=(out,code,detail)=>out.push({code,detail});
 const methodsOf=source=>[...String(source).matchAll(MUTATION_RE)].map(m=>m[1]);
+
+
+function validateCupCatalogWriter(source,out){
+  const methods=methodsOf(source);
+  for(const method of methods)if(method!=='transaction')add(out,'CUP_CATALOG_WRITER_METHOD_CONTRACT',method);
+  const required=/cupCatalogPath\s*=\s*\(\)\s*=>\s*posPath\(\s*['"]global['"]\s*,\s*['"]settings['"]\s*,\s*['"]cupCatalogV1['"]\s*\)/;
+  if(!required.test(source))add(out,'CUP_CATALOG_WRITER_PATH_CONTRACT','cupCatalogPath');
+  for(const match of String(source).matchAll(/db\.ref\s*\(([^)]*(?:\([^)]*\)[^)]*)?)\)\s*\.\s*(transaction|set|update|remove)\s*\(/g)){
+    const expr=match[1].trim(),method=match[2];
+    if(expr!=='cupCatalogPath()')add(out,'CUP_CATALOG_WRITER_PATH_CONTRACT',method+':'+expr);
+  }
+  let remainder=String(source).replace(/const\s+cupCatalogPath\s*=\s*\(\)\s*=>\s*posPath\([^;\n]+;?/,'');
+  if(/posPath\s*\(/.test(remainder))add(out,'CUP_CATALOG_WRITER_PATH_CONTRACT','unexpected posPath usage');
+  if(/db\.ref\s*\(\s*['"`]/.test(source))add(out,'CUP_CATALOG_WRITER_PATH_CONTRACT','direct literal db.ref path');
+}
 
 function validateFinanceWriter(source,out){
   const methods=methodsOf(source);
@@ -123,6 +139,7 @@ export function validateMutationSource(relativePath,source){
   REMOVE_RE.lastIndex=0;
   if(!methods.length)return out;
   if(!APPROVED.has(rel)){add(out,'UNAUTHORIZED_MUTATION_FILE',rel);return out}
+  if(rel==='src/data/writers/cup-catalog-writer.js')validateCupCatalogWriter(text,out);
   if(rel==='src/data/writers/finance-writer.js')validateFinanceWriter(text,out);
   if(rel==='src/data/writers/qris-cash-out-coordinator.js')validateQrisCoordinator(text,out);
   if(rel==='src/data/writers/purchase-reconciliation-writer.js')validatePurchaseReconciliationWriter(text,out);

@@ -32,6 +32,8 @@ import { installR8DailyUxRefinement } from '../ui/r8-daily-ux-refinement.js';
 import { installR8InventorySafetyRefinement } from '../ui/r8-inventory-safety-refinement.js';
 import { installR8ShiftClosingIntegrity } from '../ui/r8-shift-closing-integrity.js';
 import { installShiftEvidenceV1 } from '../ui/shift-evidence-v1.js';
+import { installCupCatalogRuntimeV1 } from './cup-catalog-runtime-v1.js';
+import { installCupCatalogSettingsV1 } from '../ui/cup-catalog-settings-v1.js';
 
 const OWNER='ref01-ui-runtime';
 
@@ -318,7 +320,9 @@ export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_
   if(!sc03) throw new Error('REF01_SC03_RUNTIME_REQUIRED');if(!sc04) throw new Error('REF01_SC04_RUNTIME_REQUIRED');
   const document=runtime?.document??null;installStyle(document);installRefinementIconAuthority(runtime);installReportRefinement(runtime);const notificationRefinement=installNotificationRefinement(runtime);
   const media=createMediaLifecycle({imageAuthority:getImageAuthority(runtime),auth:getAuth(runtime),avatarStore:profileAvatarStore(runtime,sc04)});const shift=createStaleShiftAdapter(runtime);const legacyShiftClose=installLegacyShiftCloseRecovery(runtime);const salesShiftUx=installSalesShiftUxRefinement(runtime,{shiftAdapter:shift});const ownerDashboardHybrid=installOwnerDashboardHybrid(runtime);const productionSales=installProductionSalesStability(runtime);const manualSync=installManualSyncControls(runtime);const salesHistory=installSalesHistoryRefinement(runtime);const finishedWarehouse=installFinishedGoodsWarehouseRefinement(runtime);let inventoryWorkspace=installInventoryWorkspaceV32(runtime);const productStockComponentsUi=installProductStockComponentsUi(runtime);const legacyStockComponentsRuntime=installLegacyStockComponentsRuntime(runtime);
-  const p5Packaging=installP5PackagingV34(runtime,{inventoryWorkspace});
+  const cupCatalog=installCupCatalogRuntimeV1(runtime,{readRole:()=>currentRole(sc03),readActorId:()=>profileIdentity(runtime,sc04)});
+  const p5Packaging=installP5PackagingV34(runtime,{inventoryWorkspace,catalogService:cupCatalog});
+  const cupCatalogSettings=installCupCatalogSettingsV1(runtime,{catalogService:cupCatalog,notify:(message,kind)=>notify(runtime,message,kind)});
   const financeWorkspace=p4?installFinanceWorkspaceV33(runtime,{document,p4,readRole:()=>currentRole(sc03),notify:(message,kind)=>notify(runtime,message,kind)}):null;
   const qrisCashOutUi=p4?installQrisCashOutUiV33(runtime,{document,p4,readRole:()=>currentRole(sc03),notify:(message,kind)=>notify(runtime,message,kind)}):null;
   const r8DailyUx=installR8DailyUxRefinement(runtime,{readRole:()=>currentRole(sc03),readCupRows:()=>p5Packaging?.shiftControl?.cupRows?.()||[],refreshCupRows:()=>p5Packaging?.shiftControl?.refresh?.()});
@@ -334,6 +338,7 @@ export function installRef01Runtime(runtime=globalThis,{sc03=runtime?.__SJ_SC03_
   });
   function openFeature(key){
     if(key==='settings.materials-warehouse'){const v3=ensureInventoryWorkspaceV32();if(v3?.open)return v3.open?.('summary');return notify(runtime,'Bahan & Gudang V3 belum siap. Coba buka kembali sesaat lagi.','warning')}
+    if(key==='settings.cup-control')return cupCatalogSettings?.open?.()??notify(runtime,'Cup Control belum siap.','warning');
     if(key==='ref01.appearance'){if(typeof runtime?.SJMobileUX?.openSettings==='function')return runtime.SJMobileUX.openSettings();return renderInfoPanel(document,{title:'Tampilan Aplikasi',message:'REF-01 mengikuti perangkat secara responsif. Kepadatan komponen menjaga target sentuh minimal 44px.',rows:[['Mobile','320 / 390 / 430'],['Tablet','≥ 768px'],['Desktop','≥ 1200px']]})}
     if(key==='ref01.security'){const s=sc04?.session?.snapshot?.()||{};return renderInfoPanel(document,{title:'Keamanan & Sinkronisasi',message:'Session Manager SC-04 adalah authority sesi.',rows:[['Session',s.envelope?'Tersimpan':'Tidak tersimpan'],['Koneksi',runtime?.navigator?.onLine===false?'Offline':'Online']]})}
     if(key==='ref01.backup') return renderInfoPanel(document,{title:'Backup & Restore',message:'Semua aksi memakai authority existing. Restore tetap membutuhkan guard Owner dan file backup terverifikasi.',rows:[['Backup','Unduh snapshot database existing'],['Restore','Pilih file JSON untuk restore existing']],actions:[{label:'Backup sekarang',run:backupActions.backup},{label:'Pilih file restore',run:backupActions.restore}]});

@@ -11,6 +11,21 @@ const CUP_OPTIONS=Object.freeze([
  Object.freeze({code:'c22o',name:'Cup 22 Oz Oval',note:'Cup 22 Oz tutup oval'})
 ]);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function runtimeCupCatalog(includeInactive=false){
+ try{
+  const api=window.__SJ_CUP_CATALOG_V1;
+  const rows=includeInactive?api?.catalog?.({includeInactive:true}):api?.activeCatalog?.();
+  if(Array.isArray(rows)&&rows.length)return rows.map(x=>({code:String(x.code||''),name:String(x.name||x.code||''),note:'Cup Control'}));
+ }catch(_){}
+ return CUP_OPTIONS.filter(x=>x.code);
+}
+function pickerOptions(selected=''){
+ const active=runtimeCupCatalog(false),all=runtimeCupCatalog(true),key=String(selected||'').toLowerCase();
+ const rows=[{code:'',name:'Tanpa cup',note:'Produk tidak menggunakan kemasan cup'},...active];
+ if(key&&!rows.some(x=>x.code===key)){const found=all.find(x=>x.code===key);if(found)rows.push(found)}
+ return rows;
+}
 function installStyle(){
  if(document.getElementById('sj-legacy-cup-01b-style'))return;
  const st=document.createElement('style');st.id='sj-legacy-cup-01b-style';
@@ -35,16 +50,20 @@ function fieldLabelBefore(el,text,key){
  const label=document.createElement('label');label.className='sj-product-field-label';label.dataset.sjProductLabel=key;label.textContent=text;el.parentNode.insertBefore(label,el);
 }
 function syncPanel(select){
+ if(!select)return;
+ const value=String(select.value||''),rows=pickerOptions(value);
+ select.innerHTML=rows.map(x=>'<option value="'+esc(x.code)+'">'+esc(x.name)+'</option>').join('');
+ if(rows.some(x=>x.code===value))select.value=value;
  const panel=document.querySelector('[data-sj-product-cup-panel="'+select.id+'"]');if(!panel)return;
- const value=String(select.value||'');const chosen=CUP_OPTIONS.find(x=>x.code===value)||CUP_OPTIONS[0];
+ const chosen=rows.find(x=>x.code===String(select.value||''))||rows[0];
  const summary=panel.querySelector('[data-sj-product-cup-summary]');
- if(summary)summary.textContent=chosen.code?chosen.name:'Tanpa cup';
+ if(summary)summary.textContent=chosen?.code?chosen.name:'Tanpa cup';
 }
 function buildPicker(select){
  if(!select||document.querySelector('[data-sj-product-cup-panel="'+select.id+'"]'))return;
  const previous=String(select.value||''),parent=select.parentNode;
- select.innerHTML=CUP_OPTIONS.map(x=>'<option value="'+esc(x.code)+'">'+esc(x.name)+'</option>').join('');
- if(CUP_OPTIONS.some(x=>x.code===previous))select.value=previous;
+ const rows=pickerOptions(previous);select.innerHTML=rows.map(x=>'<option value="'+esc(x.code)+'">'+esc(x.name)+'</option>').join('');
+ if(rows.some(x=>x.code===previous))select.value=previous;
  select.classList.add('sj-product-cup-select');
  const panel=document.createElement('div');panel.className='sj-product-cup-panel';panel.dataset.sjProductCupPanel=select.id;
  panel.innerHTML='<div class="sj-product-cup-head"><div><div class="sj-product-cup-title">Kemasan / Jenis Cup</div><div class="sj-product-cup-help">Dipakai Cup Control untuk menghitung pemakaian cup per produk.</div></div><div class="sj-product-cup-summary" data-sj-product-cup-summary></div></div>';
@@ -63,7 +82,7 @@ function enhanceModal(modalId,ids){
 function runtimeMenuRows(){
  try{if(Array.isArray(window.cloudData?.global?.menu))return window.cloudData.global.menu;const out=window.Function?window.Function('try{return typeof cloudData!=="undefined"?cloudData.global.menu:[]}catch(_){return []}')():[];return Array.isArray(out)?out:[]}catch(_){return[]}
 }
-function cupName(code){const row=CUP_OPTIONS.find(x=>x.code===String(code||'').toLowerCase());return row?.code?row.name:''}
+function cupName(code){const key=String(code||'').toLowerCase(),row=runtimeCupCatalog(true).find(x=>x.code===key)||CUP_OPTIONS.find(x=>x.code===key);return row?.code?row.name:''}
 let masterCupObserver=null,masterCupScheduled=false;
 function decorateMasterCupMappings(){
  const list=document.getElementById('master-menu-list');if(!list)return false;const menu=runtimeMenuRows();
@@ -73,5 +92,6 @@ function watchMasterCupMappings(){const list=document.getElementById('master-men
 function install(){installStyle();enhanceModal('modal-add-menu',{category:'new-c',name:'new-n',price:'new-p',cup:'new-cp'});enhanceModal('modal-edit-master',{category:'edit-m-c',name:'edit-m-n',price:'edit-m-p',cup:'edit-m-cp'});watchMasterCupMappings()}
 const api=Object.freeze({version:'LEGACY-CUP-01B',options:CUP_OPTIONS.map(x=>({code:x.code,name:x.name})),install:install,decorateMasterCupMappings:decorateMasterCupMappings,sync:function(){['new-cp','edit-m-cp'].forEach(id=>{const el=document.getElementById(id);if(el)syncPanel(el)});decorateMasterCupMappings()}});
 window.SJLegacyCup01BProductCupUI=api;
+try{document.addEventListener('sj:cup-catalog-changed',()=>{try{api.sync()}catch(_){}})}catch(_){}
 install();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
 })();

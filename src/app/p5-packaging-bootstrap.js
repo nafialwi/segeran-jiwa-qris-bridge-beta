@@ -1,10 +1,10 @@
 import { installCupShiftControlV34 } from '../ui/cup-shift-control-v34.js';
 import { installCupProductCostingV34 } from '../ui/cup-product-costing-v34.js';
 
-export function installP5PackagingV34(runtime=globalThis,{inventoryWorkspace=runtime?.__SJ_V32_INVENTORY_WORKSPACE}={}){
+export function installP5PackagingV34(runtime=globalThis,{inventoryWorkspace=runtime?.__SJ_V32_INVENTORY_WORKSPACE,catalogService=runtime?.__SJ_CUP_CATALOG_V1}={}){
   if(runtime?.__SJ_P5_PACKAGING_V34)return runtime.__SJ_P5_PACKAGING_V34;
-  const shiftControl=installCupShiftControlV34(runtime,{inventoryWorkspace});
-  const productCosting=installCupProductCostingV34(runtime,{inventoryWorkspace});
+  const shiftControl=installCupShiftControlV34(runtime,{inventoryWorkspace,catalogService});
+  const productCosting=installCupProductCostingV34(runtime,{inventoryWorkspace,catalogService});
   const api=Object.freeze({
     version:'3.4',phase:'P5-BATCH2',installed:!!(shiftControl?.installed||productCosting?.installed),shiftControl,productCosting,
     enhance(){try{productCosting?.enhance?.()}catch(_){}return true},

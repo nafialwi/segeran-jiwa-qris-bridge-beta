@@ -28,20 +28,20 @@ test('Prompt 5 maps every one of the nine refinement authorities to concrete run
 });
 
 test('Prompt 5 Settings layout follows REF_01 group geometry instead of one generic grid',()=>{
-  assert.equal(SETTINGS_LAYOUT.Toko.layout,'five-compact');
+  assert.equal(SETTINGS_LAYOUT.Toko.layout,'six-compact');
   assert.equal(SETTINGS_LAYOUT.Akses.layout,'three-wide');
   assert.equal(SETTINGS_LAYOUT['Tampilan & Perangkat'].layout,'three-wide');
   assert.equal(SETTINGS_LAYOUT.Sistem.layout,'four-compact');
   assert.equal(SETTINGS_LAYOUT.Data.layout,'full-width');
   assert.equal(SETTINGS_LAYOUT['Zona Sensitif'].layout,'danger-full-width');
-  assert.deepEqual(labels(SETTINGS_LAYOUT.Toko.items),['Produk','Kategori','Bahan & Gudang','Pelanggan','Karyawan']);
+  assert.deepEqual(labels(SETTINGS_LAYOUT.Toko.items),['Produk','Kategori','Bahan & Gudang','Cup Control','Pelanggan','Karyawan']);
   assert.deepEqual(labels(SETTINGS_LAYOUT.Akses.items),['Akun Saya','Pengguna','Perangkat Aktif']);
   assert.equal(SETTINGS_LAYOUT.logout.label,'Keluar');
 });
 
 test('Prompt 5 uses a refinement icon vocabulary matching visible responsibilities, not fallback box icons',()=>{
   const exact={
-    Produk:'shopping-bag',Kategori:'category-grid','Bahan & Gudang':'warehouse-box',Pelanggan:'customers',Karyawan:'id-card',
+    Produk:'shopping-bag',Kategori:'category-grid','Bahan & Gudang':'warehouse-box','Cup Control':'warehouse-box',Pelanggan:'customers',Karyawan:'id-card',
     'Akun Saya':'account-circle',Pengguna:'users-access','Perangkat Aktif':'devices','Tampilan Aplikasi':'palette',
     'Identitas Toko':'storefront',Printer:'printer',Notifikasi:'bell','Keamanan & Sinkronisasi':'shield-lock',
     Aktivitas:'history',Diagnostik:'stethoscope','Backup & Restore':'cloud-upload','Kelola Data Sensitif':'shield-alert',Keluar:'logout'
@@ -58,7 +58,7 @@ test('Prompt 5 Settings renderer contains REF_01 hierarchy, profile photo surfac
   assert.match(html,/Kelola toko, pengguna, dan sistem POS Anda/);
   assert.match(html,/sjr01-profile-photo/);
   assert.match(html,/data-ref01-profile="choose"/);
-  assert.match(html,/data-ref01-layout="five-compact"/);
+  assert.match(html,/data-ref01-layout="six-compact"/);
   assert.match(html,/data-ref01-layout="three-wide"/);
   assert.match(html,/data-ref01-layout="four-compact"/);
   assert.match(html,/data-ref01-layout="full-width"/);
@@ -85,7 +85,7 @@ test('Prompt 5 bottom-nav reconciliation keeps the existing semantic label as th
 test('Prompt 5 CSS contains reference-specific settings geometry and 180-220ms navigation motion',()=>{
   const css=readFileSync('src/ui/ref01.css','utf8');
   assert.match(css,/--sj-ref-motion:\s*200ms/);
-  assert.match(css,/\.sjr01-grid--five-compact/);
+  assert.match(css,/\.sjr01-grid--six-compact/);
   assert.match(css,/\.sjr01-grid--three-wide/);
   assert.match(css,/\.sjr01-grid--four-compact/);
   assert.match(css,/\.sjr01-settings-logout/);

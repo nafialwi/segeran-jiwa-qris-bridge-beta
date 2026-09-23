@@ -28,7 +28,7 @@ test('REF-01 primary navigation is exactly five semantic tabs with a 200ms activ
 test('REF-01 Settings IA contains all grouped responsibilities and separates sensitive actions',()=>{
   assert.deepEqual(Object.keys(SETTINGS_GROUPS),['Toko','Akses','Tampilan & Perangkat','Sistem','Data','Zona Sensitif']);
   const labels=Object.values(SETTINGS_GROUPS).flat().map(x=>x.label);
-  for(const label of ['Produk','Kategori','Bahan & Gudang','Pelanggan','Karyawan','Akun Saya','Pengguna','Perangkat Aktif','Tampilan Aplikasi','Identitas Toko','Printer','Notifikasi','Keamanan & Sinkronisasi','Aktivitas','Diagnostik','Backup & Restore']) assert.ok(labels.includes(label),label);
+  for(const label of ['Produk','Kategori','Bahan & Gudang','Cup Control','Pelanggan','Karyawan','Akun Saya','Pengguna','Perangkat Aktif','Tampilan Aplikasi','Identitas Toko','Printer','Notifikasi','Keamanan & Sinkronisasi','Aktivitas','Diagnostik','Backup & Restore']) assert.ok(labels.includes(label),label);
   assert.ok(SETTINGS_GROUPS['Zona Sensitif'].every(x=>x.sensitive===true));
 });
 

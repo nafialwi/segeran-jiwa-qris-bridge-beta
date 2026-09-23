@@ -5,6 +5,7 @@ export const SETTINGS_GROUPS=Object.freeze({
     item('products','Produk','product','settings.products'),
     item('categories','Kategori','category','settings.categories'),
     item('materials','Bahan & Gudang','inventory','settings.materials-warehouse'),
+    item('cup-control','Cup Control','warehouse-box','settings.cup-control'),
     item('customers','Pelanggan','users','settings.customers'),
     item('employees','Karyawan','employee','settings.employees')
   ]),

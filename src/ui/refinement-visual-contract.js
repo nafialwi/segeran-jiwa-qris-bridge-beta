@@ -6,7 +6,7 @@ export const REQUIRED_REFERENCE_IDS=Object.freeze([
 ]);
 
 export const VISUAL_ICON_MAP=Object.freeze({
-  'Produk':'shopping-bag','Kategori':'category-grid','Bahan & Gudang':'warehouse-box','Pelanggan':'customers','Karyawan':'id-card',
+  'Produk':'shopping-bag','Kategori':'category-grid','Bahan & Gudang':'warehouse-box','Cup Control':'warehouse-box','Pelanggan':'customers','Karyawan':'id-card',
   'Akun Saya':'account-circle','Pengguna':'users-access','Perangkat Aktif':'devices','Tampilan Aplikasi':'palette','Identitas Toko':'storefront',
   'Printer':'printer','Notifikasi':'bell','Keamanan & Sinkronisasi':'shield-lock','Aktivitas':'history','Diagnostik':'stethoscope',
   'Backup & Restore':'cloud-upload','Kelola Data Sensitif':'shield-alert','Keluar':'logout'
@@ -15,10 +15,11 @@ export const VISUAL_ICON_MAP=Object.freeze({
 const item=(label,feature,note)=>Object.freeze({label,feature,icon:VISUAL_ICON_MAP[label],note});
 
 export const SETTINGS_LAYOUT=Object.freeze({
-  Toko:group('five-compact',[
+  Toko:group('six-compact',[
     item('Produk','settings.products','Kelola produk dan varian'),
     item('Kategori','settings.categories','Kelola kategori produk'),
     item('Bahan & Gudang','settings.materials-warehouse','Kelola stok bahan dan gudang'),
+    item('Cup Control','settings.cup-control','Kelola jenis Cup dan kemasan'),
     item('Pelanggan','settings.customers','Kelola data pelanggan'),
     item('Karyawan','settings.employees','Kelola data karyawan')
   ]),
