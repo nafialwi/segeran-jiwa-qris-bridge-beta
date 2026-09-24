@@ -24,3 +24,15 @@ test('Android shell is branded and internet-capable without cleartext override',
   assert.match(strings,/<string name="app_name">Segeran Jiwa POS<\/string>/);
   assert.match(styles,/windowSplashScreenAnimatedIcon">@drawable\/sj_launcher/);
 });
+
+test('Android native Back delegates to POS hierarchy before app exit',()=>{
+  const pkg=JSON.parse(readFileSync(join(ROOT,'package.json'),'utf8'));
+  const build=readFileSync(join(ROOT,'scripts','build-ref01.mjs'),'utf8');
+  const bridge=readFileSync(join(ROOT,'src','pwa','native-back.js'),'utf8');
+  assert.equal(pkg.dependencies['@capacitor/app'],'^8.1.1');
+  assert.match(build,/data-sj-native-back/);
+  assert.match(bridge,/addListener\('backButton'/);
+  assert.match(bridge,/window\.SJReliability/);
+  assert.match(bridge,/rel\.handleBack\(\)/);
+  assert.match(bridge,/app\.exitApp\(\)/);
+});
