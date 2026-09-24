@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="432dp"
-    android:height="768dp"
-    android:viewportWidth="432"
-    android:viewportHeight="768">
-    <path android:fillColor="#F5F7F6" android:pathData="M0,0h432v768h-432z"/>
-    <path android:fillColor="#08783F" android:pathData="M136,280h160v160h-160z"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M165,321H213V337H181V353H213V390H165V374H197V368H165Z"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M225,321H267V370C267,394 253,408 232,408C214,408 203,399 200,383L217,378C219,388 223,391 231,391C242,391 249,384 249,370V337H225Z"/>
-</vector>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#F5F7F6" />
+        </shape>
+    </item>
+    <item><bitmap android:gravity="center" android:src="@drawable/sj_logo_full" /></item>
+</layer-list>
